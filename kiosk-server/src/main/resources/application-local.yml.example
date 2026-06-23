@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kiosk
+    username: kiosk
+    password: kiosk
+
+kiosk:
+  storage:
+    path: /tmp/kiosk-uploads
+    public-base-url: http://localhost:8080
+
+finik:
+  api-key: local-mock-key

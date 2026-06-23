@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.printkiosk</groupId>
+        <artifactId>kiosk-platform</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>kiosk-shared</artifactId>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <!-- Только для @JsonProperty/@JsonCreator, если используешь -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Опционально: для Bean Validation в DTO -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Lombok можно, если хочешь @Builder/@Getter в DTO -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+    </dependencies>
+
+</project>

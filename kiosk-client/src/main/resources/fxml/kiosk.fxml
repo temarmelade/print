@@ -1,0 +1,1340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.layout.Region?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.image.Image?>
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.printkiosk.client.ui.controller.MainController"
+            stylesheets="@kiosk.css"
+            styleClass="app-shell">
+
+    <!-- TOP BAR -->
+
+
+    <!-- SCREENS -->
+    <center>
+        <StackPane>
+
+            <!-- ADMIN SCREEN -->
+            <VBox fx:id="adminScreen"
+                  styleClass="screen, admin-screen"
+                  spacing="24"
+                  visible="false"
+                  managed="false">
+
+                <HBox alignment="CENTER_LEFT">
+                    <Button fx:id="adminBackBtn"
+                            text="← На главный экран"
+                            onAction="#onAdminBackClicked"
+                            styleClass="btn-back"/>
+                </HBox>
+
+                <VBox styleClass="content-card, admin-card"
+                      spacing="24"
+                      alignment="CENTER"
+                      maxWidth="980">
+
+                    <VBox alignment="CENTER" spacing="6">
+                        <Label fx:id="adminTitleLabel"
+                               text="Админ-панель"
+                               styleClass="h1-text"/>
+
+                        <Label fx:id="adminSubtitleLabel"
+                               text="Заказы и статистика за сегодня"
+                               styleClass="body-text-muted"/>
+                    </VBox>
+
+                    <GridPane hgap="18"
+                              vgap="18"
+                              alignment="CENTER">
+
+                        <VBox styleClass="admin-stat-card"
+                              spacing="8"
+                              alignment="CENTER"
+                              GridPane.rowIndex="0"
+                              GridPane.columnIndex="0">
+                            <Label text="Всего заказов" styleClass="admin-stat-title"/>
+                            <Label fx:id="adminTotalJobsLabel" text="0" styleClass="admin-stat-value"/>
+                        </VBox>
+
+                        <VBox styleClass="admin-stat-card"
+                              spacing="8"
+                              alignment="CENTER"
+                              GridPane.rowIndex="0"
+                              GridPane.columnIndex="1">
+                            <Label text="Печать" styleClass="admin-stat-title"/>
+                            <Label fx:id="adminPrintJobsLabel" text="0" styleClass="admin-stat-value"/>
+                        </VBox>
+
+                        <VBox styleClass="admin-stat-card"
+                              spacing="8"
+                              alignment="CENTER"
+                              GridPane.rowIndex="0"
+                              GridPane.columnIndex="2">
+                            <Label text="Копирование" styleClass="admin-stat-title"/>
+                            <Label fx:id="adminCopyJobsLabel" text="0" styleClass="admin-stat-value"/>
+                        </VBox>
+
+                        <VBox styleClass="admin-stat-card"
+                              spacing="8"
+                              alignment="CENTER"
+                              GridPane.rowIndex="1"
+                              GridPane.columnIndex="0">
+                            <Label text="Сканирование" styleClass="admin-stat-title"/>
+                            <Label fx:id="adminScanJobsLabel" text="0" styleClass="admin-stat-value"/>
+                        </VBox>
+
+                        <VBox styleClass="admin-stat-card, admin-revenue-card"
+                              spacing="8"
+                              alignment="CENTER"
+                              GridPane.rowIndex="1"
+                              GridPane.columnIndex="1">
+                            <Label text="Доход" styleClass="admin-stat-title"/>
+                            <Label fx:id="adminRevenueLabel" text="0 сом" styleClass="admin-stat-value"/>
+                        </VBox>
+
+                        <VBox styleClass="admin-stat-card, admin-error-card"
+                              spacing="8"
+                              alignment="CENTER"
+                              GridPane.rowIndex="1"
+                              GridPane.columnIndex="2">
+                            <Label text="Ошибки" styleClass="admin-stat-title"/>
+                            <Label fx:id="adminFailedJobsLabel" text="0" styleClass="admin-stat-value"/>
+                        </VBox>
+
+                    </GridPane>
+
+                    <HBox alignment="CENTER" spacing="16">
+                        <Button fx:id="adminRefreshBtn"
+                                text="Обновить"
+                                onAction="#onAdminRefreshClicked"
+                                styleClass="btn-primary"/>
+
+                        <Button fx:id="adminTestPrintBtn"
+                                text="Тестовая печать"
+                                onAction="#onAdminTestPrintClicked"
+                                styleClass="btn-secondary"/>
+                    </HBox>
+                </VBox>
+            </VBox>
+
+            <!-- HELP SCREEN -->
+            <VBox fx:id="helpScreen"
+                  styleClass="screen, help-screen"
+                  spacing="20"
+                  visible="false"
+                  managed="false">
+
+                <HBox alignment="CENTER_LEFT">
+                    <Button fx:id="helpBackBtn"
+                            text="← Назад"
+                            onAction="#onHelpBackClicked"
+                            styleClass="btn-back"/>
+                </HBox>
+
+                <VBox styleClass="content-card, help-card"
+                      spacing="20"
+                      alignment="TOP_LEFT"
+                      maxWidth="980">
+
+                    <VBox alignment="CENTER" spacing="6">
+                        <Label fx:id="helpTitleLabel"
+                               text="Как пользоваться киоском"
+                               styleClass="h1-text"/>
+
+                        <Label fx:id="helpSubtitleLabel"
+                               text="Инструкция в 4 шагах"
+                               styleClass="body-text-muted"/>
+                    </VBox>
+
+                    <!-- 4 шага -->
+                    <VBox spacing="14" styleClass="help-steps">
+
+                        <HBox spacing="16" alignment="TOP_LEFT" styleClass="help-step">
+                            <Label text="1" styleClass="help-step-number"/>
+                            <Label fx:id="helpStep1Label"
+                                   styleClass="help-step-text"
+                                   wrapText="true"
+                                   maxWidth="820"
+                                   text="Загрузите файл: отправьте документ в Telegram-бот или отсканируйте QR-код на экране для загрузки со смартфона. (USB-флешки не поддерживаются.)"/>
+                        </HBox>
+
+                        <HBox spacing="16" alignment="TOP_LEFT" styleClass="help-step">
+                            <Label text="2" styleClass="help-step-number"/>
+                            <Label fx:id="helpStep2Label"
+                                   styleClass="help-step-text"
+                                   wrapText="true"
+                                   maxWidth="820"
+                                   text="Настройте печать: выберите нужные страницы и количество копий."/>
+                        </HBox>
+
+                        <HBox spacing="16" alignment="TOP_LEFT" styleClass="help-step">
+                            <Label text="3" styleClass="help-step-number"/>
+                            <Label fx:id="helpStep3Label"
+                                   styleClass="help-step-text"
+                                   wrapText="true"
+                                   maxWidth="820"
+                                   text="Оплатите: отсканируйте появившийся QR-код для оплаты заказа любым мобильным банкингом."/>
+                        </HBox>
+
+                        <HBox spacing="16" alignment="TOP_LEFT" styleClass="help-step">
+                            <Label text="4" styleClass="help-step-number"/>
+                            <Label fx:id="helpStep4Label"
+                                   styleClass="help-step-text"
+                                   wrapText="true"
+                                   maxWidth="820"
+                                   text="Заберите распечатку: документ будет напечатан автоматически сразу после успешной оплаты."/>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Форматы и контакты -->
+                    <HBox spacing="20" alignment="TOP_CENTER" styleClass="help-info-row">
+
+                        <VBox styleClass="small-card, help-info-card"
+                              spacing="8"
+                              alignment="TOP_LEFT"
+                              HBox.hgrow="ALWAYS">
+                            <Label fx:id="helpFormatsTitleLabel"
+                                   text="Поддерживаемые форматы"
+                                   styleClass="h3-text"/>
+                            <Label fx:id="helpFormatsValueLabel"
+                                   text="PDF, JPG, PNG, DOCX"
+                                   styleClass="body-text"/>
+                            <Label fx:id="helpFormatsLimitLabel"
+                                   text="Максимальный размер файла — 20 МБ"
+                                   styleClass="body-text-muted"/>
+                        </VBox>
+
+                        <VBox styleClass="small-card, help-info-card"
+                              spacing="8"
+                              alignment="TOP_LEFT"
+                              HBox.hgrow="ALWAYS">
+                            <Label fx:id="helpSupportTitleLabel"
+                                   text="Контакты поддержки"
+                                   styleClass="h3-text"/>
+                            <Label fx:id="helpSupportPhoneLabel"
+                                   text="📞 +996 XXX XXX XXX"
+                                   styleClass="body-text"/>
+                            <Label fx:id="helpSupportTelegramLabel"
+                                   text="✈ @printkiosk_support"
+                                   styleClass="body-text"/>
+                        </VBox>
+                    </HBox>
+
+                    <Label fx:id="helpHintLabel"
+                           text="Чтобы закрыть инструкцию, нажмите «Назад»."
+                           styleClass="body-text-muted, help-hint"
+                           wrapText="true"/>
+                </VBox>
+            </VBox>
+
+            <!-- HOME SCREEN -->
+            <VBox fx:id="homeScreen"
+                  spacing="0"
+                  styleClass="home-screen">
+
+                <!-- Верхняя панель -->
+                <HBox alignment="TOP_CENTER" styleClass="home-top-bar">
+
+                    <!-- Время и дата слева -->
+                    <VBox alignment="TOP_LEFT" spacing="2">
+                        <Label fx:id="homeTimeLabel"
+                               text="10:30"
+                               styleClass="home-time"/>
+
+                        <Label fx:id="homeDateLabel"
+                               text="20 мая 2026"
+                               styleClass="home-date"/>
+                    </VBox>
+
+                    <Region HBox.hgrow="ALWAYS"/>
+
+                    <!-- Язык и помощь справа -->
+                    <HBox alignment="CENTER" spacing="18">
+
+                        <HBox alignment="CENTER" spacing="8" styleClass="home-language-box">
+                            <Label text="🌐" styleClass="home-language-icon"/>
+
+                            <Button fx:id="langRuBtn"
+                                    text="Рус"
+                                    onAction="#onSelectRuTop"
+                                    styleClass="home-language-btn, lang-btn-active"/>
+
+                            <Button fx:id="langKgBtn"
+                                    text="Кыр"
+                                    onAction="#onSelectKgTop"
+                                    styleClass="home-language-btn"/>
+
+                            <Button fx:id="langEnBtn"
+                                    text="Eng"
+                                    onAction="#onSelectEnTop"
+                                    styleClass="home-language-btn"/>
+                        </HBox>
+
+                        <Button fx:id="headerHelpBtn"
+                                text="?  Помощь"
+                                onAction="#onHelpClicked"
+                                styleClass="home-help-btn"/>
+                    </HBox>
+                </HBox>
+
+                <!-- Заголовок -->
+                <VBox alignment="CENTER" spacing="8" styleClass="home-title-block">
+                    <Label fx:id="homeWelcomeLabel"
+                           text="Добро пожаловать!"
+                           onMouseClicked="#onLogoClicked"
+                           styleClass="home-main-title"/>
+
+                    <Label fx:id="homeSubtitleLabel"
+                           text="Выберите нужную операцию"
+                           styleClass="home-main-subtitle"/>
+                </VBox>
+
+                <!-- Карточки операций -->
+                <HBox alignment="CENTER" spacing="46" styleClass="home-cards-row">
+
+                    <!-- Печать -->
+                    <VBox alignment="CENTER"
+                          spacing="24"
+                          prefWidth="330"
+                          prefHeight="390"
+                          styleClass="home-action-card, print-card"
+                          onMouseClicked="#onPrintOperationSelected">
+
+                        <StackPane prefWidth="130" prefHeight="130">
+                            <SVGPath styleClass="operation-svg, print-svg"
+                                     content="M20 45 H80 Q88 45 88 53 V75 Q88 83 80 83 H72 V100 H28 V83 H20 Q12 83 12 75 V53 Q12 45 20 45 Z M30 15 H70 Q76 15 76 21 V45 H64 V28 H36 V45 H24 V21 Q24 15 30 15 Z M38 75 H62 V88 H38 Z M68 57 Q72 57 72 61 Q72 65 68 65 Q64 65 64 61 Q64 57 68 57 Z"/>
+                        </StackPane>
+
+                        <Label fx:id="printCardTitle"
+                               text="Печать"
+                               styleClass="home-card-title"/>
+
+                        <Label fx:id="printCardDesc"
+                               text="Печать документов&#10;и файлов"
+                               textAlignment="CENTER"
+                               styleClass="home-card-desc"/>
+                    </VBox>
+
+                    <!-- Копирование -->
+                    <VBox alignment="CENTER"
+                          spacing="24"
+                          prefWidth="330"
+                          prefHeight="390"
+                          styleClass="home-action-card, copy-card"
+                          onMouseClicked="#onCopyOperationSelected">
+
+                        <StackPane prefWidth="130" prefHeight="130">
+                            <SVGPath styleClass="operation-svg, copy-svg"
+                                     content="M28 18 H62 L82 38 V90 Q82 98 74 98 H28 Q20 98 20 90 V26 Q20 18 28 18 Z M62 18 V38 H82 M35 52 H68 V60 H35 Z M35 70 H70 V78 H35 Z M35 36 H52 V44 H35 Z M36 100 H78 Q90 100 90 88 V42 H100 V95 Q100 108 87 108 H36 Z"/>
+                        </StackPane>
+
+                        <Label fx:id="copyCardTitle"
+                               text="Копирование"
+                               styleClass="home-card-title"/>
+
+                        <Label fx:id="copyCardDesc"
+                               text="Сделайте копию&#10;документа"
+                               textAlignment="CENTER"
+                               styleClass="home-card-desc"/>
+                    </VBox>
+
+                    <!-- Сканирование -->
+                    <VBox alignment="CENTER"
+                          spacing="24"
+                          prefWidth="330"
+                          prefHeight="390"
+                          styleClass="home-action-card, scan-card"
+                          onMouseClicked="#onScanOperationSelected">
+
+                        <StackPane prefWidth="130" prefHeight="130">
+                            <SVGPath styleClass="operation-svg, scan-svg"
+                                     content="M25 20 H78 Q86 20 90 28 L102 68 H34 Z M33 75 H96 Q104 75 104 83 V100 H20 V83 Q20 75 33 75 Z M34 30 L44 58 H88 L80 30 Z M30 88 H42 V94 H30 Z"/>
+                        </StackPane>
+
+                        <Label fx:id="scanCardTitle"
+                               text="Сканирование"
+                               styleClass="home-card-title"/>
+
+                        <Label fx:id="scanCardDesc"
+                               text="Сканирование&#10;в файл"
+                               textAlignment="CENTER"
+                               styleClass="home-card-desc"/>
+                    </VBox>
+                </HBox>
+
+                <!-- Оставляем эти элементы скрытыми, потому что они есть в Controller -->
+                <HBox visible="false" managed="false">
+                    <Label fx:id="sloganLabel"
+                           text="Удобно. Быстро. Просто."
+                           onMouseClicked="#onLogoClicked"/>
+
+                    <Button fx:id="cloudBtn" text="☁️ Печать из облака"/>
+                    <Button fx:id="emailBtn" text="✉️ Отправить на E-mail"/>
+                    <Button fx:id="settingsBtn" text="⚙️ Настройки"/>
+                </HBox>
+
+            </VBox>
+
+            <!-- UPLOAD / PIN SCREEN -->
+            <VBox fx:id="uploadScreen"
+                  alignment="CENTER"
+                  spacing="18"
+                  visible="false"
+                  managed="false"
+                  styleClass="upload-screen">
+
+                <HBox alignment="CENTER_LEFT" style="-fx-max-width: 1060;">
+                    <Button fx:id="backBtnUpload"
+                            text="← Назад"
+                            onAction="#onBackClicked"
+                            styleClass="btn-back"/>
+                </HBox>
+
+                <StackPane alignment="CENTER">
+
+                    <!-- ЭТАП 1: QR-коды -->
+                    <VBox fx:id="uploadQrStep"
+                          alignment="CENTER"
+                          spacing="24"
+                          visible="true"
+                          managed="true">
+
+                        <VBox alignment="CENTER" spacing="8">
+                            <Label fx:id="uploadTitleLabel"
+                                   text="Загрузите файл для печати"
+                                   styleClass="upload-main-title"/>
+
+                            <Label fx:id="uploadDescLabel"
+                                   text="Выберите удобный способ загрузки файла"
+                                   styleClass="upload-main-subtitle"/>
+                        </VBox>
+
+                        <HBox alignment="CENTER" spacing="34" styleClass="upload-qr-row">
+
+                            <!-- Telegram card -->
+                            <VBox alignment="CENTER"
+                                  spacing="16"
+                                  styleClass="upload-qr-card, telegram-qr-card">
+
+                                <StackPane styleClass="upload-icon-circle, telegram-icon-circle">
+                                    <SVGPath styleClass="upload-method-svg, telegram-svg"
+                                             content="M96 18 L76 96 Q74 104 66 99 L48 85 L38 96 Q34 100 34 93 L36 78 L72 44 Q76 40 70 43 L26 71 L8 65 Q0 62 8 58 L88 16 Q99 10 96 18 Z"/>
+                                </StackPane>
+
+                                <VBox alignment="CENTER" spacing="4">
+                                    <Label fx:id="uploadTgTitle"
+                                           text="Телеграм-бот"
+                                           styleClass="upload-card-title"/>
+                                    <Label fx:id="uploadTgDesc"
+                                           text="Отправьте документ боту"
+                                           styleClass="upload-card-subtitle"/>
+                                </VBox>
+
+                                <StackPane styleClass="modern-qr-box">
+                                    <ImageView fx:id="telegramQrImageView"
+                                               fitWidth="185"
+                                               fitHeight="185"
+                                               preserveRatio="true"/>
+                                </StackPane>
+
+                                <Label fx:id="uploadTgLabel"
+                                       text="Для частого пользования"
+                                       styleClass="upload-card-note"/>
+                            </VBox>
+
+                            <!-- Web card -->
+                            <VBox alignment="CENTER"
+                                  spacing="16"
+                                  styleClass="upload-qr-card, web-qr-card">
+
+                                <StackPane styleClass="upload-icon-circle, web-icon-circle">
+                                    <SVGPath styleClass="upload-method-svg, web-svg"
+                                             content="M50 4 C24 4 4 24 4 50 C4 76 24 96 50 96 C76 96 96 76 96 50 C96 24 76 4 50 4 Z M50 12 C58 23 62 34 63 46 H37 C38 34 42 23 50 12 Z M16 46 C18 32 27 20 39 15 C33 25 30 35 29 46 Z M71 46 C70 35 67 25 61 15 C73 20 82 32 84 46 Z M29 54 C30 65 33 75 39 85 C27 80 18 68 16 54 Z M50 88 C42 77 38 66 37 54 H63 C62 66 58 77 50 88 Z M61 85 C67 75 70 65 71 54 H84 C82 68 73 80 61 85 Z"/>
+                                </StackPane>
+
+                                <VBox alignment="CENTER" spacing="4">
+                                    <Label fx:id="uploadWebTitle"
+                                           text="Веб-портал"
+                                           styleClass="upload-card-title"/>
+                                    <Label fx:id="uploadWebDesc"
+                                           text="Откройте сайт и загрузите файл"
+                                           styleClass="upload-card-subtitle"/>
+                                </VBox>
+
+                                <StackPane styleClass="modern-qr-box">
+                                    <ImageView fx:id="webQrImageView"
+                                               fitWidth="185"
+                                               fitHeight="185"
+                                               preserveRatio="true"/>
+                                </StackPane>
+
+                                <Label fx:id="uploadWebLabel"
+                                       text="Быстро и удобно с телефона"
+                                       styleClass="upload-card-note"/>
+                            </VBox>
+                        </HBox>
+
+                        <Button fx:id="goToEmojiCodeBtn"
+                                text="У меня уже есть код →"
+                                onAction="#onGoToEmojiCodeClicked"
+                                styleClass="btn-primary"/>
+                    </VBox>
+                    <!-- ЭТАП 2: Ввод 4-значного кода -->
+                    <VBox fx:id="emojiCodeStep"
+                          alignment="CENTER"
+                          spacing="18"
+                          visible="false"
+                          managed="false"
+                          styleClass="pin-code-step">
+
+                        <VBox alignment="CENTER" spacing="6">
+                            <Label fx:id="uploadOrLabel"
+                                   text="Введите код"
+                                   styleClass="pin-card-title"/>
+
+                            <Label fx:id="uploadOrLabelDesc"
+                                   text="Введите 4-значный код, который пришёл после загрузки файла"
+                                   styleClass="pin-card-subtitle"
+                                   textAlignment="CENTER"
+                                   wrapText="true"/>
+                        </VBox>
+
+                        <Label fx:id="selectedPinCodeLabel"
+                               text="_   _   _   _"
+                               styleClass="pin-code-display"/>
+                        <Label fx:id="pinStatusLabel"
+                               text=""
+                               visible="false" managed="false"
+                               alignment="CENTER"
+                               style="-fx-text-fill: #6b7280; -fx-font-size: 14px;"/>
+                        <Label fx:id="pinErrorLabel"
+                               text=""
+                               alignment="CENTER"
+                               visible="false" managed="false"
+                               wrapText="true" textAlignment="CENTER"
+                               maxWidth="400"
+                               style="-fx-text-fill: #d32f2f; -fx-font-size: 14px;"/>
+                        <GridPane alignment="CENTER"
+                                  hgap="12"
+                                  vgap="12"
+                                  styleClass="pin-keyboard">
+
+                            <Button text="1" onAction="#onDigitButtonClicked" styleClass="pin-key" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <Button text="2" onAction="#onDigitButtonClicked" styleClass="pin-key" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Button text="3" onAction="#onDigitButtonClicked" styleClass="pin-key" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+
+                            <Button text="4" onAction="#onDigitButtonClicked" styleClass="pin-key" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <Button text="5" onAction="#onDigitButtonClicked" styleClass="pin-key" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                            <Button text="6" onAction="#onDigitButtonClicked" styleClass="pin-key" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+
+                            <Button text="7" onAction="#onDigitButtonClicked" styleClass="pin-key" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                            <Button text="8" onAction="#onDigitButtonClicked" styleClass="pin-key" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                            <Button text="9" onAction="#onDigitButtonClicked" styleClass="pin-key" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+
+                            <Button fx:id="pinBackspaceBtn"
+                                    text="⌫"
+                                    onAction="#onPinBackspaceClicked"
+                                    styleClass="pin-key-secondary"
+                                    GridPane.rowIndex="3"
+                                    GridPane.columnIndex="0">
+                                <tooltip>
+                                    <Tooltip text="Backspace"/>
+                                </tooltip>
+                            </Button>
+
+                            <Button text="0"
+                                    onAction="#onDigitButtonClicked"
+                                    styleClass="pin-key"
+                                    GridPane.rowIndex="3"
+                                    GridPane.columnIndex="1"/>
+
+                            <Button fx:id="pinSubmitBtn"
+                                    text="➜"
+                                    onAction="#onPinSubmitClicked"
+                                    styleClass="pin-key-submit"
+                                    GridPane.rowIndex="3"
+                                    GridPane.columnIndex="2"/>
+                        </GridPane>
+
+                        <Button fx:id="backToUploadMethodsBtn"
+                                text="← К QR-кодам"
+                                onAction="#onBackToUploadMethodsClicked"
+                                styleClass="btn-secondary"/>
+                    </VBox>
+                </StackPane>
+            </VBox>
+
+            <!-- SCAN INSTRUCTION SCREEN -->
+            <VBox fx:id="scanInstructionScreen"
+                  styleClass="screen"
+                  spacing="26"
+                  visible="false"
+                  managed="false">
+
+                <HBox alignment="CENTER_LEFT">
+                    <Button fx:id="backBtnScanInstruction"
+                            text="← Назад"
+                            onAction="#onBackClicked"
+                            styleClass="btn-back"/>
+                </HBox>
+
+                <VBox styleClass="content-card"
+                      spacing="26"
+                      alignment="CENTER"
+                      maxWidth="760">
+
+                    <Label text="📄" styleClass="main-action-icon"/>
+
+                    <Label fx:id="scanInstructionTitleLabel"
+                           text="Положите документ в сканер"
+                           styleClass="h1-text"/>
+
+                    <Label fx:id="scanInstructionDescLabel"
+                           text="Положите лист ровно на стекло сканера или в автоподатчик. Затем нажмите кнопку ниже."
+                           styleClass="body-text-muted"
+                           textAlignment="CENTER"
+                           wrapText="true"/>
+
+                    <Button fx:id="startScanPageBtn"
+                            text="Начать сканирование"
+                            onAction="#onStartScanPageClicked"
+                            styleClass="btn-primary"/>
+                </VBox>
+            </VBox>
+
+            <!-- SCAN PROGRESS SCREEN -->
+            <VBox fx:id="scanProgressScreen"
+                  styleClass="screen"
+                  spacing="28"
+                  visible="false"
+                  managed="false">
+
+                <VBox styleClass="content-card"
+                      spacing="26"
+                      alignment="CENTER"
+                      maxWidth="680">
+
+                    <Label fx:id="scanProgressTitleLabel"
+                           text="Сканирование..."
+                           styleClass="h1-text"/>
+
+                    <Label fx:id="scanProgressStatusLabel"
+                           text="Пожалуйста, подождите..."
+                           styleClass="body-text-muted"/>
+
+                    <ProgressBar fx:id="scanProgressBar"
+                                 prefWidth="520"
+                                 prefHeight="24"/>
+                </VBox>
+            </VBox>
+
+            <!-- SCAN PREVIEW SCREEN -->
+            <VBox fx:id="scanPreviewScreen"
+                  styleClass="screen, scan-preview-screen"
+                  spacing="12"
+                  visible="false"
+                  managed="false">
+
+                <HBox alignment="CENTER_LEFT" styleClass="scan-preview-top-bar">
+                    <Button fx:id="backBtnScanPreview"
+                            text="← Назад"
+                            onAction="#onBackClicked"
+                            styleClass="btn-back"/>
+                </HBox>
+
+                <VBox styleClass="content-card, scan-preview-card"
+                      spacing="10"
+                      alignment="CENTER"
+                      maxWidth="900">
+
+                    <Label fx:id="scanPreviewTitleLabel"
+                           text="Предпросмотр скана"
+                           styleClass="scan-preview-title"/>
+
+                    <Label fx:id="scanPreviewPageLabel"
+                           text="Страница 1 из 1"
+                           styleClass="scan-preview-page-label"/>
+
+                    <HBox alignment="CENTER" spacing="16" styleClass="scan-preview-main-area">
+                        <Button fx:id="previewPrevBtn"
+                                text="←"
+                                onAction="#onPreviewPrevClicked"
+                                styleClass="scan-arrow-btn"/>
+
+                        <StackPane styleClass="scan-preview-box">
+                            <ImageView fx:id="scanPreviewImageView"
+                                       fitWidth="420"
+                                       fitHeight="455"
+                                       preserveRatio="true"/>
+                        </StackPane>
+
+                        <Button fx:id="previewNextBtn"
+                                text="→"
+                                onAction="#onPreviewNextClicked"
+                                styleClass="scan-arrow-btn"/>
+                    </HBox>
+
+                    <HBox alignment="CENTER" spacing="12" styleClass="scan-preview-actions">
+                        <Button fx:id="deleteScanPageBtn"
+                                text="Удалить"
+                                onAction="#onDeleteCurrentScanPageClicked"
+                                styleClass="scan-action-btn, scan-action-secondary"/>
+
+                        <Button fx:id="rescanPageBtn"
+                                text="Пересканировать"
+                                onAction="#onRescanPageClicked"
+                                styleClass="scan-action-btn, scan-action-secondary"/>
+
+                        <Button fx:id="addScanPageBtn"
+                                text="Добавить страницу"
+                                onAction="#onAddScanPageClicked"
+                                styleClass="scan-action-btn, scan-action-secondary"/>
+
+                        <Button fx:id="finishScanBtn"
+                                text="Завершить"
+                                onAction="#onFinishScanClicked"
+                                styleClass="scan-action-btn, scan-action-primary"/>
+                    </HBox>
+                </VBox>
+            </VBox>
+
+            <!-- SCAN DELIVERY SCREEN -->
+            <VBox fx:id="scanDeliveryScreen"
+                  styleClass="screen"
+                  spacing="22"
+                  visible="false"
+                  managed="false">
+
+                <HBox alignment="CENTER_LEFT">
+                    <Button fx:id="scanDeliveryBackBtn"
+                            text="← Назад"
+                            onAction="#onBackClicked"
+                            styleClass="btn-back"/>
+                </HBox>
+
+                <VBox styleClass="content-card"
+                      spacing="22"
+                      alignment="CENTER"
+                      maxWidth="820">
+
+                    <Label fx:id="scanDeliveryTitleLabel"
+                           text="Сканирование завершено"
+                           styleClass="h1-text"/>
+
+                    <Label fx:id="scanDeliveryDescLabel"
+                           text="Выберите, как хотите получить документ"
+                           styleClass="body-text-muted"
+                           textAlignment="CENTER"
+                           wrapText="true"/>
+
+                    <HBox alignment="CENTER" spacing="18">
+                        <Button fx:id="scanDeliveryPrintBtn"
+                                text="Распечатать"
+                                onAction="#onScanDeliveryPrintClicked"
+                                styleClass="delivery-choice-card"/>
+
+                        <Button fx:id="scanDeliveryWebBtn"
+                                text="Получить в браузере"
+                                onAction="#onScanDeliveryWebClicked"
+                                styleClass="delivery-choice-card"/>
+
+                        <Button fx:id="scanDeliveryTelegramBtn"
+                                text="Получить в Telegram"
+                                onAction="#onScanDeliveryTelegramClicked"
+                                styleClass="delivery-choice-card"/>
+                    </HBox>
+
+                    <Label fx:id="scanDeliveryInfoLabel"
+                           text="Выберите один из способов выше"
+                           styleClass="body-text-muted"
+                           textAlignment="CENTER"
+                           wrapText="true"/>
+
+                    <StackPane fx:id="scanDeliveryQrBox"
+                               styleClass="qr-box"
+                               visible="false"
+                               managed="false">
+                        <ImageView fx:id="scanDeliveryQrImageView"
+                                   fitWidth="260"
+                                   fitHeight="260"
+                                   preserveRatio="true"/>
+                    </StackPane>
+                </VBox>
+            </VBox>
+
+            <!-- FILE FOUND SCREEN -->
+            <VBox fx:id="fileInfoScreen" styleClass="screen" spacing="20" visible="false" managed="false">
+                <HBox alignment="CENTER_LEFT">
+                    <Button fx:id="backBtnFileInfo" text="← Назад" onAction="#onBackClicked" styleClass="btn-back"/>
+                </HBox>
+
+                <VBox styleClass="content-card" spacing="18" alignment="CENTER" maxWidth="900">
+
+                    <VBox alignment="CENTER" spacing="6">
+                        <Label fx:id="fileFoundTitleLabel" text="Файл найден" styleClass="h2-text"/>
+                        <Label fx:id="fileInfoLabel"
+                               text="Документ готов к настройке печати"
+                               styleClass="body-text-muted"
+                               textAlignment="CENTER"
+                               wrapText="true"/>
+                    </VBox>
+
+                    <!-- Preview area -->
+                    <StackPane fx:id="previewContainer" styleClass="preview-container" prefHeight="520" prefWidth="700">
+
+                        <!-- Loading state -->
+                        <VBox fx:id="previewLoadingBox"
+                              alignment="CENTER"
+                              spacing="14"
+                              visible="false"
+                              managed="false">
+                            <ProgressIndicator prefWidth="64" prefHeight="64"/>
+                            <Label fx:id="previewLoadingLabel"
+                                   text="Готовим превью..."
+                                   styleClass="body-text-muted"/>
+                        </VBox>
+
+                        <!-- Error state -->
+                        <VBox fx:id="previewErrorBox"
+                              alignment="CENTER"
+                              spacing="10"
+                              visible="false"
+                              managed="false">
+                            <Label text="📄" styleClass="preview-error-icon"/>
+                            <Label fx:id="previewErrorLabel"
+                                   text="Превью недоступно для этого файла"
+                                   styleClass="body-text-muted"
+                                   wrapText="true"
+                                   textAlignment="CENTER"/>
+                        </VBox>
+
+                        <!-- Image (the actual preview) -->
+                        <ImageView fx:id="previewImageView"
+                                   preserveRatio="true"
+                                   smooth="true"
+                                   fitWidth="680"
+                                   fitHeight="500"/>
+                    </StackPane>
+
+                    <!-- Navigation -->
+                    <HBox fx:id="previewNavBox"
+                          alignment="CENTER"
+                          spacing="20"
+                          visible="false"
+                          managed="false">
+                        <Button fx:id="printPreviewPrevBtn"
+                                text="←"
+                                onAction="#onPrintPreviewPrevClicked"
+                                styleClass="preview-nav-btn"/>
+                        <Label fx:id="previewPageLabel"
+                               text="1 / 1"
+                               styleClass="preview-page-label"/>
+                        <Button fx:id="printPreviewNextBtn"
+                                text="→"
+                                onAction="#onPrintPreviewNextClicked"
+                                styleClass="preview-nav-btn"/>
+                    </HBox>
+
+                    <Button fx:id="goToSettingsBtn"
+                            text="Настроить печать"
+                            onAction="#onGoToSettingsClicked"
+                            styleClass="btn-primary"/>
+                </VBox>
+            </VBox>
+
+            <!-- SETTINGS SCREEN -->
+            <VBox fx:id="settingsScreen" styleClass="screen" spacing="22" visible="false" managed="false">
+                <HBox alignment="CENTER_LEFT">
+                    <Button fx:id="backBtnSettings" text="← Назад" onAction="#onBackClicked" styleClass="btn-back"/>
+                </HBox>
+
+                <VBox alignment="CENTER" spacing="8">
+                    <Label fx:id="settingsTitleLabel" text="Параметры печати" styleClass="h1-text"/>
+                    <Label fx:id="settingsSubtitleLabel"
+                           text="Выберите только нужные настройки"
+                           styleClass="body-text-muted"/>
+                </VBox>
+
+                <VBox styleClass="content-card" spacing="24" maxWidth="900">
+
+                    <!-- Copies -->
+                    <HBox alignment="CENTER_LEFT" spacing="20">
+                        <VBox HBox.hgrow="ALWAYS">
+                            <Label fx:id="copiesTitleLabel" text="Количество копий" styleClass="h3-text"/>
+                            <Label fx:id="copiesDescLabel"
+                                   text="Сколько экземпляров нужно напечатать"
+                                   styleClass="body-text-muted"/>
+                        </VBox>
+
+                        <HBox styleClass="counter-box">
+                            <Button text="−" onAction="#onCopiesMinusClicked" styleClass="counter-btn"/>
+                            <Label fx:id="copiesValueLabel" text="1" styleClass="counter-value"/>
+                            <Button text="+" onAction="#onCopiesPlusClicked" styleClass="counter-btn"/>
+                        </HBox>
+                    </HBox>
+
+                    <!-- Color -->
+                    <VBox spacing="12">
+                        <Label fx:id="colorTitleLabel" text="Цвет" styleClass="h3-text"/>
+                        <HBox spacing="16">
+                            <Button fx:id="bwBtn" text="Чёрно-белая" onAction="#onBlackWhiteSelected"
+                                    styleClass="option-card-active" contentDisplay="LEFT" graphicTextGap="12">
+                                <graphic><FontIcon iconLiteral="fas-print" iconSize="28"/></graphic>
+                            </Button>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Sides -->
+                    <VBox spacing="12">
+                        <Label fx:id="sidesTitleLabel" text="Стороны" styleClass="h3-text"/>
+                        <HBox spacing="16">
+                            <Button fx:id="singleSideBtn" text="Односторонняя" onAction="#onSingleSideSelected"
+                                    styleClass="option-card-active" contentDisplay="LEFT" graphicTextGap="12">
+                                <graphic><FontIcon iconLiteral="far-file" iconSize="28"/></graphic>
+                            </Button>
+                            <Button fx:id="doubleSideBtn" text="Двусторонняя" onAction="#onDoubleSideSelected"
+                                    styleClass="option-card" contentDisplay="LEFT" graphicTextGap="12">
+                                <graphic><FontIcon iconLiteral="far-copy" iconSize="28"/></graphic>
+                            </Button>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Orientation -->
+                    <VBox spacing="12">
+                        <Label fx:id="orientationTitleLabel" text="Ориентация" styleClass="h3-text"/>
+                        <HBox spacing="16">
+                            <Button fx:id="portraitBtn" text="Книжная" onAction="#onPortraitSelected"
+                                    styleClass="option-card-active" contentDisplay="LEFT" graphicTextGap="12">
+                                <graphic><FontIcon iconLiteral="fas-file-alt" iconSize="28"/></graphic>
+                            </Button>
+                            <Button fx:id="landscapeBtn" text="Альбомная" onAction="#onLandscapeSelected"
+                                    styleClass="option-card" contentDisplay="LEFT" graphicTextGap="12">
+                                <graphic><FontIcon iconLiteral="far-window-maximize" iconSize="28"/></graphic>
+                            </Button>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Paper -->
+                    <VBox spacing="12">
+                        <Label fx:id="paperTitleLabel" text="Формат бумаги" styleClass="h3-text"/>
+                        <HBox spacing="16">
+                            <Button fx:id="a4Btn" text="A4" onAction="#onA4Selected" styleClass="option-card-active"/>
+                        </HBox>
+                    </VBox>
+
+                    <HBox alignment="CENTER_RIGHT">
+                        <Button fx:id="settingsNextBtn"
+                                text="Далее"
+                                onAction="#onProceedToSummaryClicked"
+                                styleClass="btn-primary"/>
+                    </HBox>
+                </VBox>
+            </VBox>
+
+            <!-- SUMMARY SCREEN -->
+            <VBox fx:id="summaryScreen" styleClass="screen, summary-screen" spacing="20" visible="false" managed="false">
+                <HBox alignment="CENTER_LEFT">
+                    <Button fx:id="backBtnSummary" text="← Назад" onAction="#onBackClicked" styleClass="btn-back"/>
+                </HBox>
+
+                <VBox styleClass="content-card, summary-card" spacing="22" maxWidth="900">
+
+                    <Label fx:id="summaryTitleLabel" text="Параметры печати" styleClass="h1-text"/>
+
+                    <VBox spacing="0" styleClass="summary-list">
+
+                        <!-- Копии -->
+                        <HBox styleClass="summary-row" alignment="CENTER_LEFT" spacing="18">
+                            <FontIcon iconLiteral="fas-print" iconSize="22" styleClass="summary-icon"/>
+                            <Label fx:id="summaryCopiesKeyLabel" text="Количество копий" styleClass="summary-key" HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="summaryCopiesLabel" text="1" styleClass="summary-value"/>
+                        </HBox>
+
+                        <!-- Цвет -->
+                        <HBox styleClass="summary-row" alignment="CENTER_LEFT" spacing="18">
+                            <FontIcon iconLiteral="fas-palette" iconSize="22" styleClass="summary-icon"/>
+                            <Label fx:id="summaryColorKeyLabel" text="Цветность" styleClass="summary-key" HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="summaryColorLabel" text="Чёрно-белая" styleClass="summary-value"/>
+                        </HBox>
+
+                        <!-- Стороны -->
+                        <HBox styleClass="summary-row" alignment="CENTER_LEFT" spacing="18">
+                            <FontIcon iconLiteral="far-copy" iconSize="22" styleClass="summary-icon"/>
+                            <Label fx:id="summarySidesKeyLabel" text="Двусторонняя печать" styleClass="summary-key" HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="summarySidesLabel" text="Односторонняя" styleClass="summary-value"/>
+                        </HBox>
+
+                        <!-- Ориентация -->
+                        <HBox styleClass="summary-row" alignment="CENTER_LEFT" spacing="18">
+                            <FontIcon iconLiteral="fas-file-alt" iconSize="22" styleClass="summary-icon"/>
+                            <Label fx:id="summaryOrientationKeyLabel" text="Ориентация" styleClass="summary-key" HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="summaryOrientationLabel" text="Книжная" styleClass="summary-value"/>
+                        </HBox>
+
+                        <!-- Формат -->
+                        <HBox styleClass="summary-row, summary-row-last" alignment="CENTER_LEFT" spacing="18">
+                            <FontIcon iconLiteral="far-window-maximize" iconSize="22" styleClass="summary-icon"/>
+                            <Label fx:id="summaryPaperKeyLabel" text="Формат бумаги" styleClass="summary-key" HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="summaryPaperLabel" text="A4" styleClass="summary-value"/>
+                        </HBox>
+
+                    </VBox>
+                </VBox>
+
+                <!-- Stats panel + CTA -->
+                <HBox styleClass="summary-stats-bar" alignment="CENTER_LEFT" spacing="20" maxWidth="900">
+
+                    <HBox styleClass="stat-item" alignment="CENTER_LEFT" spacing="12" HBox.hgrow="ALWAYS">
+                        <FontIcon iconLiteral="far-file" iconSize="20" styleClass="stat-icon"/>
+                        <VBox alignment="TOP_LEFT" spacing="0">
+                            <Label fx:id="summaryPagesKeyLabel" text="Всего страниц" styleClass="stat-label"/>
+                            <Label fx:id="summaryPagesLabel" text="0" styleClass="stat-value"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox styleClass="stat-item" alignment="CENTER_LEFT" spacing="12" HBox.hgrow="ALWAYS">
+                        <FontIcon iconLiteral="fas-coins" iconSize="20" styleClass="stat-icon"/>
+                        <VBox alignment="TOP_LEFT" spacing="0">
+                            <Label text="Стоимость" styleClass="stat-label"/>
+                            <Label fx:id="summaryPriceLabel" text="0 сом" styleClass="stat-value"/>
+                        </VBox>
+                    </HBox>
+
+                    <Button fx:id="proceedToPaymentBtn"
+                            text="Подтвердить печать →"
+                            onAction="#onProceedToPaymentClicked"
+                            styleClass="btn-success, summary-cta"/>
+                </HBox>
+            </VBox>
+
+            <!-- PAYMENT SCREEN -->
+            <VBox fx:id="paymentScreen" styleClass="screen, payment-screen" spacing="0"
+                  visible="false" managed="false">
+
+                <!-- Top bar with back -->
+                <Button fx:id="paymentHomeBtn"
+                        text="На главный экран"
+                        onAction="#onPaymentHomeClicked"
+                        styleClass="btn-outline"/>
+
+                <StackPane alignment="CENTER" maxWidth="1100" styleClass="payment-main-row">
+
+                    <VBox styleClass="content-card, payment-card" spacing="18" alignment="CENTER"
+                          maxWidth="600">
+
+                        <Label fx:id="paymentTitleLabel"
+                               text="Почти готово!"
+                               styleClass="payment-title"/>
+
+                        <Label fx:id="paymentInstructionLabel"
+                               text="Отсканируйте QR-код в мобильном банке"
+                               styleClass="payment-subtitle"
+                               textAlignment="CENTER"
+                               wrapText="true"/>
+
+                        <StackPane fx:id="paymentStateContainer" prefWidth="420" prefHeight="420">
+
+                            <VBox fx:id="paymentLoadingBox" alignment="CENTER" spacing="18"
+                                  visible="false" managed="false">
+                                <ProgressIndicator prefWidth="72" prefHeight="72"/>
+                                <Label fx:id="paymentLoadingLabel" text="Готовим оплату..."
+                                       styleClass="body-text-muted"/>
+                            </VBox>
+
+                            <VBox fx:id="paymentErrorBox" alignment="CENTER" spacing="14"
+                                  visible="false" managed="false">
+                                <Label text="⚠" styleClass="preview-error-icon"/>
+                                <Label fx:id="paymentErrorLabel"
+                                       text="Не удалось создать оплату"
+                                       styleClass="body-text-muted"
+                                       wrapText="true" textAlignment="CENTER"/>
+                                <Button fx:id="paymentRetryBtn" text="Попробовать снова"
+                                        onAction="#onPaymentRetryClicked" styleClass="btn-primary"/>
+                            </VBox>
+
+                            <VBox fx:id="paymentReadyBox" alignment="CENTER" visible="false" managed="false">
+                                <StackPane styleClass="qr-box-decorated">
+                                    <ImageView fx:id="qrCodeImageView"
+                                               fitWidth="360" fitHeight="360" preserveRatio="true"/>
+                                </StackPane>
+                            </VBox>
+                        </StackPane>
+
+                        <HBox alignment="CENTER" spacing="14" styleClass="amount-pill">
+                            <FontIcon iconLiteral="fas-wallet" iconSize="28" styleClass="amount-pill-icon"/>
+                            <Label fx:id="paymentAmountLabel" text="0 сом" styleClass="amount-pill-value"/>
+                        </HBox>
+
+                        <!-- Test-bypass (на проде убирается) -->
+                        <Button fx:id="adminBypassPaymentBtn"
+                                text="Я оплатил / тестовая печать"
+                                onAction="#onAdminBypassPayment"
+                                styleClass="btn-bypass"/>
+                    </VBox>
+
+                    <ImageView fitWidth="320" preserveRatio="true"
+                               StackPane.alignment="CENTER_LEFT"
+                               translateX="70">
+                        <Image url="@/images/homemade_for_pay.png"/>
+                    </ImageView>
+
+                </StackPane>
+            </VBox>
+
+            <!-- PRINTING SCREEN -->
+            <VBox fx:id="printingScreen" styleClass="screen, printing-screen"
+                  spacing="0" visible="false" managed="false">
+
+                <VBox styleClass="content-card, printing-card"
+                      alignment="CENTER" maxWidth="780">
+
+                    <!-- 1. Live status pill -->
+                    <HBox styleClass="status-pill" alignment="CENTER" spacing="10"
+                          maxWidth="-Infinity">
+                        <StackPane styleClass="status-pill-dot"/>
+                        <Label text="Печать в процессе" styleClass="status-pill-label"/>
+                    </HBox>
+
+                    <!-- 2. Title + subtitle -->
+                    <VBox alignment="CENTER" spacing="6" styleClass="printing-title-block">
+                        <Label fx:id="printingTitleLabel"
+                               text="Идёт печать..."
+                               styleClass="printing-title"/>
+                        <Label fx:id="printingStatusLabel"
+                               text="Пожалуйста, подождите..."
+                               styleClass="printing-subtitle"/>
+                    </VBox>
+
+                    <!-- 3. GIF в мягком цветовом «гало» -->
+                    <StackPane styleClass="printing-anim-halo">
+                        <ImageView fx:id="printingAnimation"
+                                   fitWidth="420" fitHeight="420"
+                                   preserveRatio="true" smooth="true">
+                            <Image url="@/images/animated_homemade_for_print.gif"/>
+                        </ImageView>
+                    </StackPane>
+
+                    <!-- 4. Status chips -->
+                    <HBox alignment="CENTER" spacing="12" styleClass="printing-chips">
+                        <HBox styleClass="info-chip" alignment="CENTER" spacing="10">
+                            <FontIcon iconLiteral="fas-print" iconSize="16"
+                                      styleClass="info-chip-icon"/>
+                            <Label text="Принтер активен" styleClass="info-chip-label"/>
+                        </HBox>
+                        <HBox styleClass="info-chip" alignment="CENTER" spacing="10">
+                            <FontIcon iconLiteral="far-clock" iconSize="16"
+                                      styleClass="info-chip-icon"/>
+                            <Label text="Осталось совсем немного" styleClass="info-chip-label"/>
+                        </HBox>
+                    </HBox>
+
+                    <!-- 5. Hint строка с иконкой -->
+                    <HBox alignment="CENTER" spacing="12" maxWidth="600"
+                          styleClass="printing-hint-row">
+                        <FontIcon iconLiteral="fas-info-circle" iconSize="18"
+                                  styleClass="printing-hint-icon"/>
+                        <Label fx:id="printingHintLabel"
+                               text="Не отходите от автомата, скоро документы будут готовы"
+                               styleClass="printing-hint"
+                               textAlignment="CENTER"
+                               alignment="CENTER"
+                               wrapText="true"
+                               HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <!-- 6. Аварийный возврат (как был, скрыт по умолчанию) -->
+                    <Button fx:id="printingHomeBtn"
+                            text="На главный экран"
+                            onAction="#onPrintingHomeClicked"
+                            visible="false" managed="false"
+                            styleClass="btn-primary"/>
+                </VBox>
+            </VBox>
+
+            <!-- PRINT FAILED SCREEN -->
+
+            <VBox fx:id="printFailedScreen"
+                  styleClass="screen"
+                  alignment="CENTER"
+                  spacing="32"
+                  visible="false"
+                  managed="false">
+
+                <VBox styleClass="content-card" alignment="CENTER" spacing="22" maxWidth="780">
+
+                    <!-- Иконка ошибки -->
+                    <Label text="⚠️" style="-fx-font-size: 96px;"/>
+
+                    <Label text="Не удалось напечатать"
+                           styleClass="h1-text"
+                           style="-fx-text-fill: #DC2626;"/>
+
+                    <Label fx:id="printErrorMessageLabel"
+                           text="Произошла ошибка при печати"
+                           styleClass="body-text"
+                           wrapText="true"
+                           maxWidth="640"
+                           style="-fx-text-alignment: center;"/>
+
+                    <!-- Карточка с PIN и контактом -->
+                    <VBox styleClass="small-card"
+                          spacing="14"
+                          alignment="CENTER"
+                          style="-fx-background-color: #FEF2F2; -fx-border-color: #FCA5A5;">
+
+                        <Label text="Сохраните этот PIN для обращения к админу:"
+                               styleClass="body-text-muted"/>
+
+                        <Label fx:id="printErrorPinLabel"
+                               text="PIN: ----"
+                               style="-fx-font-size: 42px; -fx-font-weight: 800; -fx-text-fill: #DC2626;"/>
+
+                        <Label text="Связаться с поддержкой: @asanovte"
+                               styleClass="body-text"
+                               style="-fx-font-weight: 700;"/>
+                    </VBox>
+
+                    <Button text="На главный экран"
+                            onAction="#onPrintFailedHomeClicked"
+                            styleClass="btn-primary"/>
+                </VBox>
+            </VBox>
+
+            <!-- COMPLETED SCREEN -->
+            <VBox fx:id="completedScreen" styleClass="screen, completed-screen" spacing="0"
+                  visible="false" managed="false">
+
+                <!-- Внутренний splitter 45/55. VBox остаётся корнем для setScreenVisible(...) -->
+                <HBox VBox.vgrow="ALWAYS" spacing="24" alignment="CENTER"
+                      styleClass="completed-split">
+                    <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+
+                    <!-- ===================== LEFT CARD (~45%) ===================== -->
+                    <VBox styleClass="content-card, completed-card-left"
+                          HBox.hgrow="ALWAYS"
+                          alignment="TOP_CENTER" spacing="22"
+                          prefWidth="450" maxWidth="Infinity">
+                        <padding><Insets top="48" right="48" bottom="40" left="48"/></padding>
+
+                        <!-- Success icon circle -->
+                        <StackPane styleClass="success-circle">
+                            <FontIcon iconLiteral="fas-check" iconSize="56" styleClass="success-check"/>
+                        </StackPane>
+
+                        <!-- Title -->
+                        <Label fx:id="completedMessageLabel"
+                               text="Печать завершена!"
+                               styleClass="completed-title"/>
+
+                        <!-- Description -->
+                        <Label fx:id="completedSubMessageLabel"
+                               text="Ваш документ готов. Пожалуйста, заберите документы из лотка принтера."
+                               styleClass="completed-desc"
+                               alignment="CENTER"
+                               wrapText="true"
+                               textAlignment="CENTER"
+                               maxWidth="440"/>
+
+                        <!-- Action buttons (вертикальный стек, как на референсе) -->
+                        <VBox spacing="12" alignment="CENTER" styleClass="completed-actions"
+                              maxWidth="360">
+                            <Button fx:id="printAnotherBtn"
+                                    text="Напечатать ещё"
+                                    onAction="#onPrintAnotherClicked"
+                                    styleClass="btn-primary, completed-btn"
+                                    maxWidth="Infinity"
+                                    contentDisplay="LEFT" graphicTextGap="10">
+                                <graphic><FontIcon iconLiteral="fas-print" iconSize="18"/></graphic>
+                            </Button>
+                            <Button fx:id="completedHomeBtn"
+                                    text="На главный экран"
+                                    onAction="#onCompletedHomeClicked"
+                                    styleClass="btn-outline, completed-btn"
+                                    maxWidth="Infinity"
+                                    contentDisplay="LEFT" graphicTextGap="10">
+                                <graphic><FontIcon iconLiteral="fas-home" iconSize="18"/></graphic>
+                            </Button>
+                        </VBox>
+
+                        <!-- Auto-return card -->
+                        <HBox styleClass="auto-return-card" alignment="CENTER_LEFT"
+                              spacing="16" maxWidth="360">
+                            <padding><Insets top="14" right="18" bottom="14" left="18"/></padding>
+                            <FontIcon iconLiteral="far-clock" iconSize="26" styleClass="auto-return-icon"/>
+                            <VBox HBox.hgrow="ALWAYS" spacing="2">
+                                <Label text="Возврат на главный экран через:" styleClass="auto-return-label"/>
+                                <Label fx:id="autoReturnCounterLabel"
+                                       text="20 секунд"
+                                       styleClass="auto-return-value"/>
+                            </VBox>
+                            <StackPane styleClass="countdown-circle">
+                                <ProgressIndicator fx:id="autoReturnProgress"
+                                                   prefWidth="48" prefHeight="48"
+                                                   progress="1.0"
+                                                   styleClass="countdown-progress"/>
+                            </StackPane>
+                        </HBox>
+                    </VBox>
+
+                    <!-- ===================== RIGHT CARD (~55%) ===================== -->
+                    <StackPane styleClass="content-card, completed-card-right"
+                               HBox.hgrow="ALWAYS"
+                               prefWidth="550" maxWidth="Infinity"
+                               alignment="CENTER">
+                        <ImageView fitWidth="560" fitHeight="560"
+                                   preserveRatio="true" pickOnBounds="true"
+                                   smooth="true">
+                            <image>
+                                <Image url="@../images/homemade_for_complete.png"/>
+                            </image>
+                        </ImageView>
+                    </StackPane>
+
+                </HBox>
+            </VBox>
+
+            <VBox fx:id="outOfServiceScreen"
+                  styleClass="screen"
+                  alignment="CENTER"
+                  spacing="32"
+                  visible="false"
+                  managed="false">
+
+                <VBox styleClass="content-card" alignment="CENTER" spacing="22" maxWidth="780">
+
+                    <Label text="🛠️" style="-fx-font-size: 120px;"/>
+
+                    <Label text="Аппарат временно недоступен"
+                           styleClass="h1-text"
+                           style="-fx-text-fill: #1E3A8A;"/>
+
+                    <Label text="Приносим извинения за неудобства. Наши специалисты уже работают над этим."
+                           styleClass="body-text-muted"
+                           wrapText="true"
+                           maxWidth="640"
+                           style="-fx-text-alignment: center; -fx-font-size: 22px;"/>
+
+                    <VBox styleClass="small-card" spacing="10" alignment="CENTER">
+                        <Label text="Связаться с поддержкой:"
+                               styleClass="body-text-muted"/>
+                        <Label text="asanovte"
+                               styleClass="body-text"
+                               style="-fx-font-size: 28px; -fx-font-weight: 800; -fx-text-fill: -primary-blue;"/>
+                    </VBox>
+
+                    <Button text="На главный экран"
+                            onAction="#onOutOfServiceHomeClicked"
+                            styleClass="btn-primary"/>
+                </VBox>
+            </VBox>
+
+        </StackPane>
+    </center>
+</BorderPane>
