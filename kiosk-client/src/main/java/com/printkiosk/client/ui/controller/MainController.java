@@ -4,6 +4,9 @@ import com.printkiosk.client.ui.state.Language;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
@@ -215,7 +218,7 @@ public class MainController {
     @FXML private Label printErrorMessageLabel;
     @FXML private Label printErrorPinLabel;
     @FXML private VBox outOfServiceScreen;
-    
+
     // если ещё нет
     // ══════════════════════════════════════════════════════════════════════
     //  COMPLETED
@@ -538,11 +541,37 @@ public class MainController {
 
     @FXML
     public void onPaymentHomeClicked() {
-        paymentFlow.stop();
-        resetAllAndGoHome();
+        confirmAbandonAndGoHome();
+    }
+
+    /**
+     * Показывает диалог подтверждения «Точно вернуться? Сессия прервётся» на
+     * экранах с уже активной сессией (после FILE_INFO). При подтверждении
+     * сбрасывает всё и уходит на HOME (что снимает hold PIN'а). При отказе —
+     * остаёмся на текущем экране.
+     */
+    private void confirmAbandonAndGoHome() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Вернуться на главный экран?");
+        alert.setHeaderText(null);
+        alert.setContentText("Сессия будет прервана, а код освободится. Продолжить?");
+
+        ButtonType yes = new ButtonType("Да, вернуться", ButtonBar.ButtonData.OK_DONE);
+        ButtonType no  = new ButtonType("Остаться",       ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(yes, no);
+
+        alert.showAndWait().ifPresent(choice -> {
+            if (choice == yes) {
+                resetAllAndGoHome();
+            }
+        });
     }
 
     private void resetAllAndGoHome() {
+        // Снять hold PIN'а на сервере до обнуления currentPin (best-effort, фоном).
+        if (currentPin != null) {
+            pinEntryFlow.releaseHold(currentPin);
+        }
         paymentFlow.stop();
         settingsFlow.stop();
         previewFlow.close();
@@ -590,14 +619,20 @@ public class MainController {
             case SUMMARY -> {
                 changeStep(KioskStep.SETTINGS);
             }
+            case PAYMENT -> {
+                // Шаг назад к подтверждению заказа; сессия и hold сохраняются.
+                paymentFlow.stop();
+                changeStep(KioskStep.SUMMARY);
+            }
             case SCAN_PREVIEW             -> changeStep(KioskStep.SCAN_INSTRUCTION);
             case UPLOAD, SCAN_INSTRUCTION -> {
+                // На UPLOAD ещё нет verify → hold не взят, сессии нет. Просто домой.
                 pinEntryFlow.reset();
                 changeStep(KioskStep.HOME);
             }
             case FILE_INFO -> {
-                previewFlow.close();
-                changeStep(KioskStep.UPLOAD);
+                // Сессия уже активна (PIN held). Уход назад = прерывание → подтверждение.
+                confirmAbandonAndGoHome();
             }
             default                       -> changeStep(KioskStep.HOME);
         }
@@ -666,6 +701,14 @@ public class MainController {
                 hideStatus();
                 selectedPinCodeLabel.setText("");
                 showError("Код не найден или истёк. Проверьте, что код актуален.");
+            }
+
+            @Override
+            public void onPinLocked() {
+                pinSubmitBtn.setDisable(false);
+                hideStatus();
+                selectedPinCodeLabel.setText("");
+                showError("Этот код сейчас используется на другом терминале.");
             }
 
             @Override

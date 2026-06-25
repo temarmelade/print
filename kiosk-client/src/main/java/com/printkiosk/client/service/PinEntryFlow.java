@@ -1,6 +1,7 @@
 package com.printkiosk.client.service;
 
 import com.printkiosk.client.api.KioskServerClient;
+import com.printkiosk.client.api.PinLockedException;
 import com.printkiosk.client.api.PinNotFoundException;
 import com.printkiosk.client.api.ServerUnavailableException;
 import com.printkiosk.shared.api.dto.VerifyResponse;
@@ -46,6 +47,18 @@ public class PinEntryFlow {
         buffer.setLength(0);
         requestInFlight = false;
         notifyBufferChanged();
+    }
+
+    /**
+     * Снять hold PIN'а на сервере (при возврате на HOME). Выполняется в фоне,
+     * результат не важен — навигация домой не должна ждать сеть. Если pin
+     * пустой/неполный (юзер не успел verify-нуть) — ничего не делаем.
+     */
+    public void releaseHold(String pin) {
+        if (pin == null || pin.length() != PIN_LENGTH) return;
+        Thread worker = new Thread(() -> server.releaseHold(pin), "pin-release");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     public void pressDigit(String digit) {
@@ -102,6 +115,9 @@ public class PinEntryFlow {
             if (cause instanceof PinNotFoundException) {
                 log.info("PIN {} not found / expired", maskPin(pin));
                 notifyPinNotFound();
+            } else if (cause instanceof PinLockedException) {
+                log.info("PIN {} locked by another kiosk", maskPin(pin));
+                notifyPinLocked();
             } else if (cause instanceof ServerUnavailableException) {
                 log.warn("Server unavailable during verify", cause);
                 notifyServerUnavailable();
@@ -140,6 +156,9 @@ public class PinEntryFlow {
         /** PIN не найден или истёк. */
         void onPinNotFound();
 
+        /** PIN валиден, но удерживается другим киоском (423 Locked). */
+        void onPinLocked();
+
         /** Сервер недоступен (таймаут/сеть/5xx). */
         void onServerUnavailable();
     }
@@ -157,6 +176,7 @@ public class PinEntryFlow {
         if (listener != null) listener.onSuccess(pin, r);
     }
     private void notifyPinNotFound()       { if (listener != null) listener.onPinNotFound(); }
+    private void notifyPinLocked()         { if (listener != null) listener.onPinLocked(); }
     private void notifyServerUnavailable() { if (listener != null) listener.onServerUnavailable(); }
 
     private static String maskPin(String pin) {

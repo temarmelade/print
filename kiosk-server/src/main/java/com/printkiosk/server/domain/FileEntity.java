@@ -52,5 +52,16 @@ public class FileEntity {
     @Column(name = "consumed_at")
     private Instant consumedAt;
 
+    /**
+     * Киоск, за которым закреплён PIN после первого успешного verify.
+     * {@code null} — PIN свободен. Снимается при возврате на HOME, по TTL
+     * или физическим удалением строки cleanup-джобом.
+     */
+    @Column(name = "holder_kiosk_id", length = 50)
+    private String holderKioskId;
+
+    /** Момент, до которого держится hold. {@code null} — PIN свободен. */
+    @Column(name = "holder_expires_at")
+    private Instant holderExpiresAt;
 
 }

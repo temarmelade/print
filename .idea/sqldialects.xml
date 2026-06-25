@@ -4,5 +4,6 @@
     <file url="file://$PROJECT_DIR$/kiosk-server/src/main/resources/db/migration/V1__create_files_table.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/kiosk-server/src/main/resources/db/migration/V2__create_print_jobs_table.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/kiosk-server/src/main/resources/db/migration/V4__create_tariffs.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/kiosk-server/src/main/resources/db/migration/V5__add_pin_hold_to_files.sql" dialect="GenericSQL" />
   </component>
 </project>

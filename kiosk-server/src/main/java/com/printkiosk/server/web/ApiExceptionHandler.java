@@ -3,6 +3,7 @@ package com.printkiosk.server.web;
 import com.printkiosk.server.exception.JobNotFoundException;
 import com.printkiosk.server.exception.PaymentGatewayException;
 import com.printkiosk.server.exception.PinCollisionException;
+import com.printkiosk.server.exception.PinLockedByOtherKioskException;
 import com.printkiosk.server.exception.PinNotFoundException;
 import com.printkiosk.shared.api.dto.ErrorResponse;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,13 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponse> notFound() {
         return ResponseEntity.status(404)
                 .body(new ErrorResponse("PIN_NOT_FOUND", "Код не найден или истёк"));
+    }
+
+    @ExceptionHandler(PinLockedByOtherKioskException.class)
+    public ResponseEntity<ErrorResponse> lockedByOther() {
+        return ResponseEntity.status(423)
+                .body(new ErrorResponse("PIN_LOCKED",
+                        "Этот код сейчас используется на другом терминале"));
     }
 
     @ExceptionHandler(PinCollisionException.class)
