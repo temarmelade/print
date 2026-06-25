@@ -18,16 +18,29 @@ public class FileVerifyController {
 
     private final FileService fileService;
 
-    @GetMapping("/verify")
-    public ResponseEntity<VerifyResponse> verify(
-            @RequestParam("pin") @Pattern(regexp = "\\d{4}") String pin) {
-        return ResponseEntity.ok(fileService.verify(pin));
-    }
-
     @PostMapping("/{id}/consume")
     public ResponseEntity<Void> consume(@PathVariable UUID id) {
         return fileService.markConsumed(id)
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.status(409).build();
+    }
+
+    @GetMapping("/verify")
+    public ResponseEntity<VerifyResponse> verify(
+            @RequestParam("pin") @Pattern(regexp = "\\d{4}") String pin,
+            @RequestHeader(value = "X-Kiosk-Id", required = false) String kioskId) {
+        return ResponseEntity.ok(fileService.verify(pin, resolveKiosk(kioskId)));
+    }
+
+    @PostMapping("/{pin}/release")
+    public ResponseEntity<Void> release(
+            @PathVariable @Pattern(regexp = "\\d{4}") String pin,
+            @RequestHeader(value = "X-Kiosk-Id", required = false) String kioskId) {
+        fileService.releaseHold(pin, resolveKiosk(kioskId));
+        return ResponseEntity.noContent().build();
+    }
+
+    private static String resolveKiosk(String kioskId) {
+        return (kioskId == null || kioskId.isBlank()) ? "unknown-kiosk" : kioskId;
     }
 }

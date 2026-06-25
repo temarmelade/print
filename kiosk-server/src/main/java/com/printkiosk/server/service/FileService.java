@@ -6,6 +6,7 @@ import com.printkiosk.server.domain.FileEntity;
 import com.printkiosk.server.domain.FileRepository;
 import com.printkiosk.server.exception.FileValidationException;
 import com.printkiosk.server.exception.PinCollisionException;
+import com.printkiosk.server.exception.PinLockedByOtherKioskException;
 import com.printkiosk.server.exception.PinNotFoundException;
 import com.printkiosk.shared.api.UploadSource;
 import com.printkiosk.shared.api.dto.UploadResponse;
@@ -234,20 +235,55 @@ public class FileService {
     //  VERIFY (киоск)
     // ════════════════════════════════════════════════════════════════
 
-    @Transactional(readOnly = true)
-    public VerifyResponse verify(String pin) {
-        FileEntity file = repository.findActiveByCode(pin, Instant.now())
+    @Transactional
+    public VerifyResponse verify(String pin, String kioskId) {
+        Instant now = Instant.now();
+
+        // 1. Файл должен существовать, быть активным и не consumed.
+        FileEntity file = repository.findActiveByCode(pin, now)
                 .orElseThrow(PinNotFoundException::new);
+
+        // 2. Пытаемся закрепить PIN за этим киоском (свободен / свой / протух hold).
+        Duration holdTtl = properties.getPin().getTtl();
+        int acquired = repository.acquireHold(pin, kioskId, now, now.plus(holdTtl));
+
+        if (acquired == 0) {
+            // UPDATE не прошёл. Между findActiveByCode и acquireHold возможна гонка
+            // (cleanup/consume), поэтому перечитываем и различаем причину.
+            FileEntity recheck = repository.findActiveByCode(pin, now)
+                    .orElseThrow(PinNotFoundException::new);
+
+            boolean heldByOther =
+                    recheck.getHolderKioskId() != null
+                            && !recheck.getHolderKioskId().equals(kioskId)
+                            && recheck.getHolderExpiresAt() != null
+                            && recheck.getHolderExpiresAt().isAfter(now);
+
+            if (heldByOther) {
+                log.info("PIN {} verify rejected: held by kiosk={}, requested by={}",
+                        pin, recheck.getHolderKioskId(), kioskId);
+                throw new PinLockedByOtherKioskException();
+            }
+            throw new PinNotFoundException();
+        }
+
+        log.info("PIN {} held by kiosk={} until {}", pin, kioskId, now.plus(holdTtl));
 
         String url = buildPublicUrl(file.getStoredFilename());
         return new VerifyResponse(
-                file.getId(),
-                url,
-                file.getOriginalFilename(),
-                file.getContentType(),
-                file.getFileSize(),
-                file.getExpiresAt()
-        );
+                file.getId(), url, file.getOriginalFilename(),
+                file.getContentType(), file.getFileSize(), file.getExpiresAt());
+    }
+
+    /**
+     * Снимает hold PIN'а, когда юзер возвращается на HOME. Идемпотентна.
+     */
+    @Transactional
+    public void releaseHold(String pin, String kioskId) {
+        int released = repository.releaseHold(pin, kioskId);
+        if (released > 0) {
+            log.info("PIN {} hold released by kiosk={}", pin, kioskId);
+        }
     }
 
     // ════════════════════════════════════════════════════════════════

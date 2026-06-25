@@ -35,13 +35,22 @@ public class KioskServerClient {
                 .uri(uri -> uri.path("/api/files/verify").queryParam("pin", pin).build())
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
-                    if (res.getStatusCode().value() == 404) {
-                        throw new PinNotFoundException();
-                    }
+                    int status = res.getStatusCode().value();
+                    if (status == 404) throw new PinNotFoundException();
+                    if (status == 423) throw new PinLockedException();
                     throw new KioskServerException("CLIENT_ERROR",
                             "Ошибка запроса: " + res.getStatusCode());
                 })
                 .body(VerifyResponse.class));
+    }
+
+    public void releaseHold(String pin) {
+        try {
+            http.post().uri("/api/files/{pin}/release", pin)
+                    .retrieve().toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("Failed to release PIN hold for {} (will expire by TTL)", pin, e);
+        }
     }
 
     public void consumeFile(UUID fileId) {

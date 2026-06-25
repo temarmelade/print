@@ -49,4 +49,44 @@ public interface FileRepository extends JpaRepository<FileEntity, UUID> {
               AND f.consumedAt IS NULL
            """)
     int markConsumed(@Param("id") UUID id, @Param("now") Instant now);
+
+    /**
+     * Атомарно закрепляет PIN за киоском (hold). Берёт hold, только если PIN:
+     *   • никем не удерживается (holderKioskId IS NULL), ИЛИ
+     *   • уже держится этим же киоском (повторный verify — продлеваем), ИЛИ
+     *   • держался кем-то, но hold истёк (holderExpiresAt <= now).
+     * Если PIN держит другой киоск и hold ещё жив — строка не обновится (вернёт 0).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+           UPDATE FileEntity f
+              SET f.holderKioskId   = :kioskId,
+                  f.holderExpiresAt = :holdUntil
+            WHERE f.code = :code
+              AND f.expiresAt > :now
+              AND f.consumedAt IS NULL
+              AND (
+                    f.holderKioskId IS NULL
+                 OR f.holderKioskId = :kioskId
+                 OR f.holderExpiresAt <= :now
+              )
+           """)
+    int acquireHold(@Param("code")      String  code,
+                    @Param("kioskId")   String  kioskId,
+                    @Param("now")       Instant now,
+                    @Param("holdUntil") Instant holdUntil);
+
+    /**
+     * Снимает hold при возврате юзера на HOME. Чистит держателя только если
+     * это тот же киоск — чужой hold не трогаем (защита от случайного release).
+     */
+    @Modifying
+    @Query("""
+           UPDATE FileEntity f
+              SET f.holderKioskId   = NULL,
+                  f.holderExpiresAt = NULL
+            WHERE f.code = :code
+              AND f.holderKioskId = :kioskId
+           """)
+    int releaseHold(@Param("code") String code, @Param("kioskId") String kioskId);
 }
