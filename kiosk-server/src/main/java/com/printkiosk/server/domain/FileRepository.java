@@ -51,11 +51,17 @@ public interface FileRepository extends JpaRepository<FileEntity, UUID> {
     int markConsumed(@Param("id") UUID id, @Param("now") Instant now);
 
     /**
-     * Атомарно закрепляет PIN за киоском (hold). Берёт hold, только если PIN:
+     * Атомарно закрепляет PIN за киоском (hold). Берёт hold, ТОЛЬКО если PIN:
      *   • никем не удерживается (holderKioskId IS NULL), ИЛИ
-     *   • уже держится этим же киоском (повторный verify — продлеваем), ИЛИ
      *   • держался кем-то, но hold истёк (holderExpiresAt <= now).
-     * Если PIN держит другой киоск и hold ещё жив — строка не обновится (вернёт 0).
+     * <p>
+     * Намеренно НЕ продлеваем hold тому же киоску: после первого успешного
+     * verify PIN считается «использованным» и недоступен до конца TTL даже
+     * тому терминалу, который его ввёл (юзер не должен повторно зайти по
+     * тому же коду, даже если печать не состоялась).
+     * <p>
+     * Условия активности файла (не истёк, не consumed) проверяются здесь же,
+     * чтобы hold нельзя было взять на мёртвую запись.
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
@@ -67,7 +73,6 @@ public interface FileRepository extends JpaRepository<FileEntity, UUID> {
               AND f.consumedAt IS NULL
               AND (
                     f.holderKioskId IS NULL
-                 OR f.holderKioskId = :kioskId
                  OR f.holderExpiresAt <= :now
               )
            """)
@@ -75,18 +80,4 @@ public interface FileRepository extends JpaRepository<FileEntity, UUID> {
                     @Param("kioskId")   String  kioskId,
                     @Param("now")       Instant now,
                     @Param("holdUntil") Instant holdUntil);
-
-    /**
-     * Снимает hold при возврате юзера на HOME. Чистит держателя только если
-     * это тот же киоск — чужой hold не трогаем (защита от случайного release).
-     */
-    @Modifying
-    @Query("""
-           UPDATE FileEntity f
-              SET f.holderKioskId   = NULL,
-                  f.holderExpiresAt = NULL
-            WHERE f.code = :code
-              AND f.holderKioskId = :kioskId
-           """)
-    int releaseHold(@Param("code") String code, @Param("kioskId") String kioskId);
 }

@@ -49,18 +49,6 @@ public class PinEntryFlow {
         notifyBufferChanged();
     }
 
-    /**
-     * Снять hold PIN'а на сервере (при возврате на HOME). Выполняется в фоне,
-     * результат не важен — навигация домой не должна ждать сеть. Если pin
-     * пустой/неполный (юзер не успел verify-нуть) — ничего не делаем.
-     */
-    public void releaseHold(String pin) {
-        if (pin == null || pin.length() != PIN_LENGTH) return;
-        Thread worker = new Thread(() -> server.releaseHold(pin), "pin-release");
-        worker.setDaemon(true);
-        worker.start();
-    }
-
     public void pressDigit(String digit) {
         if (requestInFlight) return;                      // блокировка ввода пока летит запрос
         if (buffer.length() >= PIN_LENGTH) return;         // лимит длины

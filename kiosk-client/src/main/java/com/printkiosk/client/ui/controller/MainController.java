@@ -545,16 +545,16 @@ public class MainController {
     }
 
     /**
-     * Показывает диалог подтверждения «Точно вернуться? Сессия прервётся» на
-     * экранах с уже активной сессией (после FILE_INFO). При подтверждении
-     * сбрасывает всё и уходит на HOME (что снимает hold PIN'а). При отказе —
-     * остаёмся на текущем экране.
+     * Показывает диалог подтверждения на экранах с уже активной сессией
+     * (после FILE_INFO). При подтверждении сбрасывает всё и уходит на HOME.
+     * PIN при этом НЕ освобождается — он остаётся закреплён за этим киоском
+     * до истечения 10-минутного TTL, даже если печать не состоялась.
      */
     private void confirmAbandonAndGoHome() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Вернуться на главный экран?");
         alert.setHeaderText(null);
-        alert.setContentText("Сессия будет прервана, а код освободится. Продолжить?");
+        alert.setContentText("Текущий заказ будет отменён. Продолжить?");
 
         ButtonType yes = new ButtonType("Да, вернуться", ButtonBar.ButtonData.OK_DONE);
         ButtonType no  = new ButtonType("Остаться",       ButtonBar.ButtonData.CANCEL_CLOSE);
@@ -568,10 +568,6 @@ public class MainController {
     }
 
     private void resetAllAndGoHome() {
-        // Снять hold PIN'а на сервере до обнуления currentPin (best-effort, фоном).
-        if (currentPin != null) {
-            pinEntryFlow.releaseHold(currentPin);
-        }
         paymentFlow.stop();
         settingsFlow.stop();
         previewFlow.close();

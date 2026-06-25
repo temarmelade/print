@@ -18,13 +18,6 @@ public class FileVerifyController {
 
     private final FileService fileService;
 
-    @PostMapping("/{id}/consume")
-    public ResponseEntity<Void> consume(@PathVariable UUID id) {
-        return fileService.markConsumed(id)
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.status(409).build();
-    }
-
     @GetMapping("/verify")
     public ResponseEntity<VerifyResponse> verify(
             @RequestParam("pin") @Pattern(regexp = "\\d{4}") String pin,
@@ -32,15 +25,15 @@ public class FileVerifyController {
         return ResponseEntity.ok(fileService.verify(pin, resolveKiosk(kioskId)));
     }
 
-    @PostMapping("/{pin}/release")
-    public ResponseEntity<Void> release(
-            @PathVariable @Pattern(regexp = "\\d{4}") String pin,
-            @RequestHeader(value = "X-Kiosk-Id", required = false) String kioskId) {
-        fileService.releaseHold(pin, resolveKiosk(kioskId));
-        return ResponseEntity.noContent().build();
-    }
-
+    /** Подстановка для запросов без заголовка (локальные тесты, прямой curl). */
     private static String resolveKiosk(String kioskId) {
         return (kioskId == null || kioskId.isBlank()) ? "unknown-kiosk" : kioskId;
+    }
+
+    @PostMapping("/{id}/consume")
+    public ResponseEntity<Void> consume(@PathVariable UUID id) {
+        return fileService.markConsumed(id)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.status(409).build();
     }
 }

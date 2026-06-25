@@ -253,17 +253,21 @@ public class FileService {
             FileEntity recheck = repository.findActiveByCode(pin, now)
                     .orElseThrow(PinNotFoundException::new);
 
-            boolean heldByOther =
+            // PIN уже закреплён за каким-то киоском и hold ещё жив — отказ.
+            // Намеренно не делаем исключения для «своего» kioskId: однажды
+            // введённый код заблокирован до конца TTL для всех, включая
+            // терминал, который его ввёл.
+            boolean held =
                     recheck.getHolderKioskId() != null
-                            && !recheck.getHolderKioskId().equals(kioskId)
                             && recheck.getHolderExpiresAt() != null
                             && recheck.getHolderExpiresAt().isAfter(now);
 
-            if (heldByOther) {
+            if (held) {
                 log.info("PIN {} verify rejected: held by kiosk={}, requested by={}",
                         pin, recheck.getHolderKioskId(), kioskId);
                 throw new PinLockedByOtherKioskException();
             }
+            // Иначе — состояние изменилось под нами; трактуем как «не найден».
             throw new PinNotFoundException();
         }
 
@@ -271,19 +275,13 @@ public class FileService {
 
         String url = buildPublicUrl(file.getStoredFilename());
         return new VerifyResponse(
-                file.getId(), url, file.getOriginalFilename(),
-                file.getContentType(), file.getFileSize(), file.getExpiresAt());
-    }
-
-    /**
-     * Снимает hold PIN'а, когда юзер возвращается на HOME. Идемпотентна.
-     */
-    @Transactional
-    public void releaseHold(String pin, String kioskId) {
-        int released = repository.releaseHold(pin, kioskId);
-        if (released > 0) {
-            log.info("PIN {} hold released by kiosk={}", pin, kioskId);
-        }
+                file.getId(),
+                url,
+                file.getOriginalFilename(),
+                file.getContentType(),
+                file.getFileSize(),
+                file.getExpiresAt()
+        );
     }
 
     // ════════════════════════════════════════════════════════════════
