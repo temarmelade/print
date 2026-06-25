@@ -15,6 +15,8 @@ import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.animation.FadeTransition;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
 import javafx.util.Duration;
 import org.kordamp.ikonli.javafx.FontIcon;
 import lombok.extern.slf4j.Slf4j;
@@ -233,8 +235,12 @@ public class MainController {
     @FXML private Button completedHomeBtn;
     @FXML private ImageView completedMascot;
     @FXML private Label autoReturnCounterLabel;
-    @FXML private Label autoReturnSecondsLabel;
     @FXML private ProgressIndicator autoReturnProgress;
+
+    /** Сколько секунд показывать экран COMPLETED до автовозврата на HOME. */
+    private static final int AUTO_RETURN_SECONDS = 20;
+    /** Активный таймер автовозврата (null — не запущен). */
+    private Timeline autoReturnTimeline;
 
     // ══════════════════════════════════════════════════════════════════════
     //  SCAN / COPY
@@ -634,6 +640,7 @@ public class MainController {
     }
 
     private void resetAllAndGoHome() {
+        stopAutoReturnCountdown();
         paymentFlow.stop();
         settingsFlow.stop();
         previewFlow.close();
@@ -643,6 +650,61 @@ public class MainController {
         currentPreview = null;
         currentJobId = null;
         changeStep(KioskStep.HOME);
+    }
+
+    /**
+     * Запускает обратный отсчёт автовозврата на экране COMPLETED. Каждую
+     * секунду обновляет счётчик и круговой прогресс; по достижении нуля
+     * автоматически возвращает на HOME. Любое ручное действие (кнопки
+     * экрана ведут через resetAllAndGoHome) останавливает таймер.
+     */
+    private void startAutoReturnCountdown() {
+        stopAutoReturnCountdown();   // на всякий случай, если остался прошлый
+
+        final int total = AUTO_RETURN_SECONDS;
+        // Используем массив-обёртку, чтобы менять значение из лямбды.
+        final int[] remaining = { total };
+
+        updateAutoReturnUi(remaining[0], total);
+
+        autoReturnTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            remaining[0]--;
+            updateAutoReturnUi(remaining[0], total);
+            if (remaining[0] <= 0) {
+                resetAllAndGoHome();   // внутри сам остановит таймер
+            }
+        }));
+        autoReturnTimeline.setCycleCount(total);
+        autoReturnTimeline.play();
+    }
+
+    /** Останавливает и сбрасывает таймер автовозврата, если он активен. */
+    private void stopAutoReturnCountdown() {
+        if (autoReturnTimeline != null) {
+            autoReturnTimeline.stop();
+            autoReturnTimeline = null;
+        }
+    }
+
+    /** Обновляет текст счётчика и круговой прогресс автовозврата. */
+    private void updateAutoReturnUi(int secondsLeft, int total) {
+        int shown = Math.max(secondsLeft, 0);
+        if (autoReturnCounterLabel != null) {
+            autoReturnCounterLabel.setText(shown + " " + pluralSeconds(shown));
+        }
+        if (autoReturnProgress != null) {
+            autoReturnProgress.setProgress((double) shown / total);
+        }
+    }
+
+    /** Русское склонение слова «секунда» по числу. */
+    private static String pluralSeconds(int n) {
+        int mod100 = n % 100;
+        int mod10  = n % 10;
+        if (mod100 >= 11 && mod100 <= 14) return "секунд";
+        if (mod10 == 1)                   return "секунда";
+        if (mod10 >= 2 && mod10 <= 4)     return "секунды";
+        return "секунд";
     }
 
     // ---- PRINTING / COMPLETED ----
@@ -1026,9 +1088,7 @@ public class MainController {
             public void onCompleted() {
                 log.info("Print completed, transitioning to COMPLETED screen");
                 changeStep(KioskStep.COMPLETED);
-                // Автовозврат на HOME через N секунд (если у тебя уже есть таймер
-                // в onCompleted-экране — он сработает; если нет — можно
-                // запустить здесь Timeline на 15 сек).
+                startAutoReturnCountdown();
             }
 
             @Override
