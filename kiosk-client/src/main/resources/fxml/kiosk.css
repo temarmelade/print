@@ -1855,3 +1855,96 @@
     -fx-text-fill: #64748B;
     -fx-line-spacing: 2;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   МОДАЛЬНОЕ ПОДТВЕРЖДЕНИЕ ВЫХОДА ИЗ СЕССИИ (confirm-overlay)
+   Полупрозрачная подложка затемняет весь интерфейс, по центру —
+   крупная карточка с двумя большими кнопками под пальцы на тач-экране.
+   ════════════════════════════════════════════════════════════════ */
+
+.confirm-overlay {
+    -fx-background-color: rgba(17, 24, 39, 0.55);
+}
+
+.confirm-dialog {
+    -fx-background-color: -bg-card;
+    -fx-background-radius: 28px;
+    -fx-border-radius: 28px;
+    -fx-border-color: -border-soft;
+    -fx-border-width: 1px;
+    -fx-padding: 48px 56px;
+    -fx-spacing: 14px;
+    -fx-pref-width: 620px;
+    -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(17, 24, 39, 0.28), 48, 0, 0, 18);
+}
+
+.confirm-icon-circle {
+    -fx-min-width: 96px;
+    -fx-min-height: 96px;
+    -fx-max-width: 96px;
+    -fx-max-height: 96px;
+    -fx-background-color: #FEF2F2;
+    -fx-background-radius: 100px;
+    -fx-alignment: center;
+}
+
+.confirm-icon-circle .ikonli-font-icon {
+    -fx-icon-color: -danger-red;
+    -fx-font-size: 48px;
+}
+
+.confirm-title {
+    -fx-font-size: 30px;
+    -fx-font-weight: 800;
+    -fx-text-fill: -text-main;
+    -fx-wrap-text: true;
+    -fx-text-alignment: center;
+}
+
+.confirm-message {
+    -fx-font-size: 20px;
+    -fx-font-weight: 500;
+    -fx-text-fill: -text-muted;
+    -fx-wrap-text: true;
+    -fx-text-alignment: center;
+    -fx-line-spacing: 3;
+}
+
+.confirm-actions {
+    -fx-spacing: 20px;
+    -fx-alignment: center;
+    -fx-padding: 20 0 0 0;
+}
+
+/* Крупные кнопки — широкие, высокие, удобные для нажатия пальцем. */
+.confirm-btn {
+    -fx-font-size: 24px;
+    -fx-font-weight: 800;
+    -fx-min-width: 240px;
+    -fx-min-height: 84px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-cursor: hand;
+}
+
+.confirm-btn-stay {
+    -fx-background-color: white;
+    -fx-text-fill: -text-main;
+    -fx-border-color: -border-medium;
+    -fx-border-width: 2px;
+}
+
+.confirm-btn-stay:hover {
+    -fx-border-color: -primary-blue;
+    -fx-text-fill: -primary-blue;
+}
+
+.confirm-btn-leave {
+    -fx-background-color: -danger-red;
+    -fx-text-fill: white;
+}
+
+.confirm-btn-leave:hover {
+    -fx-background-color: #DC2626;
+}

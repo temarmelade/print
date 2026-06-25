@@ -19,7 +19,7 @@
 
     <!-- SCREENS -->
     <center>
-        <StackPane>
+        <StackPane fx:id="rootStack">
 
             <!-- ADMIN SCREEN -->
             <VBox fx:id="adminScreen"

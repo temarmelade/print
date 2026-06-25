@@ -4,17 +4,19 @@ import com.printkiosk.client.ui.state.Language;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
+import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.animation.FadeTransition;
+import javafx.util.Duration;
+import org.kordamp.ikonli.javafx.FontIcon;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -53,6 +55,7 @@ public class MainController {
     //  SCREENS
     // ══════════════════════════════════════════════════════════════════════
 
+    @FXML private StackPane rootStack;
     @FXML private VBox homeScreen;
     @FXML private VBox uploadScreen;
     @FXML private VBox fileInfoScreen;
@@ -545,26 +548,89 @@ public class MainController {
     }
 
     /**
-     * Показывает диалог подтверждения на экранах с уже активной сессией
-     * (после FILE_INFO). При подтверждении сбрасывает всё и уходит на HOME.
-     * PIN при этом НЕ освобождается — он остаётся закреплён за этим киоском
-     * до истечения 10-минутного TTL, даже если печать не состоялась.
+     * Показывает кастомный диалог подтверждения на экранах с уже активной
+     * сессией (после FILE_INFO). Затемняет весь интерфейс полупрозрачной
+     * подложкой и выводит по центру карточку с двумя крупными кнопками.
+     * При подтверждении сбрасывает всё и уходит на HOME. PIN при этом НЕ
+     * освобождается — он остаётся закреплён за киоском до конца TTL.
      */
     private void confirmAbandonAndGoHome() {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Вернуться на главный экран?");
-        alert.setHeaderText(null);
-        alert.setContentText("Текущий заказ будет отменён. Продолжить?");
+        showConfirmOverlay(
+                "Вернуться на главный экран?",
+                "Текущий заказ будет отменён, а введённый код станет недоступен.",
+                "Да, выйти",
+                "Остаться",
+                this::resetAllAndGoHome);
+    }
 
-        ButtonType yes = new ButtonType("Да, вернуться", ButtonBar.ButtonData.OK_DONE);
-        ButtonType no  = new ButtonType("Остаться",       ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(yes, no);
+    /**
+     * Универсальный модальный оверлей подтверждения поверх всего интерфейса.
+     * Фон затемняется; клик по затемнению = «остаться» (безопасный выбор).
+     *
+     * @param onConfirm действие при нажатии подтверждающей (красной) кнопки
+     */
+    private void showConfirmOverlay(String title, String message,
+                                    String confirmText, String cancelText,
+                                    Runnable onConfirm) {
+        // Иконка-предупреждение в кружке.
+        FontIcon icon = new FontIcon("fas-exclamation-triangle");
+        StackPane iconCircle = new StackPane(icon);
+        iconCircle.getStyleClass().add("confirm-icon-circle");
 
-        alert.showAndWait().ifPresent(choice -> {
-            if (choice == yes) {
-                resetAllAndGoHome();
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("confirm-title");
+
+        Label messageLabel = new Label(message);
+        messageLabel.getStyleClass().add("confirm-message");
+
+        Button stayBtn = new Button(cancelText);
+        stayBtn.getStyleClass().addAll("confirm-btn", "confirm-btn-stay");
+
+        Button leaveBtn = new Button(confirmText);
+        leaveBtn.getStyleClass().addAll("confirm-btn", "confirm-btn-leave");
+
+        HBox actions = new HBox(stayBtn, leaveBtn);
+        actions.getStyleClass().add("confirm-actions");
+
+        VBox dialog = new VBox(iconCircle, titleLabel, messageLabel, actions);
+        dialog.getStyleClass().add("confirm-dialog");
+        // Карточка должна занимать высоту/ширину строго по содержимому, иначе
+        // StackPane растянет её на весь экран по вертикали. USE_PREF_SIZE
+        // фиксирует размер по preferred, центрирование оставляем StackPane'у.
+        dialog.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
+        StackPane overlay = new StackPane(dialog);
+        overlay.getStyleClass().add("confirm-overlay");
+        StackPane.setAlignment(dialog, Pos.CENTER);
+
+        // Закрытие с плавным затуханием.
+        Runnable dismiss = () -> {
+            FadeTransition out = new FadeTransition(Duration.millis(120), overlay);
+            out.setFromValue(1.0);
+            out.setToValue(0.0);
+            out.setOnFinished(e -> rootStack.getChildren().remove(overlay));
+            out.play();
+        };
+
+        stayBtn.setOnAction(e -> dismiss.run());
+        // Клик по затемнённому фону (вне карточки) = остаться.
+        overlay.setOnMouseClicked(e -> {
+            if (e.getTarget() == overlay) {
+                dismiss.run();
             }
         });
+        leaveBtn.setOnAction(e -> {
+            rootStack.getChildren().remove(overlay);
+            onConfirm.run();
+        });
+
+        rootStack.getChildren().add(overlay);
+
+        // Плавное появление.
+        FadeTransition in = new FadeTransition(Duration.millis(140), overlay);
+        in.setFromValue(0.0);
+        in.setToValue(1.0);
+        in.play();
     }
 
     private void resetAllAndGoHome() {
