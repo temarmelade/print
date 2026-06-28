@@ -361,8 +361,7 @@ public class MainController {
         settingsFlow.setListener(buildSettingsListener());
         paymentFlow.setListener(buildPaymentListener());
         printFlow.setListener(buildPrintListener());
-        if (uploadQrStep != null)  { uploadQrStep.setVisible(true);   uploadQrStep.setManaged(true); }
-        if (emojiCodeStep != null) { emojiCodeStep.setVisible(false); emojiCodeStep.setManaged(false); }
+        showUploadQrStep();        // стартовое состояние upload — подэкран QR-кодов
         refreshUploadQrCodes();
         showOnly(homeScreen);
     }
@@ -395,7 +394,7 @@ public class MainController {
         this.currentStep = step;
         switch (step) {
             case HOME             -> showOnly(homeScreen);
-            case UPLOAD           -> showOnly(uploadScreen);
+            case UPLOAD           -> { showOnly(uploadScreen); showUploadQrStep(); }
             case FILE_INFO        -> showOnly(fileInfoScreen);
             case SETTINGS         -> showOnly(settingsScreen);
             case SUMMARY          -> showOnly(summaryScreen);
@@ -491,19 +490,35 @@ public class MainController {
     }
 
     // ---- UPLOAD / PIN ----
-    @FXML
-    public void onGoToEmojiCodeClicked() {
-        if (uploadQrStep != null)    { uploadQrStep.setVisible(false);    uploadQrStep.setManaged(false); }
-        if (emojiCodeStep != null)   { emojiCodeStep.setVisible(true);    emojiCodeStep.setManaged(true); }
+
+    /** Какой подэкран UPLOAD сейчас открыт: QR-коды или ввод PIN. */
+    private boolean uploadPinStepShown = false;
+
+    /** Показать подэкран QR-кодов (методы загрузки). */
+    private void showUploadQrStep() {
+        if (emojiCodeStep != null) { emojiCodeStep.setVisible(false); emojiCodeStep.setManaged(false); }
+        if (uploadQrStep  != null) { uploadQrStep.setVisible(true);   uploadQrStep.setManaged(true); }
+        uploadPinStepShown = false;
+        pinEntryFlow.reset();
+    }
+
+    /** Показать подэкран ввода PIN. */
+    private void showUploadPinStep() {
+        if (uploadQrStep  != null) { uploadQrStep.setVisible(false);  uploadQrStep.setManaged(false); }
+        if (emojiCodeStep != null) { emojiCodeStep.setVisible(true);  emojiCodeStep.setManaged(true); }
+        uploadPinStepShown = true;
         pinEntryFlow.reset();
         if (selectedPinCodeLabel != null) selectedPinCodeLabel.setText("");
     }
 
     @FXML
+    public void onGoToEmojiCodeClicked() {
+        showUploadPinStep();
+    }
+
+    @FXML
     public void onBackToUploadMethodsClicked() {
-        if (emojiCodeStep != null)   { emojiCodeStep.setVisible(false);   emojiCodeStep.setManaged(false); }
-        if (uploadQrStep != null)    { uploadQrStep.setVisible(true);     uploadQrStep.setManaged(true); }
-        pinEntryFlow.reset();
+        showUploadQrStep();
     }
 
     @FXML
@@ -813,8 +828,19 @@ public class MainController {
                 changeStep(KioskStep.SUMMARY);
             }
             case SCAN_PREVIEW             -> changeStep(KioskStep.SCAN_INSTRUCTION);
-            case UPLOAD, SCAN_INSTRUCTION -> {
-                // На UPLOAD ещё нет verify → hold не взят, сессии нет. Просто домой.
+            case UPLOAD -> {
+                if (uploadPinStepShown) {
+                    // С подэкрана ввода PIN «назад» ведёт на подэкран QR-кодов,
+                    // а не сразу домой.
+                    showUploadQrStep();
+                } else {
+                    // С подэкрана QR-кодов «назад» — на главный экран.
+                    // verify ещё не было → hold не взят, сессии нет.
+                    pinEntryFlow.reset();
+                    changeStep(KioskStep.HOME);
+                }
+            }
+            case SCAN_INSTRUCTION -> {
                 pinEntryFlow.reset();
                 changeStep(KioskStep.HOME);
             }

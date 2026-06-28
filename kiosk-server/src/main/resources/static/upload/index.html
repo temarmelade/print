@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Print Kiosk — Загрузка файла</title>
+    <style>
+        :root {
+            --blue:        #2563EB;
+            --blue-dark:   #1D4ED8;
+            --bg:          #F4F6FB;
+            --card:        #FFFFFF;
+            --text:        #111827;
+            --muted:       #6B7280;
+            --border:      #E5E7EB;
+            --danger:      #DC2626;
+            --success:     #16A34A;
+            --radius:      22px;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .langbar {
+            display: flex;
+            gap: 8px;
+            margin: 8px 0 18px;
+        }
+        .langbar button {
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--muted);
+            font-size: 15px;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .langbar button.active {
+            background: var(--blue);
+            color: #fff;
+            border-color: var(--blue);
+        }
+        .card {
+            background: var(--card);
+            width: 100%;
+            max-width: 440px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(17,24,39,0.06);
+            padding: 28px 24px;
+        }
+        .logo {
+            font-size: 26px;
+            font-weight: 800;
+            text-align: center;
+            margin: 0 0 4px;
+        }
+        .logo span { color: var(--blue); }
+        .subtitle {
+            text-align: center;
+            color: var(--muted);
+            font-size: 15px;
+            margin: 0 0 22px;
+        }
+        .dropzone {
+            border: 2px dashed var(--blue);
+            border-radius: 16px;
+            background: #F8FAFF;
+            padding: 32px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: background .15s, border-color .15s;
+        }
+        .dropzone.dragover { background: #EEF3FF; border-color: var(--blue-dark); }
+        .dropzone .icon { font-size: 40px; }
+        .dropzone .hint {
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .dropzone .formats {
+            margin-top: 6px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .filename {
+            margin-top: 14px;
+            font-size: 14px;
+            color: var(--text);
+            word-break: break-word;
+            text-align: center;
+            min-height: 18px;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            border: none;
+            border-radius: 14px;
+            padding: 16px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .btn-primary { background: var(--blue); color: #fff; }
+        .btn-primary:disabled { background: #9DB6F0; cursor: not-allowed; }
+        .btn-ghost {
+            background: #EEF1F6;
+            color: var(--text);
+            text-decoration: none;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .hidden { display: none !important; }
+
+        /* Экран результата */
+        .result { text-align: center; }
+        .result .status-icon { font-size: 52px; }
+        .result h2 { margin: 10px 0 6px; font-size: 22px; }
+        .result h2.ok  { color: var(--success); }
+        .result h2.err { color: var(--danger); }
+        .result .desc { color: var(--muted); font-size: 15px; margin: 0 0 18px; }
+        .pin {
+            font-family: "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+            font-size: 56px;
+            font-weight: 800;
+            letter-spacing: 10px;
+            color: var(--text);
+            background: #F4F6FB;
+            border-radius: 16px;
+            padding: 18px 0;
+            margin: 0 0 6px;
+        }
+        .pages { color: var(--muted); font-size: 14px; margin: 0 0 4px; }
+        .expiry { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+
+        .spinner {
+            width: 22px; height: 22px;
+            border: 3px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            display: inline-block;
+            vertical-align: middle;
+            animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="langbar" id="langbar">
+    <button data-lang="ru">Рус</button>
+    <button data-lang="ky">Кыр</button>
+    <button data-lang="en">Eng</button>
+</div>
+
+<!-- ФОРМА ЗАГРУЗКИ -->
+<div class="card" id="formCard">
+    <h1 class="logo">🖨️ Print <span>Kiosk</span></h1>
+    <p class="subtitle" id="subtitle"></p>
+
+    <label class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" class="hidden"
+               accept="application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.jpg,.jpeg,.png,.docx">
+        <div class="icon">📂</div>
+        <div class="hint" id="dzHint"></div>
+        <div class="formats" id="dzFormats"></div>
+    </label>
+
+    <div class="filename" id="filename"></div>
+
+    <button class="btn btn-primary" id="submitBtn" disabled></button>
+</div>
+
+<!-- ЭКРАН РЕЗУЛЬТАТА -->
+<div class="card result hidden" id="resultCard">
+    <div class="status-icon" id="resIcon"></div>
+    <h2 id="resTitle"></h2>
+    <p class="desc" id="resDesc"></p>
+
+    <div id="pinBlock" class="hidden">
+        <div class="pin" id="pinValue"></div>
+        <p class="pages" id="pagesText"></p>
+        <p class="expiry" id="expiryText"></p>
+    </div>
+
+    <a href="#" class="btn btn-ghost" id="againBtn"></a>
+</div>
+
+<script>
+    // ── Локализация ────────────────────────────────────────────────
+    const I18N = {
+        ru: {
+            subtitle:  "Выберите файл, чтобы распечатать его на терминале",
+            dzHint:    "Нажмите, чтобы выбрать файл",
+            dzFormats: "PDF, JPG, PNG, DOCX · до 20 МБ",
+            submit:    "Загрузить на терминал",
+            uploading: "Загрузка…",
+            noFile:    "Файл пока не выбран",
+            okTitle:   "Файл загружен",
+            okDesc:    "Введите этот код на экране терминала",
+            pages:     n => `Страниц в документе: ${n}`,
+            expiry:    m => `Код действует ${m} мин`,
+            again:     "Загрузить ещё файл",
+            errTitle:  "Не удалось загрузить",
+            errors: {
+                FILE_INVALID:   "Файл пуст, повреждён или в неподдерживаемом формате.",
+                FILE_TOO_LARGE: "Файл слишком большой. Максимум — 20 МБ.",
+                PIN_SPACE_BUSY: "Сейчас слишком много активных кодов. Попробуйте через минуту.",
+                NETWORK:        "Нет связи с терминалом. Проверьте интернет и повторите.",
+                UNKNOWN:        "Что-то пошло не так. Попробуйте ещё раз."
+            }
+        },
+        ky: {
+            subtitle:  "Терминалда басып чыгаруу үчүн файлды тандаңыз",
+            dzHint:    "Файлды тандоо үчүн басыңыз",
+            dzFormats: "PDF, JPG, PNG, DOCX · 20 МБ чейин",
+            submit:    "Терминалга жүктөө",
+            uploading: "Жүктөлүүдө…",
+            noFile:    "Файл тандала элек",
+            okTitle:   "Файл жүктөлдү",
+            okDesc:    "Бул кодду терминалдын экранына киргизиңиз",
+            pages:     n => `Документтеги барактар: ${n}`,
+            expiry:    m => `Код ${m} мүнөт жарактуу`,
+            again:     "Дагы файл жүктөө",
+            errTitle:  "Жүктөө мүмкүн болбоду",
+            errors: {
+                FILE_INVALID:   "Файл бош, бузулган же колдоого алынбаган форматта.",
+                FILE_TOO_LARGE: "Файл өтө чоң. Максимум — 20 МБ.",
+                PIN_SPACE_BUSY: "Учурда активдүү коддор өтө көп. Бир мүнөттөн кийин аракет кылыңыз.",
+                NETWORK:        "Терминал менен байланыш жок. Интернетти текшерип, кайталаңыз.",
+                UNKNOWN:        "Бир нерсе туура эмес болду. Кайра аракет кылыңыз."
+            }
+        },
+        en: {
+            subtitle:  "Choose a file to print it at the terminal",
+            dzHint:    "Tap to choose a file",
+            dzFormats: "PDF, JPG, PNG, DOCX · up to 20 MB",
+            submit:    "Upload to terminal",
+            uploading: "Uploading…",
+            noFile:    "No file selected yet",
+            okTitle:   "File uploaded",
+            okDesc:    "Enter this code on the terminal screen",
+            pages:     n => `Pages in document: ${n}`,
+            expiry:    m => `Code is valid for ${m} min`,
+            again:     "Upload another file",
+            errTitle:  "Upload failed",
+            errors: {
+                FILE_INVALID:   "The file is empty, damaged or in an unsupported format.",
+                FILE_TOO_LARGE: "The file is too large. Maximum is 20 MB.",
+                PIN_SPACE_BUSY: "Too many active codes right now. Try again in a minute.",
+                NETWORK:        "No connection to the terminal. Check your internet and retry.",
+                UNKNOWN:        "Something went wrong. Please try again."
+            }
+        }
+    };
+
+    // ── Состояние и элементы ───────────────────────────────────────
+    const params = new URLSearchParams(location.search);
+    let lang = ["ru","ky","en"].includes(params.get("lang")) ? params.get("lang") : "ru";
+    let selectedFile = null;
+
+    const el = id => document.getElementById(id);
+    const fileInput = el("fileInput");
+    const submitBtn = el("submitBtn");
+
+    // ── Применение языка ───────────────────────────────────────────
+    function applyLang() {
+        const t = I18N[lang];
+        document.documentElement.lang = lang;
+        el("subtitle").textContent  = t.subtitle;
+        el("dzHint").textContent    = t.dzHint;
+        el("dzFormats").textContent = t.dzFormats;
+        el("submitBtn").textContent = selectedFile ? t.submit : t.submit;
+        el("filename").textContent  = selectedFile ? selectedFile.name : t.noFile;
+        el("againBtn").textContent  = t.again;
+        document.querySelectorAll("#langbar button").forEach(b =>
+            b.classList.toggle("active", b.dataset.lang === lang));
+    }
+
+    document.querySelectorAll("#langbar button").forEach(btn => {
+        btn.addEventListener("click", () => {
+            lang = btn.dataset.lang;
+            const u = new URL(location);
+            u.searchParams.set("lang", lang);
+            history.replaceState(null, "", u);
+            applyLang();
+        });
+    });
+
+    // ── Выбор файла ────────────────────────────────────────────────
+    const dropzone = el("dropzone");
+    dropzone.addEventListener("click", () => fileInput.click());
+
+    ["dragover","dragenter"].forEach(ev =>
+        dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add("dragover"); }));
+    ["dragleave","drop"].forEach(ev =>
+        dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove("dragover"); }));
+    dropzone.addEventListener("drop", e => {
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener("change", () => {
+        if (fileInput.files.length) setFile(fileInput.files[0]);
+    });
+
+    function setFile(file) {
+        selectedFile = file;
+        el("filename").textContent = file.name;
+        submitBtn.disabled = false;
+        applyLang();
+    }
+
+    // ── Отправка ───────────────────────────────────────────────────
+    submitBtn.addEventListener("click", uploadFile);
+
+    async function uploadFile() {
+        if (!selectedFile) return;
+        const t = I18N[lang];
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span class="spinner"></span> ${t.uploading}`;
+
+        const form = new FormData();
+        form.append("file", selectedFile);
+
+        try {
+            const res = await fetch("/api/files/upload?source=WEBSITE", {
+                method: "POST",
+                body: form
+            });
+
+            if (res.ok) {
+                const data = await res.json();   // { pin, expiresAt, ttlSeconds }
+                showSuccess(data);
+            } else {
+                let code = "UNKNOWN";
+                try { code = (await res.json()).code || "UNKNOWN"; } catch (_) {}
+                showError(code);
+            }
+        } catch (_) {
+            showError("NETWORK");
+        } finally {
+            submitBtn.innerHTML = t.submit;
+            submitBtn.disabled = false;
+        }
+    }
+
+    // ── Результаты ─────────────────────────────────────────────────
+    function showSuccess(data) {
+        const t = I18N[lang];
+        el("formCard").classList.add("hidden");
+        el("resultCard").classList.remove("hidden");
+
+        el("resIcon").textContent  = "✅";
+        el("resTitle").textContent = t.okTitle;
+        el("resTitle").className   = "ok";
+        el("resDesc").textContent  = t.okDesc;
+
+        el("pinBlock").classList.remove("hidden");
+        el("pinValue").textContent = data.pin;
+        // pageCount в ответе нет — поле страниц показываем, только если придёт.
+        if (data.pageCount != null) {
+            el("pagesText").textContent = t.pages(data.pageCount);
+        } else {
+            el("pagesText").classList.add("hidden");
+        }
+        const minutes = Math.round((data.ttlSeconds || 0) / 60);
+        el("expiryText").textContent = t.expiry(minutes);
+    }
+
+    function showError(code) {
+        const t = I18N[lang];
+        el("formCard").classList.add("hidden");
+        el("resultCard").classList.remove("hidden");
+
+        el("resIcon").textContent  = "⚠️";
+        el("resTitle").textContent = t.errTitle;
+        el("resTitle").className   = "err";
+        el("resDesc").textContent  = t.errors[code] || t.errors.UNKNOWN;
+        el("pinBlock").classList.add("hidden");
+    }
+
+    // «Загрузить ещё» — просто перезагружаем страницу с тем же языком.
+    el("againBtn").addEventListener("click", e => {
+        e.preventDefault();
+        const u = new URL(location);
+        u.searchParams.set("lang", lang);
+        location.href = u.toString();
+    });
+
+    applyLang();
+</script>
+</body>
+</html>

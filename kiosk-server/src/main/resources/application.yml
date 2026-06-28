@@ -31,6 +31,7 @@ spring:
 
 server:
   port: ${KIOSK_SERVER_PORT:8080}
+  address: ${KIOSK_SERVER_ADDRESS:0.0.0.0}
   error:
     include-message: always
     include-binding-errors: always
