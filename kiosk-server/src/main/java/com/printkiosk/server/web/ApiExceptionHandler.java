@@ -1,5 +1,6 @@
 package com.printkiosk.server.web;
 
+import com.printkiosk.server.exception.FileValidationException;
 import com.printkiosk.server.exception.JobNotFoundException;
 import com.printkiosk.server.exception.PaymentGatewayException;
 import com.printkiosk.server.exception.PinCollisionException;
@@ -9,6 +10,7 @@ import com.printkiosk.shared.api.dto.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
@@ -37,6 +39,24 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponse> badRequest() {
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse("BAD_REQUEST", "Неверный формат запроса"));
+    }
+
+    /**
+     * Файл не прошёл валидацию по magic-bytes (пустой, повреждённый или
+     * неподдерживаемый формат). Касается и веб-загрузки, и бота — отдаём
+     * 400, чтобы клиент отличал «плохой файл» от сбоя сервера.
+     */
+    @ExceptionHandler(FileValidationException.class)
+    public ResponseEntity<ErrorResponse> fileInvalid(FileValidationException e) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse("FILE_INVALID", e.getMessage()));
+    }
+
+    /** Файл превысил multipart-лимит (20MB). Без этого Spring вернул бы 500. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> fileTooLarge(MaxUploadSizeExceededException e) {
+        return ResponseEntity.status(413)
+                .body(new ErrorResponse("FILE_TOO_LARGE", "Файл слишком большой (макс. 20 МБ)"));
     }
 
     @ExceptionHandler(JobNotFoundException.class)

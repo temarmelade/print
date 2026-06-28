@@ -1948,3 +1948,16 @@
 .confirm-btn-leave:hover {
     -fx-background-color: #DC2626;
 }
+
+/* Неактивная опция (например, двусторонняя печать при 1 странице):
+   серая, приглушённая, без указателя-руки. Перебивает и .option-card,
+   и .option-card-active за счёт псевдокласса :disabled. */
+.option-card:disabled,
+.option-card-active:disabled {
+    -fx-background-color: #F3F4F6;
+    -fx-border-color: -border-soft;
+    -fx-text-fill: #9CA3AF;
+    -fx-icon-color: #9CA3AF;
+    -fx-opacity: 1.0;
+    -fx-cursor: default;
+}

@@ -1,6 +1,7 @@
 package com.printkiosk.client.ui.controller;
 
 import com.printkiosk.client.ui.state.Language;
+import com.printkiosk.client.config.KioskClientProperties;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -335,9 +336,11 @@ public class MainController {
     private final PinEntryFlow pinEntryFlow;
     private final PrintFlow printFlow;
     private final PrinterReadinessService printerReadiness;
+    private final KioskClientProperties clientProperties;
 
-    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,  PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow, PrintFlow printFlow, PrinterReadinessService printerReadiness) {
+    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,  PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow, PrintFlow printFlow, PrinterReadinessService printerReadiness, KioskClientProperties clientProperties) {
         this.pinEntryFlow = pinEntryFlow;
+        this.clientProperties = clientProperties;
         this.previewFlow = previewFlow;
         this.settingsFlow = settingsFlow;
         this.paymentFlow = paymentFlow;
@@ -360,6 +363,7 @@ public class MainController {
         printFlow.setListener(buildPrintListener());
         if (uploadQrStep != null)  { uploadQrStep.setVisible(true);   uploadQrStep.setManaged(true); }
         if (emojiCodeStep != null) { emojiCodeStep.setVisible(false); emojiCodeStep.setManaged(false); }
+        refreshUploadQrCodes();
         showOnly(homeScreen);
     }
 
@@ -422,9 +426,69 @@ public class MainController {
     @FXML public void onHelpBackClicked()         { changeStep(KioskStep.HOME); }
 
     // ---- LANGUAGE ----
-    @FXML public void onSelectRuTop() { log.info("TODO: switch to RU"); }
-    @FXML public void onSelectKgTop() { log.info("TODO: switch to KG"); }
-    @FXML public void onSelectEnTop() { log.info("TODO: switch to EN"); }
+    @FXML public void onSelectRuTop() { setLanguage(Language.RU); }
+    @FXML public void onSelectKgTop() { setLanguage(Language.KG); }
+    @FXML public void onSelectEnTop() { setLanguage(Language.EN); }
+
+    /**
+     * Переключает язык интерфейса киоска: подсвечивает выбранную кнопку и
+     * перегенерирует QR-коды загрузки так, чтобы бот и сайт открылись сразу
+     * на нужной локали (язык вшит в ссылку).
+     */
+    private void setLanguage(Language lang) {
+        currentLang = lang;
+        setLangActive(langRuBtn, lang == Language.RU);
+        setLangActive(langKgBtn, lang == Language.KG);
+        setLangActive(langEnBtn, lang == Language.EN);
+        refreshUploadQrCodes();
+        log.info("Language switched to {}", lang);
+    }
+
+    /** Подсветка активной языковой кнопки (класс lang-btn-active). */
+    private static void setLangActive(Node btn, boolean active) {
+        if (btn == null) return;
+        btn.getStyleClass().remove("lang-btn-active");
+        if (active) {
+            btn.getStyleClass().add("lang-btn-active");
+        }
+    }
+
+    /**
+     * Генерирует QR-коды для Telegram-бота и веб-портала с учётом текущего
+     * языка и помещает их в карточки экрана UPLOAD.
+     */
+    private void refreshUploadQrCodes() {
+        if (telegramQrImageView != null) {
+            telegramQrImageView.setImage(
+                    QrCodeGenerator.generate(buildTelegramUrl(currentLang), 185));
+        }
+        if (webQrImageView != null) {
+            webQrImageView.setImage(
+                    QrCodeGenerator.generate(buildWebUrl(currentLang), 185));
+        }
+    }
+
+    /** Deep-link бота с параметром языка: ...?start=lang_ru */
+    private String buildTelegramUrl(Language lang) {
+        String base = clientProperties.getUpload().getTelegramBotUrl();
+        return base + "?start=lang_" + langCode(lang);
+    }
+
+    /** URL сайта с query-параметром локали: ...?lang=ru */
+    private String buildWebUrl(Language lang) {
+        String base = clientProperties.getUpload().getWebUrl();
+        String sep = base.contains("?") ? "&" : "?";
+        return base + sep + "lang=" + langCode(lang);
+    }
+
+    /** Код языка для ссылок (ISO-639-1; кыргызский — ky). */
+    private static String langCode(Language lang) {
+        return switch (lang) {
+            case RU -> "ru";
+            case KG -> "ky";
+            case EN -> "en";
+        };
+    }
 
     // ---- UPLOAD / PIN ----
     @FXML
@@ -967,6 +1031,7 @@ public class MainController {
             public void onPriceReady(JobPreviewResponse response) {
                 currentPreview = response;
                 settingsNextBtn.setDisable(false);
+                applyDuplexAvailability(response.price().pageCount());
             }
 
             @Override
@@ -978,6 +1043,26 @@ public class MainController {
                 // На SUMMARY мы покажем то же сообщение явно (см. ниже).
             }
         };
+    }
+
+    /**
+     * Двусторонняя печать недоступна для одностраничного документа.
+     * При pageCount == 1 кнопку «Двусторонняя» гасим (disabled + серый стиль)
+     * и принудительно переключаем настройку на одностороннюю, чтобы не уйти
+     * на оплату с бессмысленным duplex. При большем числе страниц — включаем.
+     */
+    private void applyDuplexAvailability(int pageCount) {
+        boolean duplexAllowed = pageCount > 1;
+        if (doubleSideBtn != null) {
+            doubleSideBtn.setDisable(!duplexAllowed);
+        }
+        if (!duplexAllowed && settingsFlow.doubleSided()) {
+            // Сбрасываем на одностороннюю, только если двусторонняя реально была
+            // выбрана. Проверка значения обязательна: setDoubleSided всегда
+            // триггерит пересчёт цены → onPriceReady → сюда же, и без этого
+            // guard'а на одностраничном файле получился бы бесконечный цикл.
+            settingsFlow.setDoubleSided(false);
+        }
     }
 
     private static void setActive(Node node, boolean active) {

@@ -34,4 +34,17 @@ public class KioskClientProperties {
         @Min(1000)
         private long snmpPollIntervalMs = 30_000;
     }
+
+    @NotNull
+    private final Upload upload = new Upload();
+
+    @Getter
+    @Setter
+    public static class Upload {
+        /** Базовый deep-link Telegram-бота, напр. https://t.me/PrintKioskBot */
+        private String telegramBotUrl = "https://t.me/PrintKioskBot";
+
+        /** Базовый URL веб-портала загрузки, напр. https://kioskprint.kg/upload */
+        private String webUrl = "https://kioskprint.kg/upload";
+    }
 }
