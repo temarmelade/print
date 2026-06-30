@@ -11,7 +11,9 @@ import org.springframework.web.client.RestClient;
 import java.io.Closeable;
 import java.util.UUID;
 import java.util.function.Consumer;
-
+import com.printkiosk.shared.api.AdSlot;
+import org.springframework.core.ParameterizedTypeReference;
+import java.util.List;
 /**
  * Единая точка обращения JavaFX-клиента к серверу.
  * <p>
@@ -136,5 +138,12 @@ public class KioskServerClient {
                 .body(request)
                 .retrieve()
                 .body(JobPreviewResponse.class));
+    }
+
+    public List<AdCreativeDto> adPlaylist(AdSlot slot) {
+        return execute(() -> http.get()
+                .uri(uri -> uri.path("/api/ads/playlist").queryParam("slot", slot).build())
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<AdCreativeDto>>() {}));
     }
 }

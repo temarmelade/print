@@ -1961,3 +1961,7 @@
     -fx-opacity: 1.0;
     -fx-cursor: default;
 }
+
+.idle-screensaver {
+    -fx-background-color: black;
+}

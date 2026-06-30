@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import jakarta.validation.ConstraintViolationException;
+import com.printkiosk.server.exception.AdNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -75,5 +76,11 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponse> badState(IllegalStateException e) {
         return ResponseEntity.status(409)
                 .body(new ErrorResponse("INVALID_STATE", e.getMessage()));
+    }
+
+    @ExceptionHandler(AdNotFoundException.class)
+    public ResponseEntity<ErrorResponse> adNotFound() {
+        return ResponseEntity.status(404)
+                .body(new ErrorResponse("AD_NOT_FOUND", "Рекламный материал не найден"));
     }
 }

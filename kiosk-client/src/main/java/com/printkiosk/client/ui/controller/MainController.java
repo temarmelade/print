@@ -2,6 +2,10 @@ package com.printkiosk.client.ui.controller;
 
 import com.printkiosk.client.ui.state.Language;
 import com.printkiosk.client.config.KioskClientProperties;
+import com.printkiosk.client.config.ServerProperties;
+import com.printkiosk.client.service.AdPlaylistService;
+import com.printkiosk.client.ui.IdleScreensaver;
+import com.printkiosk.client.ui.IdleWatcher;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -337,10 +341,20 @@ public class MainController {
     private final PrintFlow printFlow;
     private final PrinterReadinessService printerReadiness;
     private final KioskClientProperties clientProperties;
+    private final AdPlaylistService adPlaylistService;
+    private final ServerProperties serverProperties;
 
-    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,  PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow, PrintFlow printFlow, PrinterReadinessService printerReadiness, KioskClientProperties clientProperties) {
+    /** Рекламная заставка по бездействию. */
+    private IdleScreensaver screensaver;
+    private IdleWatcher idleWatcher;
+    /** Сколько киоск должен простаивать до показа заставки. */
+    private static final java.time.Duration IDLE_TIMEOUT = java.time.Duration.ofSeconds(10);
+
+    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,  PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow, PrintFlow printFlow, PrinterReadinessService printerReadiness, KioskClientProperties clientProperties, AdPlaylistService adPlaylistService, ServerProperties serverProperties) {
         this.pinEntryFlow = pinEntryFlow;
         this.clientProperties = clientProperties;
+        this.adPlaylistService = adPlaylistService;
+        this.serverProperties = serverProperties;
         this.previewFlow = previewFlow;
         this.settingsFlow = settingsFlow;
         this.paymentFlow = paymentFlow;
@@ -364,6 +378,48 @@ public class MainController {
         showUploadQrStep();        // стартовое состояние upload — подэкран QR-кодов
         refreshUploadQrCodes();
         showOnly(homeScreen);
+        setupIdleScreensaver();
+    }
+
+    /**
+     * Создаёт рекламную заставку, монтирует её поверх всего интерфейса и
+     * подключает слежение за бездействием, когда появится Scene.
+     */
+    private void setupIdleScreensaver() {
+        screensaver = new IdleScreensaver(serverProperties);
+        rootStack.getChildren().add(screensaver);   // верхний слой поверх экранов
+
+        idleWatcher = new IdleWatcher(
+                javafx.util.Duration.millis(IDLE_TIMEOUT.toMillis()),
+                this::showScreensaver,
+                this::hideScreensaver);
+
+        // Scene появляется не сразу — цепляемся, когда станет доступна.
+        if (rootStack.getScene() != null) {
+            idleWatcher.attach(rootStack.getScene());
+        } else {
+            rootStack.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) idleWatcher.attach(newScene);
+            });
+        }
+    }
+
+    /** Показать заставку с актуальным плейлистом (если он непустой). */
+    private void showScreensaver() {
+        var playlist = adPlaylistService.currentPlaylist();
+        if (playlist.isEmpty()) {
+            // Нечего показывать — выходим из режима заставки и считаем заново.
+            idleWatcher.cancelIdle();
+            return;
+        }
+        screensaver.start(playlist);
+        screensaver.toFront();
+    }
+
+    /** Скрыть заставку и вернуть киоск на главный экран. */
+    private void hideScreensaver() {
+        screensaver.stop();
+        resetAllAndGoHome();
     }
 
     // ══════════════════════════════════════════════════════════════════════
