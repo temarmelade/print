@@ -1,19 +1,21 @@
 package com.printkiosk.client.api;
 
 import com.printkiosk.shared.api.dto.*;
+import com.printkiosk.shared.api.UploadSource;
+import com.printkiosk.shared.api.AdSlot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import java.io.Closeable;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
-import com.printkiosk.shared.api.AdSlot;
-import org.springframework.core.ParameterizedTypeReference;
-import java.util.List;
+
 /**
  * Единая точка обращения JavaFX-клиента к серверу.
  * <p>
@@ -140,10 +142,37 @@ public class KioskServerClient {
                 .body(JobPreviewResponse.class));
     }
 
+    // ════════════════════════════════════════════════════════════════
+    //  Ads
+    // ════════════════════════════════════════════════════════════════
+
+    /** Активный плейлист рекламы для слота (например, HOME для заставки). */
     public List<AdCreativeDto> adPlaylist(AdSlot slot) {
         return execute(() -> http.get()
                 .uri(uri -> uri.path("/api/ads/playlist").queryParam("slot", slot).build())
                 .retrieve()
                 .body(new ParameterizedTypeReference<List<AdCreativeDto>>() {}));
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  Upload (скан/ксерокопия → серверный файл + PIN)
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * Загружает локальный файл на сервер и возвращает PIN. Используется
+     * ксерокопией: собранный из сканов PDF заливается как обычный файл
+     * печати, после чего работает весь стандартный тракт (настройки/оплата/
+     * печать) по этому PIN.
+     */
+    public UploadResponse uploadFile(java.io.File file, UploadSource source) {
+        var body = new org.springframework.util.LinkedMultiValueMap<String, Object>();
+        body.add("file", new org.springframework.core.io.FileSystemResource(file));
+        body.add("source", source.name());
+        return execute(() -> http.post()
+                .uri("/api/files/upload")
+                .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA)
+                .body(body)
+                .retrieve()
+                .body(UploadResponse.class));
     }
 }

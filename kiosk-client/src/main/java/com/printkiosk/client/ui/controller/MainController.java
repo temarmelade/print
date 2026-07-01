@@ -10,6 +10,8 @@ import com.printkiosk.client.ui.IdleScreensaver;
 import com.printkiosk.client.ui.IdleWatcher;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.concurrent.Task;
+import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Label;
@@ -33,6 +35,8 @@ import org.springframework.stereotype.Component;
 import com.printkiosk.client.api.KioskServerClient;
 import com.printkiosk.client.service.PinEntryFlow;
 import com.printkiosk.shared.api.dto.VerifyResponse;
+import com.printkiosk.shared.api.dto.UploadResponse;
+import com.printkiosk.shared.api.UploadSource;
 import com.printkiosk.client.service.PreviewFlow;
 import javafx.scene.image.Image;
 import com.printkiosk.client.service.PrintSettingsFlow;
@@ -349,6 +353,7 @@ public class MainController {
     private final AdPlaylistService adPlaylistService;
     private final ServerProperties serverProperties;
     private final ScanFlow scanFlow;
+    private final KioskServerClient serverClient;
 
     /** Откуда вошли в настройки печати — определяет, куда вернёт «Назад». */
     private enum SettingsOrigin { PRINT_UPLOAD, SCAN }
@@ -360,12 +365,13 @@ public class MainController {
     /** Сколько киоск должен простаивать до показа заставки. */
     private static final java.time.Duration IDLE_TIMEOUT = java.time.Duration.ofSeconds(60);
 
-    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,  PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow, PrintFlow printFlow, PrinterReadinessService printerReadiness, KioskClientProperties clientProperties, AdPlaylistService adPlaylistService, ServerProperties serverProperties, ScanFlow scanFlow) {
+    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,  PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow, PrintFlow printFlow, PrinterReadinessService printerReadiness, KioskClientProperties clientProperties, AdPlaylistService adPlaylistService, ServerProperties serverProperties, ScanFlow scanFlow, KioskServerClient serverClient) {
         this.pinEntryFlow = pinEntryFlow;
         this.clientProperties = clientProperties;
         this.adPlaylistService = adPlaylistService;
         this.serverProperties = serverProperties;
         this.scanFlow = scanFlow;
+        this.serverClient = serverClient;
         this.previewFlow = previewFlow;
         this.settingsFlow = settingsFlow;
         this.paymentFlow = paymentFlow;
@@ -845,6 +851,8 @@ public class MainController {
         settingsFlow.stop();
         previewFlow.close();
         pinEntryFlow.reset();
+        scanFlow.clear();                              // чистим временные файлы сканов
+        settingsOrigin = SettingsOrigin.PRINT_UPLOAD;  // сброс источника настроек
         currentFile = null;
         currentPin  = null;
         currentPreview = null;
@@ -997,10 +1005,12 @@ public class MainController {
     }
 
     @FXML public void onDeleteCurrentScanPageClicked() {
-        // «Удалить»: одна страница → назад на прогресс; иначе показать соседнюю.
+        // «Удалить»: если осталась одна страница и её удалили — ведём себя как
+        // «Пересканировать» (удалить и сразу запустить новый скан), иначе
+        // показываем соседнюю страницу.
         boolean empty = scanFlow.deleteCurrent();
         if (empty) {
-            changeStep(KioskStep.SCAN_PROGRESS);
+            scanFlow.scanNextPage();   // запускает скан → onScanStarted → SCAN_PROGRESS → превью
         }
         // если не пусто — onPageChanged обновит предпросмотр, остаёмся на экране
     }
@@ -1008,12 +1018,50 @@ public class MainController {
     @FXML public void onPreviewNextClicked()           { scanFlow.next(); }
     @FXML public void onFinishScanClicked()            { changeStep(KioskStep.SCAN_DELIVERY); }
     @FXML public void onScanDeliveryPrintClicked() {
-        // «Распечатать»: помечаем, что в настройки печати вошли ИЗ скана —
-        // чтобы «Назад» в настройках вернул на SCAN_DELIVERY, а не в превью печати.
+        // Ксерокопия: сканы → PDF → заливаем на сервер как обычный файл печати
+        // → получаем PIN → сразу переходим в настройки печати. Экран
+        // сканирования при этом НЕ показываем — документ уже собран.
+        if (!scanFlow.hasPages()) {
+            log.warn("Print requested with no scanned pages");
+            return;
+        }
         settingsOrigin = SettingsOrigin.SCAN;
-        // TODO: settingsFlow.startWithFiles(scanFlow.pages()) — печать отсканированных
-        // страниц вместо загруженного файла (когда добавим вход по файлам).
-        changeStep(KioskStep.SETTINGS);
+
+        // Блокируем кнопку на время фоновой заливки, оставаясь на этом экране.
+        if (scanDeliveryPrintBtn != null) scanDeliveryPrintBtn.setDisable(true);
+
+        Task<UploadResponse> task = new Task<>() {
+            @Override protected UploadResponse call() throws Exception {
+                java.io.File pdf = scanFlow.buildPdf();
+                return serverClient.uploadFile(pdf, UploadSource.COPY);
+            }
+        };
+        task.setOnSucceeded(e -> Platform.runLater(() -> {
+            if (scanDeliveryPrintBtn != null) scanDeliveryPrintBtn.setDisable(false);
+            UploadResponse resp = task.getValue();
+            currentPin = resp.pin();                 // теперь сканы = обычный файл печати
+            settingsFlow.start(currentPin);          // запускаем стандартные настройки
+            changeStep(KioskStep.SETTINGS);          // сразу в настройки, минуя прогресс
+        }));
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            if (scanDeliveryPrintBtn != null) scanDeliveryPrintBtn.setDisable(false);
+            Throwable cause = task.getException();
+            log.error("Scan upload for printing failed", cause);
+            String detail = (cause != null)
+                    ? (cause.getClass().getSimpleName() + ": " + cause.getMessage())
+                    : "неизвестная ошибка";
+            // Остаёмся на экране действий, показываем причину оверлеем.
+            showConfirmOverlay(
+                    "Не удалось подготовить к печати",
+                    detail,
+                    "Понятно",
+                    "Закрыть",
+                    () -> {});
+        }));
+
+        Thread t = new Thread(task, "scan-print-upload");
+        t.setDaemon(true);
+        t.start();
     }
 
     @FXML public void onScanDeliveryWebClicked() {

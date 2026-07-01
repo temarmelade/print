@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestClient;
 
@@ -29,7 +28,14 @@ public class HttpClientConfig {
         factory.setConnectTimeout((int) properties.getConnectTimeout().toMillis());
         factory.setReadTimeout((int) properties.getReadTimeout().toMillis());
 
-        HttpMessageConverter<?> jacksonConverter = new MappingJackson2HttpMessageConverter(mapper);
+        var jacksonConverter = new MappingJackson2HttpMessageConverter(mapper);
+
+        // Для multipart-загрузки файлов (сканы/ксерокопия) нужен
+        // FormHttpMessageConverter. Он, в свою очередь, использует
+        // Resource/ByteArray-конвертеры для частей-файлов, а для JSON-частей —
+        // наш Jackson. Без этого POST multipart падает: «нет конвертера».
+        var formConverter = new org.springframework.http.converter.FormHttpMessageConverter();
+        formConverter.addPartConverter(jacksonConverter);
 
         return RestClient.builder()
                 .baseUrl(properties.getBaseUrl())
@@ -42,6 +48,9 @@ public class HttpClientConfig {
                 .requestFactory(factory)
                 .messageConverters(converters -> {
                     converters.clear();
+                    converters.add(new org.springframework.http.converter.ByteArrayHttpMessageConverter());
+                    converters.add(new org.springframework.http.converter.ResourceHttpMessageConverter());
+                    converters.add(formConverter);
                     converters.add(jacksonConverter);
                 })
                 .build();
