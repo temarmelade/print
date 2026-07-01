@@ -2,6 +2,8 @@ package com.printkiosk.client.ui.controller;
 
 import com.printkiosk.client.ui.state.Language;
 import com.printkiosk.client.config.KioskClientProperties;
+import com.printkiosk.client.service.scan.ScanFlow;
+import com.printkiosk.client.ui.VirtualKeyboard;
 import com.printkiosk.client.config.ServerProperties;
 import com.printkiosk.client.service.AdPlaylistService;
 import com.printkiosk.client.ui.IdleScreensaver;
@@ -9,6 +11,7 @@ import com.printkiosk.client.ui.IdleWatcher;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.TextField;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
@@ -254,6 +257,8 @@ public class MainController {
     @FXML private Label scanInstructionTitleLabel;
     @FXML private Label scanInstructionDescLabel;
     @FXML private Button startScanPageBtn;
+    @FXML private TextField scanFileNameField;   // поле имени файла (добавить в FXML)
+    private VirtualKeyboard virtualKeyboard;
     @FXML private StackPane scanDeliveryQrBox;
     @FXML private Label scanProgressTitleLabel;
     @FXML private Label scanProgressStatusLabel;
@@ -343,18 +348,24 @@ public class MainController {
     private final KioskClientProperties clientProperties;
     private final AdPlaylistService adPlaylistService;
     private final ServerProperties serverProperties;
+    private final ScanFlow scanFlow;
+
+    /** Откуда вошли в настройки печати — определяет, куда вернёт «Назад». */
+    private enum SettingsOrigin { PRINT_UPLOAD, SCAN }
+    private SettingsOrigin settingsOrigin = SettingsOrigin.PRINT_UPLOAD;
 
     /** Рекламная заставка по бездействию. */
     private IdleScreensaver screensaver;
     private IdleWatcher idleWatcher;
     /** Сколько киоск должен простаивать до показа заставки. */
-    private static final java.time.Duration IDLE_TIMEOUT = java.time.Duration.ofSeconds(10);
+    private static final java.time.Duration IDLE_TIMEOUT = java.time.Duration.ofSeconds(60);
 
-    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,  PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow, PrintFlow printFlow, PrinterReadinessService printerReadiness, KioskClientProperties clientProperties, AdPlaylistService adPlaylistService, ServerProperties serverProperties) {
+    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,  PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow, PrintFlow printFlow, PrinterReadinessService printerReadiness, KioskClientProperties clientProperties, AdPlaylistService adPlaylistService, ServerProperties serverProperties, ScanFlow scanFlow) {
         this.pinEntryFlow = pinEntryFlow;
         this.clientProperties = clientProperties;
         this.adPlaylistService = adPlaylistService;
         this.serverProperties = serverProperties;
+        this.scanFlow = scanFlow;
         this.previewFlow = previewFlow;
         this.settingsFlow = settingsFlow;
         this.paymentFlow = paymentFlow;
@@ -379,6 +390,58 @@ public class MainController {
         refreshUploadQrCodes();
         showOnly(homeScreen);
         setupIdleScreensaver();
+        setupScan();
+    }
+
+    /** Подключает слушатель сессии сканирования и экранную клавиатуру. */
+    private void setupScan() {
+        scanFlow.setListener(new ScanFlow.Listener() {
+            @Override public void onScanStarted() {
+                changeStep(KioskStep.SCAN_PROGRESS);
+            }
+            @Override public void onScanReady() {
+                refreshScanPreview();
+                changeStep(KioskStep.SCAN_PREVIEW);
+            }
+            @Override public void onScanError(String message) {
+                log.warn("Scan error: {}", message);
+                changeStep(KioskStep.SCAN_INSTRUCTION);
+            }
+            @Override public void onPageChanged() {
+                refreshScanPreview();
+            }
+        });
+
+        // Экранная клавиатура для поля имени файла (если поле есть в FXML).
+        if (scanFileNameField != null) {
+            virtualKeyboard = new VirtualKeyboard();
+            rootStack.getChildren().add(virtualKeyboard);
+            StackPane.setAlignment(virtualKeyboard, javafx.geometry.Pos.BOTTOM_CENTER);
+            StackPane.setMargin(virtualKeyboard, new javafx.geometry.Insets(0, 0, 28, 0));
+            virtualKeyboard.attachTo(scanFileNameField, currentLang);
+
+            // Ширина поля = ширине кнопки «Начать сканирование» (точное совпадение,
+            // не зависит от текста кнопки). maxWidth тоже фиксируем, иначе TextField
+            // растянулся бы на всю ширину VBox.
+            if (startScanPageBtn != null) {
+                scanFileNameField.prefWidthProperty().bind(startScanPageBtn.widthProperty());
+                scanFileNameField.maxWidthProperty().bind(startScanPageBtn.widthProperty());
+            }
+        }
+    }
+
+    /** Обновляет предпросмотр текущей отсканированной страницы. */
+    private void refreshScanPreview() {
+        if (scanPreviewImageView != null) {
+            scanPreviewImageView.setImage(scanFlow.currentPreviewImage());
+        }
+        if (scanPreviewPageLabel != null) {
+            scanPreviewPageLabel.setText(
+                    scanFlow.currentPageNumber() + " / " + scanFlow.pageCount());
+        }
+        if (scanPreviewTitleLabel != null && scanFlow.fileName() != null) {
+            scanPreviewTitleLabel.setText(scanFlow.fileName());
+        }
     }
 
     /**
@@ -407,11 +470,14 @@ public class MainController {
     /** Показать заставку с актуальным плейлистом (если он непустой). */
     private void showScreensaver() {
         var playlist = adPlaylistService.currentPlaylist();
+        log.info("Idle timeout reached. Ad playlist size = {}", playlist.size());
         if (playlist.isEmpty()) {
             // Нечего показывать — выходим из режима заставки и считаем заново.
+            log.info("Screensaver not shown: playlist is empty (нет загруженной рекламы для слота HOME)");
             idleWatcher.cancelIdle();
             return;
         }
+        log.info("Showing screensaver with {} item(s)", playlist.size());
         screensaver.start(playlist);
         screensaver.toFront();
     }
@@ -496,6 +562,7 @@ public class MainController {
         setLangActive(langKgBtn, lang == Language.KG);
         setLangActive(langEnBtn, lang == Language.EN);
         refreshUploadQrCodes();
+        if (virtualKeyboard != null) virtualKeyboard.rebuild(lang);
         log.info("Language switched to {}", lang);
     }
 
@@ -603,9 +670,7 @@ public class MainController {
             log.warn("Tried to enter settings without a verified file");
             return;
         }
-        // Запускаем preview-цикл с текущим PIN из buffer'а уже нет —
-        // PIN не сохранён в clientside. Сохраняем его в state в onSuccess.
-        // (см. ниже)
+        settingsOrigin = SettingsOrigin.PRINT_UPLOAD;   // вошли из печати загруженного файла
         settingsFlow.start(currentPin);
         changeStep(KioskStep.SETTINGS);
     }
@@ -873,7 +938,11 @@ public class MainController {
         switch (currentStep) {
             case SETTINGS -> {
                 settingsFlow.stop();
-                changeStep(KioskStep.FILE_INFO);
+                // «Назад» зависит от того, откуда вошли в настройки:
+                // из скана → на экран действий сканирования; из печати → в превью файла.
+                changeStep(settingsOrigin == SettingsOrigin.SCAN
+                        ? KioskStep.SCAN_DELIVERY
+                        : KioskStep.FILE_INFO);
             }
             case SUMMARY -> {
                 changeStep(KioskStep.SETTINGS);
@@ -909,16 +978,68 @@ public class MainController {
     }
 
     // ---- SCAN ----
-    @FXML public void onStartScanPageClicked()         { log.info("TODO: start scan"); }
-    @FXML public void onAddScanPageClicked()           { log.info("TODO: add scan page"); }
-    @FXML public void onRescanPageClicked()            { log.info("TODO: rescan page"); }
-    @FXML public void onDeleteCurrentScanPageClicked() { log.info("TODO: delete scan page"); }
-    @FXML public void onPreviewPrevClicked()           { log.info("TODO: scan preview prev"); }
-    @FXML public void onPreviewNextClicked()           { log.info("TODO: scan preview next"); }
+    @FXML public void onStartScanPageClicked() {
+        // Шаг 1 → запуск сессии с именем файла (из поля; пустое → случайное),
+        // затем первый скан. Имя берём из TextField, если он есть в FXML.
+        String name = (scanFileNameField != null) ? scanFileNameField.getText() : null;
+        scanFlow.startSession(name);
+        scanFlow.scanNextPage();
+    }
+
+    @FXML public void onAddScanPageClicked() {
+        // «Добавить страницу»: текущие сканы остаются, идём сканировать новую.
+        scanFlow.scanNextPage();
+    }
+
+    @FXML public void onRescanPageClicked() {
+        // «Пересканировать»: удалить текущую и сканировать заново.
+        scanFlow.rescanCurrent();
+    }
+
+    @FXML public void onDeleteCurrentScanPageClicked() {
+        // «Удалить»: одна страница → назад на прогресс; иначе показать соседнюю.
+        boolean empty = scanFlow.deleteCurrent();
+        if (empty) {
+            changeStep(KioskStep.SCAN_PROGRESS);
+        }
+        // если не пусто — onPageChanged обновит предпросмотр, остаёмся на экране
+    }
+    @FXML public void onPreviewPrevClicked()           { scanFlow.previous(); }
+    @FXML public void onPreviewNextClicked()           { scanFlow.next(); }
     @FXML public void onFinishScanClicked()            { changeStep(KioskStep.SCAN_DELIVERY); }
-    @FXML public void onScanDeliveryPrintClicked()     { log.info("TODO: scan delivery → print"); }
-    @FXML public void onScanDeliveryWebClicked()       { log.info("TODO: scan delivery → web"); }
-    @FXML public void onScanDeliveryTelegramClicked()  { log.info("TODO: scan delivery → telegram"); }
+    @FXML public void onScanDeliveryPrintClicked() {
+        // «Распечатать»: помечаем, что в настройки печати вошли ИЗ скана —
+        // чтобы «Назад» в настройках вернул на SCAN_DELIVERY, а не в превью печати.
+        settingsOrigin = SettingsOrigin.SCAN;
+        // TODO: settingsFlow.startWithFiles(scanFlow.pages()) — печать отсканированных
+        // страниц вместо загруженного файла (когда добавим вход по файлам).
+        changeStep(KioskStep.SETTINGS);
+    }
+
+    @FXML public void onScanDeliveryWebClicked() {
+        // Динамический QR на веб-получение сканов.
+        if (scanDeliveryQrImageView != null) {
+            scanDeliveryQrImageView.setImage(
+                    QrCodeGenerator.generate(buildScanWebUrl(), 220));
+        }
+    }
+
+    @FXML public void onScanDeliveryTelegramClicked() {
+        // Динамический QR на получение сканов через Telegram.
+        if (scanDeliveryQrImageView != null) {
+            scanDeliveryQrImageView.setImage(
+                    QrCodeGenerator.generate(buildScanTelegramUrl(), 220));
+        }
+    }
+
+    /** Заготовки ссылок доставки сканов (подставь реальные эндпоинты). */
+    private String buildScanWebUrl() {
+        return serverProperties.getBaseUrl() + "/scan/" + scanFlow.fileName();
+    }
+    private String buildScanTelegramUrl() {
+        return clientProperties.getUpload().getTelegramBotUrl()
+                + "?start=scan_" + scanFlow.fileName();
+    }
 
     // ---- ADMIN ----
     @FXML public void onLogoClicked()             { log.info("TODO: logo click counter / admin"); }

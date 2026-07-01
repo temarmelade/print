@@ -590,7 +590,7 @@
                       alignment="CENTER"
                       maxWidth="760">
 
-                    <Label text="📄" styleClass="main-action-icon"/>
+                    <FontIcon iconLiteral="fas-file-import" iconSize="72" styleClass="scan-start-icon"/>
 
                     <Label fx:id="scanInstructionTitleLabel"
                            text="Положите документ в сканер"
@@ -601,6 +601,10 @@
                            styleClass="body-text-muted"
                            textAlignment="CENTER"
                            wrapText="true"/>
+
+                    <TextField fx:id="scanFileNameField"
+                               promptText="Дайте имя файлу"
+                               styleClass="scan-name-field"/>
 
                     <Button fx:id="startScanPageBtn"
                             text="Начать сканирование"
