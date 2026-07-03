@@ -529,7 +529,12 @@ public class MainController {
             case PAYMENT          -> showOnly(paymentScreen);
             case PRINTING         -> showOnly(printingScreen);
             case COMPLETED        -> showOnly(completedScreen);
-            case SCAN_INSTRUCTION -> showOnly(scanInstructionScreen);
+            case SCAN_INSTRUCTION -> {
+                // Очищаем поле имени файла при каждом входе на экран старта
+                // сканирования (например, при повторном заходе с HOME).
+                if (scanFileNameField != null) scanFileNameField.clear();
+                showOnly(scanInstructionScreen);
+            }
             case SCAN_PROGRESS    -> showOnly(scanProgressScreen);
             case SCAN_PREVIEW     -> showOnly(scanPreviewScreen);
             case SCAN_DELIVERY    -> showOnly(scanDeliveryScreen);
@@ -1065,28 +1070,68 @@ public class MainController {
     }
 
     @FXML public void onScanDeliveryWebClicked() {
-        // Динамический QR на веб-получение сканов.
-        if (scanDeliveryQrImageView != null) {
-            scanDeliveryQrImageView.setImage(
-                    QrCodeGenerator.generate(buildScanWebUrl(), 220));
-        }
+        // Веб-доставка: сканы → PDF → заливаем на сервер → получаем PIN →
+        // QR ведёт на прямое скачивание файла по этому PIN. Адрес — публичный
+        // (сетевой), чтобы телефон пользователя мог открыть ссылку.
+        deliverScans(pin -> serverProperties.getPublicBaseUrl() + "/api/files/" + pin + "/download",
+                scanDeliveryWebBtn);
     }
 
     @FXML public void onScanDeliveryTelegramClicked() {
-        // Динамический QR на получение сканов через Telegram.
-        if (scanDeliveryQrImageView != null) {
-            scanDeliveryQrImageView.setImage(
-                    QrCodeGenerator.generate(buildScanTelegramUrl(), 220));
-        }
+        // Телеграм-доставка (реализуем следующей): пока используем заглушку.
+        deliverScans(pin -> clientProperties.getUpload().getTelegramBotUrl()
+                + "?start=get_" + pin, scanDeliveryTelegramBtn);
     }
 
-    /** Заготовки ссылок доставки сканов (подставь реальные эндпоинты). */
-    private String buildScanWebUrl() {
-        return serverProperties.getBaseUrl() + "/scan/" + scanFlow.fileName();
-    }
-    private String buildScanTelegramUrl() {
-        return clientProperties.getUpload().getTelegramBotUrl()
-                + "?start=scan_" + scanFlow.fileName();
+    /**
+     * Общий флоу доставки сканов: собирает PDF, заливает на сервер, получает
+     * PIN и по нему строит ссылку (linkBuilder), которую показывает QR-кодом.
+     */
+    private void deliverScans(java.util.function.Function<String, String> linkBuilder,
+                              Button triggerBtn) {
+        if (!scanFlow.hasPages()) {
+            log.warn("Delivery requested with no scanned pages");
+            return;
+        }
+        if (triggerBtn != null) triggerBtn.setDisable(true);
+
+        Task<UploadResponse> task = new Task<>() {
+            @Override protected UploadResponse call() throws Exception {
+                java.io.File pdf = scanFlow.buildPdf();
+                return serverClient.uploadFile(pdf, UploadSource.SCAN);
+            }
+        };
+        task.setOnSucceeded(e -> Platform.runLater(() -> {
+            if (triggerBtn != null) triggerBtn.setDisable(false);
+            String url = linkBuilder.apply(task.getValue().pin());
+            if (scanDeliveryQrImageView != null) {
+                scanDeliveryQrImageView.setImage(QrCodeGenerator.generate(url, 220));
+            }
+            // Контейнер QR по умолчанию скрыт — показываем его.
+            if (scanDeliveryQrBox != null) {
+                scanDeliveryQrBox.setVisible(true);
+                scanDeliveryQrBox.setManaged(true);
+            }
+            if (scanDeliveryInfoLabel != null) {
+                scanDeliveryInfoLabel.setText("Отсканируйте QR-код, чтобы получить документ");
+                scanDeliveryInfoLabel.setVisible(true);
+                scanDeliveryInfoLabel.setManaged(true);
+            }
+        }));
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            if (triggerBtn != null) triggerBtn.setDisable(false);
+            Throwable cause = task.getException();
+            log.error("Scan delivery upload failed", cause);
+            String detail = (cause != null)
+                    ? (cause.getClass().getSimpleName() + ": " + cause.getMessage())
+                    : "неизвестная ошибка";
+            showConfirmOverlay("Не удалось подготовить документ", detail,
+                    "Понятно", "Закрыть", () -> {});
+        }));
+
+        Thread t = new Thread(task, "scan-delivery-upload");
+        t.setDaemon(true);
+        t.start();
     }
 
     // ---- ADMIN ----

@@ -235,6 +235,17 @@ public class FileService {
     //  VERIFY (киоск)
     // ════════════════════════════════════════════════════════════════
 
+    /**
+     * Находит активный файл по PIN для скачивания (веб-доставка сканов).
+     * В отличие от verify, НЕ ставит hold — скачивание не блокирует PIN за
+     * киоском, просто отдаёт файл, пока он не истёк.
+     */
+    @Transactional(readOnly = true)
+    public FileEntity getForDownload(String pin) {
+        return repository.findActiveByCode(pin, Instant.now())
+                .orElseThrow(PinNotFoundException::new);
+    }
+
     @Transactional
     public VerifyResponse verify(String pin, String kioskId) {
         Instant now = Instant.now();

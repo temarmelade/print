@@ -5,16 +5,20 @@ spring:
 kiosk:
   server:
     base-url: ${KIOSK_SERVER_URL:http://localhost:8080}
+    # Адрес сервера, каким его видит ТЕЛЕФОН пользователя (для ссылок в QR-кодах:
+    # скачивание сканов, страница загрузки). Это НЕ localhost — телефон должен
+    # достучаться по сети. Меняй на реальный IP/домен сервера.
+    public-base-url: ${KIOSK_PUBLIC_URL:http://192.168.1.120:8080}
     kiosk-id: ${KIOSK_ID:dev-kiosk}
     connect-timeout: PT5S
     read-timeout: PT10S
     upload-timeout: PT60S
+  upload:
+    telegram-bot-url: ${KIOSK_TELEGRAM_BOT_URL:https://t.me/AlaTooPrintKioskBot}
+
   printer:
     name: "Canon LBP6030/6040/6018L"      # переопредели в application-local.yml на свой
     snmp-host: ""                          # пусто = USB-принтер, SNMP пропускается
     snmp-port: 161
     snmp-community: public
     snmp-poll-interval-ms: 30000
-  upload:
-    telegram-bot-url: ${KIOSK_TELEGRAM_BOT_URL:https://t.me/PrintKioskBot}
-    web-url: ${KIOSK_WEB_UPLOAD_URL:http://192.168.1.120:8080/upload/}
