@@ -723,6 +723,11 @@
                             styleClass="btn-back"/>
                 </HBox>
 
+                <Button fx:id="scanDeliveryHomeBtn"
+                        text="На главный экран"
+                        onAction="#onScanDeliveryHomeClicked"
+                        styleClass="btn-back"/>
+
                 <VBox styleClass="content-card"
                       spacing="22"
                       alignment="CENTER"

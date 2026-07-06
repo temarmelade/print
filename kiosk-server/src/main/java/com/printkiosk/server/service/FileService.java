@@ -76,8 +76,10 @@ public class FileService {
         log.info("DEBUG upload: detectedMime='{}', isDocx={}",
                 trueMime,
                 FileValidationService.MIME_DOCX.equals(trueMime));
-        // ── 1.5. Если DOCX — конвертируем в PDF ─────────────────────
-        if (FileValidationService.MIME_DOCX.equals(trueMime)) {
+        // ── 1.5. Если Word (DOCX или старый DOC) — конвертируем в PDF ──
+        // LibreOffice одинаково конвертирует оба формата.
+        if (FileValidationService.MIME_DOCX.equals(trueMime)
+                || FileValidationService.MIME_DOC.equals(trueMime)) {
             MultipartFile converted = convertDocxToPdf(file);
             // Дальше работаем с конвертированным PDF —
             // PIN и pageCount будут считаться по нему.

@@ -30,6 +30,7 @@ public class FileValidationService {
     public static final String MIME_PNG  = "image/png";
     public static final String MIME_DOCX =
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    public static final String MIME_DOC = "application/msword";
 
     /** Сколько байт читаем для определения сигнатуры. */
     private static final int MAGIC_PROBE_BYTES = 8;
@@ -132,6 +133,11 @@ public class FileValidationService {
                 && head[2] == 0x03 && head[3] == 0x04) {
             // см. enhanceDocxDetection ниже — для прода стоит дотянуть
             return MIME_DOCX;
+        }
+        // DOC (старый Word, OLE2-контейнер): D0 CF 11 E0 A1 B1 1A E1
+        if (head[0] == (byte) 0xD0 && head[1] == (byte) 0xCF
+                && head[2] == 0x11 && head[3] == (byte) 0xE0) {
+            return MIME_DOC;
         }
 
         log.debug("Unknown magic bytes: {}",

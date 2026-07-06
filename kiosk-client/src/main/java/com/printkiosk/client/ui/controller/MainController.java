@@ -356,8 +356,17 @@ public class MainController {
     private final KioskServerClient serverClient;
 
     /** Откуда вошли в настройки печати — определяет, куда вернёт «Назад». */
-    private enum SettingsOrigin { PRINT_UPLOAD, SCAN }
+    private enum SettingsOrigin { PRINT_UPLOAD, SCAN, COPY }
     private SettingsOrigin settingsOrigin = SettingsOrigin.PRINT_UPLOAD;
+
+    /**
+     * Режим, в котором запущен модуль сканирования: обычное сканирование
+     * (после «Завершить» — экран выбора действий) или ксерокопия (после
+     * «Завершить» — сразу настройки печати). Экраны переиспользуются одни
+     * и те же, различается только маршрутизация.
+     */
+    private enum ScanMode { SCAN, COPY }
+    private ScanMode scanMode = ScanMode.SCAN;
 
     /** Рекламная заставка по бездействию. */
     private IdleScreensaver screensaver;
@@ -397,6 +406,30 @@ public class MainController {
         showOnly(homeScreen);
         setupIdleScreensaver();
         setupScan();
+        startHomeClock();
+    }
+
+    /**
+     * Живые часы на главном экране: раз в секунду обновляют время и дату.
+     * Timeline-колбэки выполняются на JavaFX Application Thread — Platform.
+     * runLater не нужен.
+     */
+    private void startHomeClock() {
+        final var timeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+        final var dateFmt = java.time.format.DateTimeFormatter
+                .ofPattern("d MMMM, EEEE", new java.util.Locale("ru"));
+
+        Timeline clock = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            var now = java.time.LocalDateTime.now();
+            if (homeTimeLabel != null) homeTimeLabel.setText(now.format(timeFmt));
+            if (homeDateLabel != null) homeDateLabel.setText(now.format(dateFmt));
+        }));
+        clock.setCycleCount(Timeline.INDEFINITE);
+        clock.play();
+        // Первое обновление сразу, не дожидаясь первой секунды.
+        var now = java.time.LocalDateTime.now();
+        if (homeTimeLabel != null) homeTimeLabel.setText(now.format(timeFmt));
+        if (homeDateLabel != null) homeDateLabel.setText(now.format(dateFmt));
     }
 
     /** Подключает слушатель сессии сканирования и экранную клавиатуру. */
@@ -552,8 +585,8 @@ public class MainController {
 
     // ---- HOME ----
     @FXML public void onPrintOperationSelected()  { changeStep(KioskStep.UPLOAD); }
-    @FXML public void onCopyOperationSelected()   { changeStep(KioskStep.SCAN_INSTRUCTION); }
-    @FXML public void onScanOperationSelected()   { changeStep(KioskStep.SCAN_INSTRUCTION); }
+    @FXML public void onCopyOperationSelected()   { scanMode = ScanMode.COPY; changeStep(KioskStep.SCAN_INSTRUCTION); }
+    @FXML public void onScanOperationSelected()   { scanMode = ScanMode.SCAN; changeStep(KioskStep.SCAN_INSTRUCTION); }
     @FXML public void onHelpClicked()             { changeStep(KioskStep.HELP); }
     @FXML public void onHelpBackClicked()         { changeStep(KioskStep.HOME); }
 
@@ -858,6 +891,7 @@ public class MainController {
         pinEntryFlow.reset();
         scanFlow.clear();                              // чистим временные файлы сканов
         settingsOrigin = SettingsOrigin.PRINT_UPLOAD;  // сброс источника настроек
+        scanMode = ScanMode.SCAN;                      // сброс режима сканирования
         currentFile = null;
         currentPin  = null;
         currentPreview = null;
@@ -952,10 +986,16 @@ public class MainController {
             case SETTINGS -> {
                 settingsFlow.stop();
                 // «Назад» зависит от того, откуда вошли в настройки:
-                // из скана → на экран действий сканирования; из печати → в превью файла.
-                changeStep(settingsOrigin == SettingsOrigin.SCAN
-                        ? KioskStep.SCAN_DELIVERY
-                        : KioskStep.FILE_INFO);
+                // скан → экран действий; ксерокопия → превью сканов; печать → превью файла.
+                changeStep(switch (settingsOrigin) {
+                    case SCAN -> KioskStep.SCAN_DELIVERY;
+                    case COPY -> KioskStep.SCAN_PREVIEW;
+                    default   -> KioskStep.FILE_INFO;
+                });
+            }
+            case SCAN_DELIVERY -> {
+                // «Назад» с экрана действий — к превью сканов (сессия жива).
+                changeStep(KioskStep.SCAN_PREVIEW);
             }
             case SUMMARY -> {
                 changeStep(KioskStep.SETTINGS);
@@ -1021,19 +1061,37 @@ public class MainController {
     }
     @FXML public void onPreviewPrevClicked()           { scanFlow.previous(); }
     @FXML public void onPreviewNextClicked()           { scanFlow.next(); }
-    @FXML public void onFinishScanClicked()            { changeStep(KioskStep.SCAN_DELIVERY); }
+    @FXML public void onFinishScanClicked() {
+        if (scanMode == ScanMode.COPY) {
+            // Ксерокопия: минуя экран выбора действий — сразу в настройки печати.
+            uploadScansAndOpenPrintSettings(SettingsOrigin.COPY, null);
+        } else {
+            changeStep(KioskStep.SCAN_DELIVERY);
+        }
+    }
+
+    /** «На главный экран» с экрана действий сканирования. */
+    @FXML public void onScanDeliveryHomeClicked() {
+        resetAllAndGoHome();
+    }
     @FXML public void onScanDeliveryPrintClicked() {
-        // Ксерокопия: сканы → PDF → заливаем на сервер как обычный файл печати
-        // → получаем PIN → сразу переходим в настройки печати. Экран
-        // сканирования при этом НЕ показываем — документ уже собран.
+        uploadScansAndOpenPrintSettings(SettingsOrigin.SCAN, scanDeliveryPrintBtn);
+    }
+
+    /**
+     * Общий тракт «сканы → печать» для обычного сканирования («Распечатать»
+     * на экране действий) и ксерокопии («Завершить» в превью): собирает PDF,
+     * заливает на сервер как файл печати (source=COPY), получает PIN и
+     * открывает стандартные настройки печати. origin определяет, куда
+     * вернёт «Назад» из настроек.
+     */
+    private void uploadScansAndOpenPrintSettings(SettingsOrigin origin, Button triggerBtn) {
         if (!scanFlow.hasPages()) {
             log.warn("Print requested with no scanned pages");
             return;
         }
-        settingsOrigin = SettingsOrigin.SCAN;
-
-        // Блокируем кнопку на время фоновой заливки, оставаясь на этом экране.
-        if (scanDeliveryPrintBtn != null) scanDeliveryPrintBtn.setDisable(true);
+        settingsOrigin = origin;
+        if (triggerBtn != null) triggerBtn.setDisable(true);
 
         Task<UploadResponse> task = new Task<>() {
             @Override protected UploadResponse call() throws Exception {
@@ -1042,26 +1100,21 @@ public class MainController {
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
-            if (scanDeliveryPrintBtn != null) scanDeliveryPrintBtn.setDisable(false);
+            if (triggerBtn != null) triggerBtn.setDisable(false);
             UploadResponse resp = task.getValue();
             currentPin = resp.pin();                 // теперь сканы = обычный файл печати
             settingsFlow.start(currentPin);          // запускаем стандартные настройки
-            changeStep(KioskStep.SETTINGS);          // сразу в настройки, минуя прогресс
+            changeStep(KioskStep.SETTINGS);
         }));
         task.setOnFailed(e -> Platform.runLater(() -> {
-            if (scanDeliveryPrintBtn != null) scanDeliveryPrintBtn.setDisable(false);
+            if (triggerBtn != null) triggerBtn.setDisable(false);
             Throwable cause = task.getException();
             log.error("Scan upload for printing failed", cause);
             String detail = (cause != null)
                     ? (cause.getClass().getSimpleName() + ": " + cause.getMessage())
                     : "неизвестная ошибка";
-            // Остаёмся на экране действий, показываем причину оверлеем.
-            showConfirmOverlay(
-                    "Не удалось подготовить к печати",
-                    detail,
-                    "Понятно",
-                    "Закрыть",
-                    () -> {});
+            showConfirmOverlay("Не удалось подготовить к печати", detail,
+                    "Понятно", "Закрыть", () -> {});
         }));
 
         Thread t = new Thread(task, "scan-print-upload");

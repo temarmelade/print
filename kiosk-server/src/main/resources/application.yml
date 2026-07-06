@@ -25,12 +25,16 @@ spring:
   servlet:
     multipart:
       enabled: true
+      # Лимит рассчитан на видеорекламу (грузит только админ). Файлы печати
+      # дополнительно ограничиваются бизнес-валидацией, а не только этим лимитом.
       max-file-size: 100MB
       max-request-size: 105MB
       file-size-threshold: 1MB
 
 server:
   port: ${KIOSK_SERVER_PORT:8080}
+  # Слушаем на всех сетевых интерфейсах (а не только localhost), чтобы
+  # телефон в той же сети мог открыть страницу загрузки по QR-коду.
   address: ${KIOSK_SERVER_ADDRESS:0.0.0.0}
   error:
     include-message: always
@@ -61,6 +65,7 @@ kiosk:
       - image/jpeg
       - image/png
       - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+      - application/msword
   storage:
     path: ${KIOSK_STORAGE_PATH:/tmp/kiosk-uploads}
     public-base-url: ${KIOSK_PUBLIC_BASE_URL:http://localhost:8080}

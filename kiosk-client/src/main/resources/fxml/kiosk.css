@@ -2060,3 +2060,16 @@
 .scan-start-icon {
     -fx-icon-color: #2563EB;
 }
+
+#paymentHomeBtn {
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+    -fx-padding: 18 44;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-border-width: 2px;
+    -fx-border-color: #2563EB;
+    -fx-text-fill: #2563EB;
+    -fx-background-color: white;
+}
+#paymentHomeBtn:hover { -fx-background-color: #EFF6FF; }

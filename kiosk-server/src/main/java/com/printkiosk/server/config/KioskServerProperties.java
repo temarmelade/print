@@ -69,7 +69,7 @@ public class KioskServerProperties {
 
         /** Публичный base URL, через который Nginx отдаёт файлы. */
         @NotBlank
-        private String publicBaseUrl = "https://kioskprint.kg";
+        private String publicBaseUrl = "http://192.168.1.120:8080";
 
         /** Как часто запускается очистка просроченных файлов. */
         @NotNull

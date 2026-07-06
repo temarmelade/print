@@ -42,9 +42,9 @@ public class KioskClientProperties {
     @Setter
     public static class Upload {
         /** Базовый deep-link Telegram-бота, напр. https://t.me/PrintKioskBot */
-        private String telegramBotUrl = "https://t.me/PrintKioskBot";
+        private String telegramBotUrl = "https://t.me/AlaTooPrintKioskBot";
 
         /** Базовый URL веб-портала загрузки, напр. https://kioskprint.kg/upload */
-        private String webUrl = "https://kioskprint.kg/upload";
+        private String webUrl = "http://192.168.1.120/upload";
     }
 }
