@@ -173,17 +173,18 @@
     <h1 class="logo">🖨️ Print <span>Kiosk</span></h1>
     <p class="subtitle" id="subtitle"></p>
 
-    <label class="dropzone" id="dropzone">
-        <input type="file" id="fileInput" class="hidden"
-               accept="application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,.pdf,.jpg,.jpeg,.png,.docx,.doc">
+    <input type="file" id="fileInput" class="hidden"
+           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,image/*">
+    <div class="dropzone" id="dropzone">
         <div class="icon">📂</div>
         <div class="hint" id="dzHint"></div>
         <div class="formats" id="dzFormats"></div>
-    </label>
+    </div>
 
     <div class="filename" id="filename"></div>
 
     <button class="btn btn-primary" id="submitBtn" disabled></button>
+    <div id="debugLine" style="margin-top:12px;font-size:12px;color:#EF4444;word-break:break-all;text-align:center;"></div>
 </div>
 
 <!-- ЭКРАН РЕЗУЛЬТАТА -->
@@ -304,7 +305,7 @@
 
     // ── Выбор файла ────────────────────────────────────────────────
     const dropzone = el("dropzone");
-    dropzone.addEventListener("click", () => fileInput.click());
+    dropzone.addEventListener("click", () => {fileInput.value = ""; fileInput.click();});
 
     ["dragover","dragenter"].forEach(ev =>
         dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add("dragover"); }));
@@ -321,6 +322,8 @@
         selectedFile = file;
         el("filename").textContent = file.name;
         submitBtn.disabled = false;
+        const dbg = el("debugLine");
+        if (dbg) dbg.textContent = "Выбран: " + file.name + " · " + file.type + " · " + file.size + " Б";
         applyLang();
     }
 
@@ -346,12 +349,20 @@
                 const data = await res.json();   // { pin, expiresAt, ttlSeconds }
                 showSuccess(data);
             } else {
+                // Показываем реальную причину: HTTP-статус + тело ответа сервера.
+                let bodyText = "";
+                try { bodyText = await res.text(); } catch (_) {}
                 let code = "UNKNOWN";
-                try { code = (await res.json()).code || "UNKNOWN"; } catch (_) {}
+                try { code = JSON.parse(bodyText).code || "UNKNOWN"; } catch (_) {}
                 showError(code);
+                // Диагностическая строка под кнопкой (временно).
+                const dbg = el("debugLine");
+                if (dbg) dbg.textContent = "HTTP " + res.status + " · " + bodyText.slice(0, 200);
             }
-        } catch (_) {
+        } catch (err) {
             showError("NETWORK");
+            const dbg = el("debugLine");
+            if (dbg) dbg.textContent = "Сеть: " + (err && err.message ? err.message : err);
         } finally {
             submitBtn.innerHTML = t.submit;
             submitBtn.disabled = false;
