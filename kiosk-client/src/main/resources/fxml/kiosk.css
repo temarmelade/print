@@ -2073,3 +2073,85 @@
     -fx-background-color: white;
 }
 #paymentHomeBtn:hover { -fx-background-color: #EFF6FF; }
+
+/* ════════════════════════════════════════════════════════════════
+   ВЫБОР СТРАНИЦ ДЛЯ ПЕЧАТИ (page-select-panel)
+   ════════════════════════════════════════════════════════════════ */
+
+.page-select-panel { -fx-padding: 4 0; }
+
+.page-mode-combo {
+    -fx-font-size: 17px;
+    -fx-pref-height: 52px;
+    -fx-background-radius: 12px;
+    -fx-border-radius: 12px;
+    -fx-border-color: #D1D5DB;
+    -fx-border-width: 1.5px;
+    -fx-background-color: white;
+}
+.page-mode-combo .list-cell { -fx-font-size: 17px; -fx-padding: 10 14; }
+
+.page-input-row {
+    -fx-alignment: center-left;
+}
+
+/* Квадратное числовое поле [  ] — крупное, под палец. */
+.page-num-field {
+    -fx-min-width: 64px;
+    -fx-max-width: 64px;
+    -fx-min-height: 64px;
+    -fx-max-height: 64px;
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-alignment: center;
+    -fx-background-color: white;
+    -fx-background-radius: 12px;
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 2px;
+    -fx-border-radius: 12px;
+}
+.page-num-field:focused {
+    -fx-border-color: #2563EB;
+}
+
+.page-range-dash {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #6B7280;
+}
+
+/* Кнопка "+" добавления строки. */
+.page-add-btn {
+    -fx-min-width: 52px;
+    -fx-min-height: 52px;
+    -fx-font-size: 26px;
+    -fx-font-weight: 800;
+    -fx-background-color: #EFF6FF;
+    -fx-text-fill: #2563EB;
+    -fx-background-radius: 12px;
+    -fx-cursor: hand;
+}
+.page-add-btn:hover { -fx-background-color: #DBEAFE; }
+
+/* ── Цифровая клавиатура (numeric-keyboard) ── */
+.numeric-keyboard {
+    -fx-background-color: #D1D5DB;
+    -fx-padding: 14px;
+    -fx-background-radius: 18px;
+    -fx-effect: dropshadow(gaussian, rgba(17,24,39,0.28), 28, 0, 0, 8);
+}
+.numpad-key {
+    -fx-min-width: 76px;
+    -fx-min-height: 64px;
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-background-color: white;
+    -fx-text-fill: #111827;
+    -fx-background-radius: 10px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(17,24,39,0.18), 2, 0, 0, 1);
+}
+.numpad-key:pressed { -fx-background-color: #E5E7EB; }
+.numpad-done { -fx-background-color: #2563EB; -fx-text-fill: white; }
+.numpad-done .ikonli-font-icon { -fx-icon-color: white; }
+.numpad-done:pressed { -fx-background-color: #1D4ED8; }

@@ -1,22 +1,16 @@
 package com.printkiosk.client.ui.controller;
 
+import com.printkiosk.client.ui.*;
 import com.printkiosk.client.ui.state.Language;
 import com.printkiosk.client.config.KioskClientProperties;
 import com.printkiosk.client.service.scan.ScanFlow;
-import com.printkiosk.client.ui.VirtualKeyboard;
 import com.printkiosk.client.config.ServerProperties;
 import com.printkiosk.client.service.AdPlaylistService;
-import com.printkiosk.client.ui.IdleScreensaver;
-import com.printkiosk.client.ui.IdleWatcher;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.concurrent.Task;
 import javafx.application.Platform;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
-import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -141,7 +135,9 @@ public class MainController {
     @FXML private Button backBtnPayment;
     @FXML private Button backBtnScanInstruction;
     @FXML private Button backBtnScanPreview;
-
+    @FXML private ComboBox<PageSelectionPanel.Mode> pageModeCombo;
+    @FXML private VBox pageInputsContainer;
+    @FXML private Button addPageRowBtn;
     @FXML private Label selectedPinCodeLabel;
     @FXML private Button pinBackspaceBtn;
     @FXML private Button pinSubmitBtn;
@@ -367,7 +363,8 @@ public class MainController {
      */
     private enum ScanMode { SCAN, COPY }
     private ScanMode scanMode = ScanMode.SCAN;
-
+    private PageSelectionPanel pageSelection;
+    private NumericKeyboard numericKeyboard;
     /** Рекламная заставка по бездействию. */
     private IdleScreensaver screensaver;
     private IdleWatcher idleWatcher;
@@ -406,6 +403,14 @@ public class MainController {
         showOnly(homeScreen);
         setupIdleScreensaver();
         setupScan();
+        numericKeyboard = new NumericKeyboard();
+        rootStack.getChildren().add(numericKeyboard);
+        StackPane.setAlignment(numericKeyboard, javafx.geometry.Pos.BOTTOM_CENTER);
+        StackPane.setMargin(numericKeyboard, new javafx.geometry.Insets(0, 0, 28, 0));
+
+        pageSelection = new PageSelectionPanel(
+                pageModeCombo, pageInputsContainer, addPageRowBtn,
+                tf -> numericKeyboard.attachTo(tf));
         startHomeClock();
     }
 
@@ -696,6 +701,9 @@ public class MainController {
             pinEntryFlow.pressDigit(btn.getText().trim());
         }
     }
+
+    @FXML public void onAddPageRowClicked() { pageSelection.onAddRow(); }
+
 
     @FXML
     public void onPinBackspaceClicked() {

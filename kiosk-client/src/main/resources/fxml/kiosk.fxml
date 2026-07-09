@@ -784,79 +784,89 @@
                     <Button fx:id="backBtnFileInfo" text="← Назад" onAction="#onBackClicked" styleClass="btn-back"/>
                 </HBox>
 
-                <VBox styleClass="content-card" spacing="18" alignment="CENTER" maxWidth="900">
+                <HBox alignment="CENTER" spacing="30" styleClass="main-content-area">
 
-                    <VBox alignment="CENTER" spacing="6">
-                        <Label fx:id="fileFoundTitleLabel" text="Файл найден" styleClass="h2-text"/>
-                        <Label fx:id="fileInfoLabel"
-                               text="Документ готов к настройке печати"
-                               styleClass="body-text-muted"
-                               textAlignment="CENTER"
-                               wrapText="true"/>
+                    <VBox styleClass="page-select-panel" spacing="14" minWidth="250">
+                        <Label text="Выберите страницы для печати" styleClass="panel-title"/>
+
+                        <ComboBox fx:id="pageModeCombo" styleClass="page-mode-combo"/>
+
+                        <VBox fx:id="pageInputsContainer" spacing="10"/>
+
+                        <Button fx:id="addPageRowBtn" text="+"
+                                onAction="#onAddPageRowClicked"
+                                styleClass="page-add-btn"
+                                visible="false" managed="false"/>
                     </VBox>
 
-                    <!-- Preview area -->
-                    <StackPane fx:id="previewContainer" styleClass="preview-container" prefHeight="520" prefWidth="700">
 
-                        <!-- Loading state -->
-                        <VBox fx:id="previewLoadingBox"
-                              alignment="CENTER"
-                              spacing="14"
-                              visible="false"
-                              managed="false">
-                            <ProgressIndicator prefWidth="64" prefHeight="64"/>
-                            <Label fx:id="previewLoadingLabel"
-                                   text="Готовим превью..."
-                                   styleClass="body-text-muted"/>
-                        </VBox>
+                    <VBox styleClass="content-card" spacing="18" alignment="CENTER" prefWidth="700">
 
-                        <!-- Error state -->
-                        <VBox fx:id="previewErrorBox"
-                              alignment="CENTER"
-                              spacing="10"
-                              visible="false"
-                              managed="false">
-                            <Label text="📄" styleClass="preview-error-icon"/>
-                            <Label fx:id="previewErrorLabel"
-                                   text="Превью недоступно для этого файла"
+                        <VBox alignment="CENTER" spacing="6">
+                            <Label fx:id="fileFoundTitleLabel" text="Файл найден" styleClass="h2-text"/>
+                            <Label fx:id="fileInfoLabel"
+                                   text="Документ готов к настройке печати"
                                    styleClass="body-text-muted"
-                                   wrapText="true"
-                                   textAlignment="CENTER"/>
+                                   textAlignment="CENTER"
+                                   wrapText="true"/>
                         </VBox>
 
-                        <!-- Image (the actual preview) -->
-                        <ImageView fx:id="previewImageView"
-                                   preserveRatio="true"
-                                   smooth="true"
-                                   fitWidth="680"
-                                   fitHeight="500"/>
-                    </StackPane>
+                        <StackPane fx:id="previewContainer" styleClass="preview-container" prefHeight="520" prefWidth="700">
 
-                    <!-- Navigation -->
-                    <HBox fx:id="previewNavBox"
-                          alignment="CENTER"
-                          spacing="20"
-                          visible="false"
-                          managed="false">
-                        <Button fx:id="printPreviewPrevBtn"
-                                text="←"
-                                onAction="#onPrintPreviewPrevClicked"
-                                styleClass="preview-nav-btn"/>
-                        <Label fx:id="previewPageLabel"
-                               text="1 / 1"
-                               styleClass="preview-page-label"/>
-                        <Button fx:id="printPreviewNextBtn"
-                                text="→"
-                                onAction="#onPrintPreviewNextClicked"
-                                styleClass="preview-nav-btn"/>
-                    </HBox>
+                            <VBox fx:id="previewLoadingBox"
+                                  alignment="CENTER"
+                                  spacing="14"
+                                  visible="false"
+                                  managed="false">
+                                <ProgressIndicator prefWidth="64" prefHeight="64"/>
+                                <Label fx:id="previewLoadingLabel"
+                                       text="Готовим превью..."
+                                       styleClass="body-text-muted"/>
+                            </VBox>
 
-                    <Button fx:id="goToSettingsBtn"
-                            text="Настроить печать"
-                            onAction="#onGoToSettingsClicked"
-                            styleClass="btn-primary"/>
-                </VBox>
-            </VBox>
+                            <VBox fx:id="previewErrorBox"
+                                  alignment="CENTER"
+                                  spacing="10"
+                                  visible="false"
+                                  managed="false">
+                                <Label text="📄" styleClass="preview-error-icon"/>
+                                <Label fx:id="previewErrorLabel"
+                                       text="Превью недоступно для этого файла"
+                                       styleClass="body-text-muted"
+                                       wrapText="true"
+                                       textAlignment="CENTER"/>
+                            </VBox>
+
+                            <ImageView fx:id="previewImageView"
+                                       preserveRatio="true"
+                                       smooth="true"
+                                       fitWidth="680"
+                                       fitHeight="500"/>
+                        </StackPane>
+
+                        <HBox fx:id="previewNavBox"
+                              alignment="CENTER"
+                              spacing="20"
+                              visible="false"
+                              managed="false">
+                            <Button fx:id="printPreviewPrevBtn"
+                                    text="←"
+                                    onAction="#onPrintPreviewPrevClicked"
+                                    styleClass="preview-nav-btn"/>
+                            <Label fx:id="previewPageLabel"
+                                   text="1 / 1"
+                                   styleClass="preview-page-label"/>
+                            <Button fx:id="printPreviewNextBtn"
+                                    text="→"
+                                    onAction="#onPrintPreviewNextClicked"
+                                    styleClass="preview-nav-btn"/>
+                        </HBox>
+
+                        <Button fx:id="goToSettingsBtn"
+                                text="Настроить печать"
+                                onAction="#onGoToSettingsClicked"
+                                styleClass="btn-primary"/>
+                    </VBox> </HBox> </VBox>
 
             <!-- SETTINGS SCREEN -->
             <VBox fx:id="settingsScreen" styleClass="screen" spacing="22" visible="false" managed="false">
