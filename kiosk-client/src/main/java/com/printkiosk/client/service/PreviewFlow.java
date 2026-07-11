@@ -24,6 +24,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 /**
  * Скачивает файл с сервера, открывает через PreviewService и хранит
@@ -44,6 +47,17 @@ public class PreviewFlow {
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
+
+    /**
+     * Единый однопоточный рендер-исполнитель. PDFBox (PDFRenderer) НЕ потокобезопасен:
+     * одновременный renderPage по одному документу может повредить вывод. Поэтому и
+     * основное превью, и миниатюры проходят через него — рендеры сериализуются.
+     */
+    private final ExecutorService renderExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "preview-render");
+        t.setDaemon(true);
+        return t;
+    });
 
     private Listener listener;
     private PreviewSession session;
@@ -87,7 +101,10 @@ public class PreviewFlow {
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             log.info("Preview ready: {} ({} pages)",
                     response.originalFilename(), session.getPageCount());
+            // Сначала ставим в очередь основную страницу (она отрисуется первой),
+            // затем сообщаем панели число страниц — та поставит миниатюры уже после.
             renderCurrentPage();
+            notifyDocumentReady(session.getPageCount());
         }));
 
         task.setOnFailed(e -> Platform.runLater(() -> {
@@ -175,18 +192,20 @@ public class PreviewFlow {
     private void renderCurrentPage() {
         if (session == null) return;
         final int pageIndex = currentPage;
+        final PreviewSession s = session;
+        final int total = s.getPageCount();
 
         Task<BufferedImage> task = new Task<>() {
             @Override
             protected BufferedImage call() throws Exception {
-                return session.renderPage(pageIndex);
+                return s.renderPage(pageIndex);
             }
         };
 
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             BufferedImage awtImage = task.getValue();
             Image fxImage = SwingFXUtils.toFXImage(awtImage, null);
-            notifyPageRendered(fxImage, pageIndex, session.getPageCount());
+            notifyPageRendered(fxImage, pageIndex, total);
         }));
 
         task.setOnFailed(e -> Platform.runLater(() -> {
@@ -194,9 +213,44 @@ public class PreviewFlow {
             notifyError("Не удалось отобразить страницу");
         }));
 
-        Thread t = new Thread(task, "preview-render");
-        t.setDaemon(true);
-        t.start();
+        renderExecutor.submit(task);
+    }
+
+    /**
+     * Отрендерить одну страницу для миниатюры и вернуть готовый FX-Image в колбэк
+     * (на FX-потоке). Downscale выполняется на стороне ImageView (fitWidth), сюда
+     * приходит полноразмерный рендер. Проходит через тот же сериализованный
+     * исполнитель, что и основное превью, — без гонок в PDFBox.
+     *
+     * @param pageIndex 0-based индекс страницы
+     * @param onReady   колбэк; получает {@code null}, если рендер не удался
+     */
+    public void renderThumbnail(int pageIndex, Consumer<Image> onReady) {
+        if (session == null) {
+            if (onReady != null) Platform.runLater(() -> onReady.accept(null));
+            return;
+        }
+        final PreviewSession s = session;
+
+        Task<BufferedImage> task = new Task<>() {
+            @Override
+            protected BufferedImage call() throws Exception {
+                return s.renderPage(pageIndex);
+            }
+        };
+
+        task.setOnSucceeded(e -> Platform.runLater(() -> {
+            BufferedImage awtImage = task.getValue();
+            Image fxImage = SwingFXUtils.toFXImage(awtImage, null);
+            if (onReady != null) onReady.accept(fxImage);
+        }));
+
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            log.warn("Thumbnail render failed for page {}", pageIndex, task.getException());
+            if (onReady != null) onReady.accept(null);
+        }));
+
+        renderExecutor.submit(task);
     }
 
     private static String extensionFor(String originalName) {
@@ -213,11 +267,14 @@ public class PreviewFlow {
     }
 
     private void notifyLoading()                                   { if (listener != null) listener.onLoading(); }
+    private void notifyDocumentReady(int total)                    { if (listener != null) listener.onDocumentReady(total); }
     private void notifyPageRendered(Image img, int idx, int total) { if (listener != null) listener.onPageRendered(img, idx, total); }
     private void notifyError(String msg)                           { if (listener != null) listener.onError(msg); }
 
     public interface Listener {
         void onLoading();
+        /** Документ открыт, известно число страниц (до отрисовки миниатюр). */
+        default void onDocumentReady(int totalPages) {}
         void onPageRendered(Image image, int pageIndex, int totalPages);
         void onError(String message);
     }

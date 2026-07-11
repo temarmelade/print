@@ -53,7 +53,8 @@ public class PrintJobService {
                 .orElseThrow(PinNotFoundException::new);
 
         PrintSettings settings = req.settings();
-        int priceSom = pricing.calculateTotal(file.getPageCount(), settings, kioskId);   // ← с kioskId
+        int chargedPages = effectivePageCount(req.pages(), file.getPageCount());
+        int priceSom = pricing.calculateTotal(chargedPages, settings, kioskId);   // ← с kioskId
 
 
         PrintJobEntity job = PrintJobEntity.builder()
@@ -205,7 +206,8 @@ public class PrintJobService {
                 .orElseThrow(PinNotFoundException::new);
 
         PriceBreakdown breakdown = pricing.calculate(
-                file.getPageCount(), req.settings(), kioskId);
+                effectivePageCount(req.pages(), file.getPageCount()),
+                req.settings(), kioskId);
 
         log.info("Job preview: fileId={} priceSom={} colorMode={} copies={}",
                 file.getId(), breakdown.totalSom(),
@@ -242,5 +244,19 @@ public class PrintJobService {
 
     private static String maskPin(String pin) {
         return pin == null || pin.length() < 2 ? "****" : pin.substring(0, 2) + "**";
+    }
+
+    /**
+     * Сколько страниц реально печатается/оплачивается. Валидирует выбранные
+     * страницы (1..total, без дублей). Если список пуст/{@code null} или после
+     * валидации не осталось валидных номеров — считаем все страницы файла.
+     */
+    private static int effectivePageCount(java.util.List<Integer> pages, int totalPages) {
+        if (pages == null || pages.isEmpty()) return totalPages;
+        long valid = pages.stream()
+                .filter(p -> p != null && p >= 1 && p <= totalPages)
+                .distinct()
+                .count();
+        return valid == 0 ? totalPages : (int) valid;
     }
 }

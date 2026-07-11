@@ -45,6 +45,11 @@ public class PrintFlow {
     }
 
     public void start(UUID jobId, VerifyResponse file, PrintSettings settings) {
+        start(jobId, file, settings, null);
+    }
+
+    public void start(UUID jobId, VerifyResponse file, PrintSettings settings,
+                      java.util.List<Integer> pages) {
         if (inProgress) {
             log.warn("Print already in progress");
             return;
@@ -58,7 +63,7 @@ public class PrintFlow {
                 .thenCompose(tempFile -> {
                     server.startPrinting(jobId);
                     fxUpdateStatus("Отправляем на принтер...");
-                    return printManager.printAsync(tempFile, file.contentType(), settings)
+                    return printManager.printAsync(tempFile, file.contentType(), settings, pages)
                             .whenComplete((r, t) -> deleteQuietly(tempFile));
                 })
                 .whenComplete((result, throwable) -> Platform.runLater(() -> {

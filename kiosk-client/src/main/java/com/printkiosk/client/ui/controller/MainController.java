@@ -135,9 +135,11 @@ public class MainController {
     @FXML private Button backBtnPayment;
     @FXML private Button backBtnScanInstruction;
     @FXML private Button backBtnScanPreview;
-    @FXML private ComboBox<PageSelectionPanel.Mode> pageModeCombo;
-    @FXML private VBox pageInputsContainer;
-    @FXML private Button addPageRowBtn;
+    @FXML private ScrollPane pageListScroll;
+    @FXML private VBox pageListContainer;
+    @FXML private Label selectedCountLabel;
+    @FXML private Button selectAllBtn;
+    @FXML private Button clearSelectionBtn;
     @FXML private Label selectedPinCodeLabel;
     @FXML private Button pinBackspaceBtn;
     @FXML private Button pinSubmitBtn;
@@ -364,6 +366,8 @@ public class MainController {
     private enum ScanMode { SCAN, COPY }
     private ScanMode scanMode = ScanMode.SCAN;
     private PageSelectionPanel pageSelection;
+    /** Снимок выбранных страниц (1-based) для текущего задания. null = все. */
+    private java.util.List<Integer> jobPages = null;
     private NumericKeyboard numericKeyboard;
     /** Рекламная заставка по бездействию. */
     private IdleScreensaver screensaver;
@@ -409,8 +413,9 @@ public class MainController {
         StackPane.setMargin(numericKeyboard, new javafx.geometry.Insets(0, 0, 28, 0));
 
         pageSelection = new PageSelectionPanel(
-                pageModeCombo, pageInputsContainer, addPageRowBtn,
-                tf -> numericKeyboard.attachTo(tf));
+                pageListContainer, selectedCountLabel,
+                previewFlow::renderThumbnail,
+                this::onPageSelectionChanged);
         startHomeClock();
     }
 
@@ -702,7 +707,15 @@ public class MainController {
         }
     }
 
-    @FXML public void onAddPageRowClicked() { pageSelection.onAddRow(); }
+    @FXML public void onSelectAllPagesClicked()   { pageSelection.selectAll(); }
+    @FXML public void onClearPageSelectionClicked() { pageSelection.clearSelection(); }
+
+    /** Блокируем «Настроить печать», пока не выбрана ни одна страница. */
+    private void onPageSelectionChanged() {
+        if (goToSettingsBtn != null) {
+            goToSettingsBtn.setDisable(pageSelection.selectedCount() == 0);
+        }
+    }
 
 
     @FXML
@@ -723,7 +736,11 @@ public class MainController {
             return;
         }
         settingsOrigin = SettingsOrigin.PRINT_UPLOAD;   // вошли из печати загруженного файла
-        settingsFlow.start(currentPin);
+        jobPages = pageSelection.getPagesToPrint();     // фиксируем выбор страниц
+        if (jobPages.isEmpty()) {                        // страховка: пусто = печатать все
+            jobPages = null;
+        }
+        settingsFlow.start(currentPin, jobPages);
         changeStep(KioskStep.SETTINGS);
     }
 
@@ -782,7 +799,7 @@ public class MainController {
         }
 
         changeStep(KioskStep.PAYMENT);
-        paymentFlow.start(currentPin, settingsFlow.currentSettings());
+        paymentFlow.start(currentPin, settingsFlow.currentSettings(), jobPages);
     }
 
     private void showOutOfService() {
@@ -796,7 +813,7 @@ public class MainController {
             changeStep(KioskStep.HOME);
             return;
         }
-        paymentFlow.start(currentPin, settingsFlow.currentSettings());
+        paymentFlow.start(currentPin, settingsFlow.currentSettings(), jobPages);
     }
     @FXML public void onAdminBypassPayment()         {changeStep(KioskStep.PRINTING);}
 
@@ -896,6 +913,7 @@ public class MainController {
         paymentFlow.stop();
         settingsFlow.stop();
         previewFlow.close();
+        pageSelection.clear();
         pinEntryFlow.reset();
         scanFlow.clear();                              // чистим временные файлы сканов
         settingsOrigin = SettingsOrigin.PRINT_UPLOAD;  // сброс источника настроек
@@ -1111,6 +1129,7 @@ public class MainController {
             if (triggerBtn != null) triggerBtn.setDisable(false);
             UploadResponse resp = task.getValue();
             currentPin = resp.pin();                 // теперь сканы = обычный файл печати
+            jobPages = null;                         // скан печатаем целиком
             settingsFlow.start(currentPin);          // запускаем стандартные настройки
             changeStep(KioskStep.SETTINGS);
         }));
@@ -1295,6 +1314,13 @@ public class MainController {
             public void onLoading() {
                 previewLoadingLabel.setText("Загружаем документ...");
                 showPreviewLoading();
+                pageSelection.clear();
+            }
+
+            @Override
+            public void onDocumentReady(int totalPages) {
+                // Строим список страниц с чекбоксами; миниатюры подтянутся асинхронно.
+                pageSelection.setPages(totalPages);
             }
 
             @Override
@@ -1476,7 +1502,7 @@ public class MainController {
                 log.info("Payment confirmed for job={}", jobId);
                 currentJobId = jobId;
                 changeStep(KioskStep.PRINTING);
-                printFlow.start(jobId, currentFile, settingsFlow.currentSettings());
+                printFlow.start(jobId, currentFile, settingsFlow.currentSettings(), jobPages);
             }
 
             @Override

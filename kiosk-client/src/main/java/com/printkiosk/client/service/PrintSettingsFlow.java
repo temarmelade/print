@@ -46,6 +46,7 @@ public class PrintSettingsFlow {
     private String  paperSize   = PAPER_A4;
 
     private String   currentPin;
+    private java.util.List<Integer> pages;   // выбранные страницы (1-based); null = все
     private Listener listener;
     private Timeline debounceTimer;
 
@@ -53,9 +54,15 @@ public class PrintSettingsFlow {
     //  Lifecycle
     // ════════════════════════════════════════════════════════════════
 
-    /** Привязка к экрану ввели настроек: сбрасывает к дефолтам, начинает превью. */
+    /** Привязка к экрану настроек без выбора страниц — печатаются все. */
     public void start(String pin) {
+        start(pin, null);
+    }
+
+    /** Привязка к экрану настроек: сбрасывает к дефолтам, начинает превью. */
+    public void start(String pin, java.util.List<Integer> pages) {
         this.currentPin = pin;
+        this.pages = pages;
         this.copies = 1;
         this.colorMode = COLOR_BW;
         this.doubleSided = false;
@@ -143,12 +150,13 @@ public class PrintSettingsFlow {
     private void fetchPreview() {
         final String pin = currentPin;
         final PrintSettings settings = currentSettings();
+        final java.util.List<Integer> reqPages = pages;
         notifyPriceLoading();
 
         Task<JobPreviewResponse> task = new Task<>() {
             @Override
             protected JobPreviewResponse call() {
-                return server.previewJob(new JobPreviewRequest(pin, settings));
+                return server.previewJob(new JobPreviewRequest(pin, settings, reqPages));
             }
         };
 

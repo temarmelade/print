@@ -54,6 +54,10 @@ public class PaymentSessionFlow {
      * на SSE. UI получает события через {@link Listener}.
      */
     public void start(String pin, PrintSettings settings) {
+        start(pin, settings, null);
+    }
+
+    public void start(String pin, PrintSettings settings, java.util.List<Integer> pages) {
         stop();   // на всякий случай — закрываем предыдущую сессию
 
         this.currentPin = pin;
@@ -63,7 +67,7 @@ public class PaymentSessionFlow {
             @Override
             protected PaymentSessionDto call() {
                 // Step 1: создать job
-                JobResponse job = server.createJob(new CreateJobRequest(pin, settings));
+                JobResponse job = server.createJob(new CreateJobRequest(pin, settings, pages));
                 currentJobId = job.id();
                 log.info("Job created: id={} priceSom={}", job.id(), job.priceSom());
 

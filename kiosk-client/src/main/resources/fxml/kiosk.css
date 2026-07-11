@@ -2078,60 +2078,124 @@
    ВЫБОР СТРАНИЦ ДЛЯ ПЕЧАТИ (page-select-panel)
    ════════════════════════════════════════════════════════════════ */
 
-.page-select-panel { -fx-padding: 4 0; }
-
-.page-mode-combo {
-    -fx-font-size: 17px;
-    -fx-pref-height: 52px;
-    -fx-background-radius: 12px;
-    -fx-border-radius: 12px;
-    -fx-border-color: #D1D5DB;
-    -fx-border-width: 1.5px;
-    -fx-background-color: white;
-}
-.page-mode-combo .list-cell { -fx-font-size: 17px; -fx-padding: 10 14; }
-
-.page-input-row {
-    -fx-alignment: center-left;
+/* Левая панель — белая карточка. */
+.page-select-panel {
+    -fx-background-color: -bg-card;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-border-color: -border-soft;
+    -fx-border-width: 1px;
+    -fx-padding: 24px 20px;
+    -fx-effect: dropshadow(gaussian, rgba(17,24,39,0.08), 22, 0, 0, 8);
 }
 
-/* Квадратное числовое поле [  ] — крупное, под палец. */
-.page-num-field {
-    -fx-min-width: 64px;
-    -fx-max-width: 64px;
-    -fx-min-height: 64px;
-    -fx-max-height: 64px;
-    -fx-font-size: 24px;
+.panel-title {
+    -fx-font-size: 19px;
     -fx-font-weight: 700;
-    -fx-alignment: center;
-    -fx-background-color: white;
-    -fx-background-radius: 12px;
-    -fx-border-color: #CBD5E1;
+    -fx-text-fill: -text-main;
+    -fx-line-spacing: 2px;
+}
+
+/* ── Прокручиваемый список страниц ── */
+.page-list-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+.page-list-scroll > .viewport { -fx-background-color: transparent; }
+.page-list-scroll .scroll-bar:vertical { -fx-pref-width: 8px; -fx-background-color: transparent; }
+.page-list-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: #CBD5E1;
+    -fx-background-radius: 8px;
+}
+.page-list-scroll .scroll-bar .increment-arrow,
+.page-list-scroll .scroll-bar .decrement-arrow,
+.page-list-scroll .scroll-bar .increment-button,
+.page-list-scroll .scroll-bar .decrement-button { -fx-pref-height: 0; -fx-padding: 0; }
+
+.page-list { -fx-padding: 2 6 2 2; }
+
+/* Строка страницы. */
+.page-row {
+    -fx-padding: 8px 10px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-border-color: transparent;
+    -fx-border-width: 1px;
+    -fx-cursor: hand;
+}
+.page-row:hover {
+    -fx-background-color: #F3F6FC;
+    -fx-border-color: -border-soft;
+}
+
+/* Чекбокс. */
+.page-check > .box {
+    -fx-min-width: 22px; -fx-min-height: 22px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-border-color: -border-medium;
     -fx-border-width: 2px;
-    -fx-border-radius: 12px;
+    -fx-background-color: white;
 }
-.page-num-field:focused {
-    -fx-border-color: #2563EB;
+.page-check:selected > .box {
+    -fx-background-color: -primary-blue;
+    -fx-border-color: -primary-blue;
+}
+.page-check:selected > .box > .mark { -fx-background-color: white; }
+
+/* Миниатюра страницы. */
+.page-thumb-wrap {
+    -fx-background-color: white;
+    -fx-border-color: -border-soft;
+    -fx-border-width: 1px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-min-width: 48px; -fx-min-height: 62px;
+    -fx-max-width: 48px; -fx-max-height: 62px;
+    -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(17,24,39,0.10), 4, 0, 0, 1);
 }
 
-.page-range-dash {
-    -fx-font-size: 24px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #6B7280;
-}
-
-/* Кнопка "+" добавления строки. */
-.page-add-btn {
-    -fx-min-width: 52px;
-    -fx-min-height: 52px;
-    -fx-font-size: 26px;
+.page-row-number {
+    -fx-font-size: 17px;
     -fx-font-weight: 800;
-    -fx-background-color: #EFF6FF;
-    -fx-text-fill: #2563EB;
+    -fx-text-fill: -text-main;
+}
+.page-row-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: -text-muted;
+}
+
+/* ── Футер: счётчик + кнопки действий ── */
+.selected-count-label {
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -text-main;
+    -fx-padding: 4 2 0 2;
+}
+
+/* Настоящие кнопки под палец: «Выбрать все» / «Снять все». */
+.page-action-btn {
+    -fx-background-color: -primary-blue;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-min-height: 48px;
     -fx-background-radius: 12px;
     -fx-cursor: hand;
 }
-.page-add-btn:hover { -fx-background-color: #DBEAFE; }
+.page-action-btn:hover   { -fx-background-color: -primary-blue-dark; }
+.page-action-btn:pressed { -fx-background-color: -primary-blue-dark; }
+
+/* Вторичная («Снять все») — светлая, чтобы не спорить с основным действием. */
+.page-action-btn-secondary {
+    -fx-background-color: -primary-soft;
+    -fx-text-fill: -primary-blue;
+}
+.page-action-btn-secondary:hover   { -fx-background-color: #DBE7FF; }
+.page-action-btn-secondary:pressed { -fx-background-color: #DBE7FF; }
 
 /* ── Цифровая клавиатура (numeric-keyboard) ── */
 .numeric-keyboard {

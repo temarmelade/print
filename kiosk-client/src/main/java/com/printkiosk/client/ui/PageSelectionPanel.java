@@ -1,161 +1,204 @@
 package com.printkiosk.client.ui;
 
-import javafx.collections.FXCollections;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
+import javafx.geometry.Pos;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * Панель выбора страниц для печати: режим (все / диапазон / одиночные) +
- * динамические строки ввода. Наружу отдаёт итоговый список через getPagesToPrint.
+ * Панель выбора страниц для печати — вертикальный список миниатюр с чекбоксами.
+ *
+ * <p>Выбор задаётся только чекбоксами: тап по строке переключает её, а
+ * «протаскивание» пальцем/мышью по нескольким строкам красит их все в одно
+ * состояние (как выделение в «Фото» на iOS). Направление мазка (выделять или
+ * снимать) задаётся первой строкой, на которой начали жест.
+ *
+ * <p>Кнопки «Выбрать все / Снять все» и счётчик «Выбрано: X из Y» — снаружи,
+ * управляются методами {@link #selectAll()} / {@link #clearSelection()}.
+ *
+ * <p>Миниатюры подгружаются асинхронно через {@link ThumbnailProvider}, поэтому
+ * на больших документах панель не блокирует UI-поток.
  */
 public class PageSelectionPanel {
 
-    public enum Mode {
-        ALL("Все страницы"),
-        RANGE("Диапазон страниц"),
-        SINGLE("Страница");
-
-        private final String title;
-        Mode(String t) { this.title = t; }
-        @Override public String toString() { return title; }
+    /** Провайдер миниатюр: рендер страницы (0-based) в фоне, колбэк с готовым Image. */
+    public interface ThumbnailProvider {
+        void requestThumbnail(int pageIndex, Consumer<Image> onReady);
     }
 
-    private final ComboBox<Mode> modeCombo;
-    private final VBox rowsContainer;
-    private final Button addRowBtn;
+    private final VBox  listContainer;
+    private final Label countLabel;
+    private final ThumbnailProvider thumbnailProvider;
+    private final Runnable onSelectionChanged;
 
-    /** Колбэк «привязать это поле к Numpad» — задаётся контроллером. */
-    private final Consumer<TextField> numpadBinder;
+    private final List<CheckBox>  checkBoxes = new ArrayList<>();
+    private final List<ImageView> thumbViews = new ArrayList<>();
+    private int totalPages = 0;
 
-    public PageSelectionPanel(ComboBox<Mode> modeCombo, VBox rowsContainer,
-                              Button addRowBtn, Consumer<TextField> numpadBinder) {
-        this.modeCombo = modeCombo;
-        this.rowsContainer = rowsContainer;
-        this.addRowBtn = addRowBtn;
-        this.numpadBinder = numpadBinder;
-        init();
-    }
+    /** Подавляет пер-чекбоксовые уведомления во время массовых операций. */
+    private boolean bulk = false;
 
-    private void init() {
-        modeCombo.setItems(FXCollections.observableArrayList(Mode.values()));
-        modeCombo.getSelectionModel().select(Mode.ALL);
-        modeCombo.valueProperty().addListener((o, old, mode) -> applyMode(mode));
-        applyMode(Mode.ALL);
-    }
+    // ── Состояние жеста drag-select ──
+    private boolean dragging = false;
+    private boolean paintSelected = false;   // целевое состояние «мазка»
 
-    /** Переключение режима: показываем нужные блоки и стартовую строку. */
-    private void applyMode(Mode mode) {
-        rowsContainer.getChildren().clear();
-        boolean dynamic = (mode != Mode.ALL);
-        addRowBtn.setVisible(dynamic);
-        addRowBtn.setManaged(dynamic);
-
-        if (mode == Mode.RANGE) {
-            rowsContainer.getChildren().add(rangeRow());
-        } else if (mode == Mode.SINGLE) {
-            rowsContainer.getChildren().add(singleRow());
-        }
-        // ALL — строк нет, печатается весь документ.
-    }
-
-    /** Обработчик кнопки «+»: добавляет ещё одну строку текущего режима. */
-    public void onAddRow() {
-        Mode mode = modeCombo.getValue();
-        if (mode == Mode.RANGE) {
-            rowsContainer.getChildren().add(rangeRow());
-        } else if (mode == Mode.SINGLE) {
-            rowsContainer.getChildren().add(singleRow());
-        }
-    }
-
-    /** [  ] — [  ] */
-    private HBox rangeRow() {
-        TextField from = pageField();
-        TextField to   = pageField();
-        Label dash = new Label("—");
-        dash.getStyleClass().add("page-range-dash");
-        HBox row = new HBox(10, from, dash, to);
-        row.getStyleClass().add("page-input-row");
-        row.getProperties().put("type", "range");
-        return row;
-    }
-
-    /** [  ] */
-    private HBox singleRow() {
-        TextField field = pageField();
-        HBox row = new HBox(field);
-        row.getStyleClass().add("page-input-row");
-        row.getProperties().put("type", "single");
-        return row;
-    }
-
-    /** Квадратное числовое поле, привязанное к Numpad. */
-    private TextField pageField() {
-        TextField tf = new TextField();
-        tf.getStyleClass().add("page-num-field");
-        if (numpadBinder != null) numpadBinder.accept(tf);
-        return tf;
+    public PageSelectionPanel(VBox listContainer,
+                              Label countLabel,
+                              ThumbnailProvider thumbnailProvider,
+                              Runnable onSelectionChanged) {
+        this.listContainer = listContainer;
+        this.countLabel = countLabel;
+        this.thumbnailProvider = thumbnailProvider;
+        this.onSelectionChanged = onSelectionChanged;
+        updateCountLabel();
     }
 
     /**
-     * Итоговый список страниц. Валидирует (цифры, 1..totalPages), убирает
-     * дубликаты, сортирует. Для ALL возвращает 1..totalPages.
+     * Построить список из {@code totalPages} страниц (все отмечены) и запустить
+     * асинхронную загрузку миниатюр. Вызывать на FX-потоке.
      */
-    public List<Integer> getPagesToPrint(int totalPages) {
-        Mode mode = modeCombo.getValue();
-        Set<Integer> pages = new LinkedHashSet<>();
+    public void setPages(int totalPages) {
+        this.totalPages = Math.max(totalPages, 0);
+        listContainer.getChildren().clear();
+        checkBoxes.clear();
+        thumbViews.clear();
 
-        if (mode == Mode.ALL) {
-            for (int i = 1; i <= totalPages; i++) pages.add(i);
-            return new ArrayList<>(pages);
+        for (int i = 0; i < this.totalPages; i++) {
+            listContainer.getChildren().add(buildRow(i));
         }
 
-        for (var node : rowsContainer.getChildren()) {
-            if (!(node instanceof HBox row)) continue;
-            String type = (String) row.getProperties().get("type");
-            List<TextField> fields = row.getChildren().stream()
-                    .filter(n -> n instanceof TextField)
-                    .map(n -> (TextField) n)
-                    .toList();
+        setAllChecked(true);   // по умолчанию печатаются все страницы
 
-            if ("range".equals(type) && fields.size() == 2) {
-                Integer a = parse(fields.get(0).getText(), totalPages);
-                Integer b = parse(fields.get(1).getText(), totalPages);
-                if (a != null && b != null) {
-                    int lo = Math.min(a, b), hi = Math.max(a, b);
-                    for (int i = lo; i <= hi; i++) pages.add(i);
-                }
-            } else if ("single".equals(type) && fields.size() == 1) {
-                Integer p = parse(fields.get(0).getText(), totalPages);
-                if (p != null) pages.add(p);
+        if (thumbnailProvider != null) {
+            for (int i = 0; i < this.totalPages; i++) {
+                final ImageView target = thumbViews.get(i);
+                thumbnailProvider.requestThumbnail(i, img -> {
+                    if (img != null) target.setImage(img);
+                });
             }
         }
-
-        List<Integer> result = new ArrayList<>(pages);
-        result.sort(Integer::compareTo);
-        return result;
     }
 
-    /** Парсит и валидирует номер страницы: цифры, 1..totalPages. Иначе null. */
-    private Integer parse(String raw, int totalPages) {
-        if (raw == null || raw.isBlank()) return null;
-        try {
-            int v = Integer.parseInt(raw.trim());
-            return (v >= 1 && v <= totalPages) ? v : null;
-        } catch (NumberFormatException e) {
-            return null;
+    /** Очистить панель (при выходе с экрана / закрытии превью). */
+    public void clear() {
+        this.totalPages = 0;
+        listContainer.getChildren().clear();
+        checkBoxes.clear();
+        thumbViews.clear();
+        updateCountLabel();
+        fireChanged();
+    }
+
+    /** Кнопка «Выбрать все». */
+    public void selectAll() { setAllChecked(true); }
+
+    /** Кнопка «Снять все». */
+    public void clearSelection() { setAllChecked(false); }
+
+    /** Итоговый список номеров страниц (1-based), по порядку. */
+    public List<Integer> getPagesToPrint() {
+        List<Integer> pages = new ArrayList<>();
+        for (int i = 0; i < checkBoxes.size(); i++) {
+            if (checkBoxes.get(i).isSelected()) pages.add(i + 1);
         }
+        return pages;
     }
 
-    public Mode currentMode() { return modeCombo.getValue(); }
+    /** Сколько страниц выбрано сейчас. */
+    public int selectedCount() {
+        return (int) checkBoxes.stream().filter(CheckBox::isSelected).count();
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  Внутреннее
+    // ════════════════════════════════════════════════════════════════
+
+    private HBox buildRow(int pageIndex) {
+        CheckBox cb = new CheckBox();
+        cb.getStyleClass().add("page-check");
+        cb.setSelected(true);
+        // Клики/жесты обрабатываем на строке — чекбокс «прозрачен» для мыши.
+        cb.setMouseTransparent(true);
+        cb.setFocusTraversable(false);
+        cb.selectedProperty().addListener((o, was, now) -> {
+            if (!bulk) { updateCountLabel(); fireChanged(); }
+        });
+
+        StackPane thumbWrap = new StackPane();
+        thumbWrap.getStyleClass().add("page-thumb-wrap");
+        ImageView iv = new ImageView();
+        iv.setFitWidth(44);
+        iv.setFitHeight(58);
+        iv.setPreserveRatio(true);
+        iv.setSmooth(true);
+        iv.setMouseTransparent(true);
+        thumbWrap.getChildren().add(iv);
+
+        Label num = new Label(String.valueOf(pageIndex + 1));
+        num.getStyleClass().add("page-row-number");
+        Label sub = new Label("Страница " + (pageIndex + 1));
+        sub.getStyleClass().add("page-row-subtitle");
+        VBox texts = new VBox(2, num, sub);
+        texts.setAlignment(Pos.CENTER_LEFT);
+        texts.setMouseTransparent(true);
+
+        HBox row = new HBox(12, cb, thumbWrap, texts);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("page-row");
+        // Прозрачные зоны Region по умолчанию не участвуют в pick'е — без этого
+        // клик/hover/drag по пустым частям строки не срабатывал бы.
+        row.setPickOnBounds(true);
+
+        // Нажатие: задаём направление «мазка» и переключаем стартовую строку.
+        row.setOnMousePressed(e -> {
+            paintSelected = !cb.isSelected();
+            dragging = true;
+            cb.setSelected(paintSelected);
+        });
+        // Включаем полноценный drag, чтобы события приходили и на соседние строки.
+        row.setOnDragDetected(e -> { row.startFullDrag(); e.consume(); });
+        // Палец «заезжает» на строку во время жеста — красим её в целевое состояние.
+        row.setOnMouseDragEntered(e -> {
+            if (dragging && cb.isSelected() != paintSelected) {
+                cb.setSelected(paintSelected);
+            }
+        });
+        row.setOnMouseReleased(e -> dragging = false);
+
+        checkBoxes.add(cb);
+        thumbViews.add(iv);
+        return row;
+    }
+
+    private void setAllChecked(boolean checked) {
+        bulk = true;
+        for (CheckBox cb : checkBoxes) cb.setSelected(checked);
+        bulk = false;
+        updateCountLabel();
+        fireChanged();
+    }
+
+    private void fireChanged() {
+        if (onSelectionChanged != null) onSelectionChanged.run();
+    }
+
+    private void updateCountLabel() {
+        long sel = checkBoxes.stream().filter(CheckBox::isSelected).count();
+        countLabel.setText("Выбрано: " + sel + " из " + totalPages
+                + " " + pluralPagesGen(totalPages));
+    }
+
+    /** Форма слова «страница» в родительном падеже после «из N». */
+    private static String pluralPagesGen(int n) {
+        if (n % 10 == 1 && n % 100 != 11) return "страницы";
+        return "страниц";
+    }
 }
