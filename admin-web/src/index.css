@@ -1,0 +1,146 @@
+/* ============================================================
+   PrintKiosk · Пульт управления — дизайн-система
+   «Диспетчерская сети киосков».
+   Правило палитры: зелёный/жёлтый/красный ЗАРЕЗЕРВИРОВАНЫ под
+   статус киосков. Системный акцент — синий, чтобы не путаться
+   со «здоровьем» точек.
+   ============================================================ */
+
+:root {
+  /* Ink / поверхности */
+  --bg:          #0E1421;
+  --surface:     #151D2C;
+  --surface-2:   #1B2536;
+  --surface-3:   #202C41;
+  --border:      #26314A;
+  --border-strong: #34425F;
+
+  /* Текст */
+  --text:        #E7EDF7;
+  --text-muted:  #8695AE;
+  --text-dim:    #5C6A83;
+
+  /* Системный акцент (НЕ статус) */
+  --accent:      #4C8DFF;
+  --accent-2:    #6EA2FF;
+  --accent-ink:  #0B2350;
+
+  /* Сигнальные цвета статуса киосков — только для статуса! */
+  --ok:    #22C55E;
+  --warn:  #F59E0B;
+  --down:  #EF4444;
+
+  --ok-ink:   rgba(34, 197, 94, 0.14);
+  --warn-ink: rgba(245, 158, 11, 0.14);
+  --down-ink: rgba(239, 68, 68, 0.14);
+
+  --focus: #7FB0FF;
+
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --r:    12px;
+  --r-sm: 8px;
+  --r-lg: 16px;
+
+  --rail-w: 248px;
+  --topbar-h: 60px;
+
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text);
+  background: var(--bg);
+  /* тонкая «приборная» сетка на фоне */
+  background-image:
+    linear-gradient(rgba(76, 141, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(76, 141, 255, 0.035) 1px, transparent 1px);
+  background-size: 40px 40px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+
+/* Видимый фокус — часть quality floor */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1; }
+
+/* Eyebrow — техническая надпись-метка */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ── Статус-точка (сигнальные цвета) ── */
+.status-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  display: inline-block; flex: none;
+  position: relative;
+}
+.status-dot.ok    { background: var(--ok);   box-shadow: 0 0 0 3px var(--ok-ink); }
+.status-dot.warn  { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-ink); }
+.status-dot.down  { background: var(--down); box-shadow: 0 0 0 3px var(--down-ink); }
+
+/* ── Кнопки ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; padding: 0 18px;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.04s ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  background: var(--accent); color: #fff;
+}
+.btn-primary:hover { background: var(--accent-2); }
+.btn-primary:disabled { background: var(--surface-3); color: var(--text-dim); cursor: not-allowed; }
+.btn-ghost {
+  background: transparent; color: var(--text-muted);
+  border-color: var(--border-strong);
+}
+.btn-ghost:hover { background: var(--surface-2); color: var(--text); }
+
+/* ── Инпуты ── */
+.field { display: flex; flex-direction: column; gap: 7px; }
+.field label {
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+}
+.input {
+  height: 46px; padding: 0 14px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  font-size: 15px; font-family: var(--font-sans);
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.input::placeholder { color: var(--text-dim); }
+.input:focus { outline: none; border-color: var(--accent); background: var(--surface-2); }
+
+/* ── Карточки ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

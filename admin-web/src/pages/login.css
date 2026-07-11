@@ -1,0 +1,63 @@
+.login {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+}
+
+/* ── Левая панель-подпись ── */
+.login-brand {
+  position: relative;
+  background:
+    radial-gradient(1000px 500px at 20% 0%, rgba(76, 141, 255, 0.12), transparent 60%),
+    var(--surface);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 48px;
+}
+.net {
+  position: absolute;
+  top: 40px; right: 30px;
+  width: min(60%, 400px);
+  height: auto;
+  opacity: 0.92;
+}
+.net-node .net-halo { transform-origin: center; animation: haloPulse 3s ease-in-out infinite; animation-delay: var(--d); }
+@keyframes haloPulse {
+  0%, 100% { transform: scale(1); opacity: 0.16; }
+  50%      { transform: scale(1.9); opacity: 0.04; }
+}
+.login-brand-copy { position: relative; z-index: 1; max-width: 420px; }
+.login-brand-copy h1 {
+  font-size: 38px; line-height: 1.12; letter-spacing: -0.02em;
+  margin: 14px 0 12px; font-weight: 700;
+}
+.login-brand-copy p { color: var(--text-muted); font-size: 16px; margin: 0; }
+
+/* ── Форма ── */
+.login-form-wrap { display: grid; place-items: center; padding: 40px; }
+.login-form {
+  width: 100%; max-width: 380px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.login-form h2 {
+  font-size: 26px; letter-spacing: -0.01em; margin: 6px 0 8px; font-weight: 700;
+}
+.login-form .btn { margin-top: 6px; }
+.login-error {
+  background: var(--down-ink);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+  border-radius: var(--r-sm);
+  padding: 11px 13px; font-size: 14px;
+}
+.login-hint {
+  font-size: 11px; color: var(--text-dim);
+  letter-spacing: 0.02em; line-height: 1.6; margin: 4px 0 0;
+}
+
+@media (max-width: 860px) {
+  .login { grid-template-columns: 1fr; }
+  .login-brand { display: none; }
+}

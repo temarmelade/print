@@ -1,0 +1,48 @@
+.page-head { margin-bottom: 24px; }
+.page-head h2 {
+  font-size: 26px; letter-spacing: -0.01em; font-weight: 700; margin: 6px 0 4px;
+}
+.page-head p { color: var(--text-muted); margin: 0; font-size: 15px; }
+
+.phase-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent-2);
+  border: 1px solid rgba(76, 141, 255, 0.35);
+  background: rgba(76, 141, 255, 0.08);
+  border-radius: 999px; padding: 3px 9px;
+}
+
+/* Пустое состояние — приглашение к действию, а не заглушка «в разработке». */
+.empty {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r);
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 15px; line-height: 1.6;
+  max-width: 640px;
+}
+.empty strong { color: var(--text); font-weight: 600; }
+
+/* KPI-плитки */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.kpi {
+  padding: 18px 18px 16px;
+}
+.kpi-label {
+  font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim); font-family: var(--font-mono);
+}
+.kpi-value {
+  font-family: var(--font-mono);
+  font-size: 30px; font-weight: 600; letter-spacing: -0.01em;
+  margin-top: 10px;
+}
+.kpi-value small { font-size: 15px; color: var(--text-muted); margin-left: 4px; }
+.kpi-sub { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
