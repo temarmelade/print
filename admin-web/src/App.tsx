@@ -4,10 +4,11 @@ import { AppLayout } from "./components/AppLayout.tsx";
 import { RequireAuth, RequireModule, RedirectIfAuthed } from "./components/Guards.tsx";
 import { landingPathFor } from "./lib/permissions.ts";
 import { LoginPage } from "./pages/LoginPage.tsx";
-import {
-  DashboardPage, TerminalsPage, AlertsPage, AnalyticsPage,
-  TransactionsPage, MediaPage, AccessPage,
-} from "./pages/modules.tsx";
+import { TerminalsPage, AlertsPage, AnalyticsPage } from "./pages/modules.tsx";
+import { DashboardPage } from "./pages/DashboardPage.tsx";
+import { AccessPage } from "./pages/AccessPage.tsx";
+import { TransactionsPage } from "./pages/TransactionsPage.tsx";
+import { MediaPage } from "./pages/MediaPage.tsx";
 import { ForbiddenPage, NotFoundPage } from "./pages/system.tsx";
 
 /** Стартовый редирект «/» на первый доступный роли модуль. */

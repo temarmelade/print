@@ -60,6 +60,11 @@ public class PrintJobService {
         PrintJobEntity job = PrintJobEntity.builder()
                 .id(UuidCreator.getTimeOrderedEpoch())
                 .file(file)
+                // Снимок данных файла: файл удалится по TTL, транзакция останется.
+                .pin(file.getCode())
+                .fileName(file.getOriginalFilename())
+                .pageCount(file.getPageCount())
+                .printedPages(chargedPages)     // реально печатаемые страницы
                 .copies(settings.copies())
                 .colorMode(settings.colorMode())
                 .doubleSided(settings.doubleSided())

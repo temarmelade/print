@@ -1,0 +1,158 @@
+/* ── Слоты ── */
+.slot-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.slot-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.13s ease, color 0.13s ease;
+}
+.slot-tab:hover { color: var(--text); }
+.slot-tab.active { background: var(--accent-ink); color: #fff; }
+
+.slot-hint {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 10px 0 18px;
+}
+
+/* ── Загрузка ── */
+.upload-card { padding: 18px; margin-bottom: 16px; }
+
+.dropzone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.dropzone:hover, .dropzone.over {
+  border-color: var(--accent);
+  background: rgba(76, 141, 255, 0.06);
+  color: var(--text);
+}
+.dropzone.filled { border-style: solid; color: var(--text); }
+.dz-copy { display: flex; flex-direction: column; font-size: 14px; }
+.dz-copy em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+.dz-file { display: flex; flex-direction: column; font-size: 14px; min-width: 0; }
+.dz-file strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dz-file em { font-style: normal; font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+
+.upload-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.upload-fields .field { flex: 1; min-width: 180px; }
+.upload-fields .field.dur { flex: 0 0 120px; min-width: 120px; }
+.upload-actions { display: flex; gap: 8px; }
+
+/* ── Заметка про кэш ── */
+.cache-note {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  margin-bottom: 22px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: var(--r-sm);
+}
+.cache-note svg { color: var(--warn); flex: none; }
+
+/* ── Список ── */
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.list-head h3 { font-size: 17px; font-weight: 600; margin: 0; }
+
+.btn-sm { height: 34px; padding: 0 12px; font-size: 13px; gap: 6px; }
+.btn-danger { background: var(--down); color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+.icon-btn.danger:hover { color: var(--down); border-color: rgba(239, 68, 68, 0.5); }
+
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ad-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.ad-card { overflow: hidden; display: flex; flex-direction: column; }
+.ad-card.off { opacity: 0.62; }
+
+.ad-preview {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.ad-preview img, .ad-preview video {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.ad-type {
+  position: absolute; top: 8px; left: 8px;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  padding: 3px 7px; border-radius: 5px;
+  background: rgba(14, 20, 33, 0.82); color: var(--text);
+}
+.ad-off-badge {
+  position: absolute; top: 8px; right: 8px;
+  font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(14, 20, 33, 0.82); color: var(--text-muted);
+}
+
+.ad-body { padding: 12px 13px 13px; display: flex; flex-direction: column; gap: 8px; }
+
+.ad-title {
+  background: none; border: none; padding: 0;
+  color: var(--text); font-size: 15px; font-weight: 600;
+  text-align: left; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ad-title:hover { color: var(--accent-2); }
+.ad-meta { font-size: 11px; color: var(--text-dim); }
+
+.ad-edit { display: flex; flex-direction: column; gap: 7px; }
+.ad-edit .input { height: 38px; font-size: 14px; }
+.ad-edit-actions { display: flex; gap: 6px; }
+.ad-edit-actions .icon-btn { width: 34px; height: 34px; }
+
+.ad-actions {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-top: 2px;
+}
+.confirm { display: flex; gap: 6px; }

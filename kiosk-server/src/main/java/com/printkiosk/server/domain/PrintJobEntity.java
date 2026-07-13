@@ -25,9 +25,30 @@ public class PrintJobEntity {
      * не нужны, незачем тянуть лишнюю строку из БД. Когда нужны — есть
      * явный JOIN FETCH в репозитории.
      */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "file_id", nullable = false, updatable = false)
+    /**
+     * Файл живёт лишь до истечения TTL — после cleanup'а связь обнуляется
+     * (ON DELETE SET NULL), а транзакция остаётся. Поэтому optional = true.
+     * Для истории используйте снимок ниже (pin / fileName / pageCount),
+     * а не это поле: оно может быть null.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "file_id", updatable = false)
     private FileEntity file;
+
+    // ── Снимок данных файла: переживает удаление files ──
+
+    @Column(length = 4)
+    private String pin;
+
+    @Column(name = "file_name", length = 255)
+    private String fileName;
+
+    @Column(name = "page_count", nullable = false)
+    private int pageCount;
+
+    /** Фактически печатаемые страницы (выбор пользователя), не весь файл. */
+    @Column(name = "printed_pages", nullable = false)
+    private int printedPages;
 
     // ── Print settings ──────────────────────────────────────────────
     @Column(nullable = false)

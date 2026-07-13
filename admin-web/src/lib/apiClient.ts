@@ -59,3 +59,37 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
+
+/**
+ * Загрузка файла (multipart). Content-Type НЕ выставляем вручную — браузер сам
+ * проставит его вместе с boundary, иначе сервер не разберёт тело.
+ */
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  const token = getToken();
+
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: form,
+  });
+
+  if (res.status === 401) {
+    setToken(null);
+    if (!location.pathname.startsWith("/login")) location.assign("/login");
+    throw new ApiError(401, "Сессия истекла. Войдите снова.");
+  }
+
+  if (!res.ok) {
+    let message = `Ошибка ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data?.message) message = data.message;
+    } catch { /* тело не JSON */ }
+    throw new ApiError(res.status, message);
+  }
+
+  return (await res.json()) as T;
+}

@@ -1,0 +1,119 @@
+.filters { margin-bottom: 18px; }
+.preset-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  margin-bottom: 12px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 240px;
+}
+.search-box svg {
+  position: absolute;
+  left: 12px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.search-box .input { width: 100%; padding-left: 38px; }
+
+.select {
+  min-width: 170px;
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+                    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 21px, calc(100% - 13px) 21px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+.select option { background: var(--surface-2); color: var(--text); }
+
+/* ── Таблица ── */
+.table-wrap { overflow-x: auto; padding: 0; }
+
+.tx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.tx-table th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+.tx-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.tx-table tbody tr:last-child td { border-bottom: none; }
+.tx-table tbody tr:hover td { background: var(--surface-2); }
+
+.tx-table .num { text-align: right; }
+.tx-table .nowrap { white-space: nowrap; }
+.tx-table .strong { color: var(--text); font-weight: 600; }
+.tx-table .dim { color: var(--text-dim); }
+.tx-table .pin {
+  color: var(--accent-2);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.tx-table .file {
+  color: var(--text);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Плашка статуса */
+.tx-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.tx-status.tone-ok   { color: var(--ok); }
+.tx-status.tone-warn { color: var(--warn); }
+.tx-status.tone-down { color: var(--down); }
+.tx-status.tone-idle { color: var(--text-dim); }
+
+/* ── Пагинация ── */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.pager-info { font-size: 12px; color: var(--text-dim); }
+.pager-btns { display: flex; gap: 8px; }

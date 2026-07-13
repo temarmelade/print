@@ -94,3 +94,17 @@ telegram:
     enabled: ${TELEGRAM_BOT_ENABLED:false}     # локально false, на проде true
     token:   ${TELEGRAM_BOT_TOKEN:}
     username: ${TELEGRAM_BOT_USERNAME:PrintKioskBot}
+
+# ───── Админ-панель (пульт управления) ─────
+admin:
+  jwt:
+    # ОБЯЗАТЕЛЬНО переопредать на проде. Минимум 32 символа (для HS256).
+    secret: ${ADMIN_JWT_SECRET:change-me-in-prod-please-32chars-minimum-secret}
+    ttl: ${ADMIN_JWT_TTL:PT12H}
+  seed:
+    # Первый владелец создаётся при пустой таблице admin_users.
+    username: ${ADMIN_OWNER_USERNAME:owner}
+    password: ${ADMIN_OWNER_PASSWORD:owner12345}
+    name:     ${ADMIN_OWNER_NAME:Владелец}
+  cors:
+    allowed-origins: ${ADMIN_CORS_ORIGINS:http://localhost:5174}

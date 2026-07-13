@@ -2,6 +2,7 @@ package com.printkiosk.server.domain;
 
 import com.printkiosk.shared.api.PrintJobStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,7 +12,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface PrintJobRepository extends JpaRepository<PrintJobEntity, UUID> {
+public interface PrintJobRepository
+        extends JpaRepository<PrintJobEntity, UUID>, JpaSpecificationExecutor<PrintJobEntity> {
 
     // ────────────────────────────────────────────────────────────────
     //  Поиск
@@ -172,4 +174,18 @@ public interface PrintJobRepository extends JpaRepository<PrintJobEntity, UUID> 
         )
        """)
     int markFailedByPin(@Param("pin") String pin);
+
+    // ────────────────────────────────────────────────────────────────
+    //  Админ-панель: транзакции
+    // ────────────────────────────────────────────────────────────────
+    //
+    // Выборка с необязательными фильтрами построена на Criteria API
+    // (JpaSpecificationExecutor), а НЕ на JPQL вида ":x IS NULL OR ...".
+    // Причина: при null-параметре драйвер шлёт нетипизированный NULL, и
+    // PostgreSQL падает с «could not determine data type of parameter».
+    // Criteria просто не добавляет предикат, если фильтр не задан.
+
+    /** Список киосков, встречавшихся в заданиях — для выпадающего фильтра. */
+    @Query("SELECT DISTINCT j.kioskId FROM PrintJobEntity j WHERE j.kioskId IS NOT NULL ORDER BY j.kioskId")
+    List<String> findDistinctKioskIds();
 }

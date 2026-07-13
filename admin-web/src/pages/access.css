@@ -1,0 +1,109 @@
+.warn-note {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 14px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: var(--r-sm);
+}
+.warn-note svg { color: var(--warn); flex: none; }
+.warn-note code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--surface-3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--text);
+}
+.warn-note strong { color: var(--text); font-weight: 600; }
+
+.head-actions { display: flex; gap: 8px; }
+
+/* ── Создание ── */
+.create-card { padding: 18px; margin-bottom: 16px; }
+.create-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.role-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 12px 0 0;
+}
+.create-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+/* ── Список ── */
+.user-list { display: flex; flex-direction: column; gap: 10px; }
+
+.user-row {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.user-row.off { opacity: 0.55; }
+
+.user-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+  min-width: 260px;
+  flex-wrap: wrap;
+}
+
+.user-id { display: flex; flex-direction: column; gap: 2px; min-width: 150px; }
+.u-name {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.u-me {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  border: 1px solid rgba(76, 141, 255, 0.4);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.u-login { font-size: 12px; color: var(--text-dim); }
+
+.role-select { min-width: 160px; height: 38px; }
+
+.u-created { font-size: 12px; color: var(--text-dim); }
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.saved {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ok);
+}
+
+.pw-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pw-row .input { height: 38px; min-width: 220px; font-size: 14px; }
+.pw-row .icon-btn { width: 38px; height: 38px; }
+
+@media (max-width: 720px) {
+  .user-row { flex-direction: column; align-items: stretch; }
+  .user-actions { justify-content: flex-end; }
+}

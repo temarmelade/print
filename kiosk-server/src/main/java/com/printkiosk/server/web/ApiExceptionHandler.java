@@ -13,9 +13,33 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import jakarta.validation.ConstraintViolationException;
 import com.printkiosk.server.exception.AdNotFoundException;
+import com.printkiosk.server.exception.AdminUserNotFoundException;
+import com.printkiosk.server.exception.AdminRuleViolationException;
+import org.springframework.security.authentication.BadCredentialsException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    /** Неверный логин/пароль при входе в админку. */
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> badCredentials(BadCredentialsException e) {
+        return ResponseEntity.status(401)
+                .body(new ErrorResponse("BAD_CREDENTIALS", e.getMessage()));
+    }
+
+    /** Аккаунт админки не найден. */
+    @ExceptionHandler(AdminUserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> adminUserNotFound() {
+        return ResponseEntity.status(404)
+                .body(new ErrorResponse("ADMIN_USER_NOT_FOUND", "Сотрудник не найден"));
+    }
+
+    /** Нарушение правил админки (занятый логин, последний владелец, слабый пароль). */
+    @ExceptionHandler(AdminRuleViolationException.class)
+    public ResponseEntity<ErrorResponse> adminRule(AdminRuleViolationException e) {
+        return ResponseEntity.status(400)
+                .body(new ErrorResponse("ADMIN_RULE_VIOLATION", e.getMessage()));
+    }
 
     @ExceptionHandler(PinNotFoundException.class)
     public ResponseEntity<ErrorResponse> notFound() {

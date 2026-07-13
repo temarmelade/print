@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { RoleGate } from "../components/RoleGate.tsx";
 import "./pages.css";
 
 function PageHead({ title, subtitle, phase }: { title: string; subtitle: string; phase: string }) {
@@ -18,43 +17,6 @@ function Empty({ children }: { children: ReactNode }) {
 
 /* ── Дашборд: демонстрирует role-aware контент ──
    Выручку видит только владелец; техник видит операционные метрики. */
-export function DashboardPage() {
-  return (
-    <>
-      <PageHead phase="Фаза 1" title="Дашборд" subtitle="Сводка по сети за сегодня." />
-      <div className="kpi-grid">
-        <RoleGate allow={["OWNER"]}>
-          <div className="card kpi">
-            <div className="kpi-label">Выручка сегодня</div>
-            <div className="kpi-value">— <small>сом</small></div>
-            <div className="kpi-sub">подключим к транзакциям</div>
-          </div>
-        </RoleGate>
-        <div className="card kpi">
-          <div className="kpi-label">Напечатано страниц</div>
-          <div className="kpi-value">—</div>
-          <div className="kpi-sub">за сегодня</div>
-        </div>
-        <div className="card kpi">
-          <div className="kpi-label">Киосков в сети</div>
-          <div className="kpi-value">— <small>/ —</small></div>
-          <div className="kpi-sub">онлайн / всего</div>
-        </div>
-        <div className="card kpi">
-          <div className="kpi-label">Требуют внимания</div>
-          <div className="kpi-value">—</div>
-          <div className="kpi-sub">инциденты</div>
-        </div>
-      </div>
-      <Empty>
-        Плитки заполнятся данными на следующем шаге <strong>Фазы 1</strong>: выручка и страницы
-        приедут из истории заданий, статус киосков — из телеметрии (Фаза 2). Карта сети добавится
-        сюда же.
-      </Empty>
-    </>
-  );
-}
-
 export function TerminalsPage() {
   return (
     <>
@@ -92,39 +54,3 @@ export function AnalyticsPage() {
   );
 }
 
-export function TransactionsPage() {
-  return (
-    <>
-      <PageHead phase="Фаза 1" title="Транзакции" subtitle="Все оплаты с фильтрами и возвратами." />
-      <Empty>
-        Таблица оплат (дата, сумма, статус, метод) поднимется из заданий — это ближайший шаг
-        <strong> Фазы 1</strong>. Кнопка возврата подключится, когда добавим refund в API
-        эквайринга.
-      </Empty>
-    </>
-  );
-}
-
-export function MediaPage() {
-  return (
-    <>
-      <PageHead phase="Фаза 1" title="Реклама" subtitle="Баннеры и видео-заставки для экранов киосков." />
-      <Empty>
-        Загрузка креативов и назначение на всю сеть или конкретный ВУЗ. Частично уже есть на
-        сервере (плейлист рекламы) — доделаем управление.
-      </Empty>
-    </>
-  );
-}
-
-export function AccessPage() {
-  return (
-    <>
-      <PageHead phase="Фаза 1" title="Доступы" subtitle="Сотрудники и их роли." />
-      <Empty>
-        Управление аккаунтами: владелец, техник, поддержка. Появится сразу после серверной
-        авторизации — это оборотная сторона того же фундамента.
-      </Empty>
-    </>
-  );
-}

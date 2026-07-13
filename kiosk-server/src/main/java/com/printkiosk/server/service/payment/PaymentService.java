@@ -1,6 +1,5 @@
 package com.printkiosk.server.service.payment;
 
-import com.printkiosk.server.config.KioskServerProperties;
 import com.printkiosk.server.domain.PrintJobEntity;
 import com.printkiosk.server.domain.PrintJobRepository;
 import com.printkiosk.server.exception.JobNotFoundException;
@@ -66,7 +65,9 @@ public class PaymentService {
                     "Cannot create payment for job in status " + job.getStatus());
         }
 
-        String orderId = ORDER_ID_PREFIX + job.getFile().getCode();
+        // Берём PIN из снимка в задании: файл мог быть удалён по TTL,
+        // job.getFile() уже может быть null (см. миграцию V8).
+        String orderId = ORDER_ID_PREFIX + job.getPin();
 
         GatewayPaymentResult gwResult;
         try {
