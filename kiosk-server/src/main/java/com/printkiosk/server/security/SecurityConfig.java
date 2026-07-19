@@ -42,10 +42,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
                                            JwtService jwtService,
+                                           KioskAuthService kioskAuth,
                                            RestAuthEntryPoint authEntryPoint,
                                            RestAccessDeniedHandler accessDeniedHandler,
                                            AdminProperties props) throws Exception {
         JwtAuthFilter jwtAuthFilter = new JwtAuthFilter(jwtService);
+        KioskApiKeyFilter kioskFilter = new KioskApiKeyFilter(kioskAuth);
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsSource(props)))
@@ -54,11 +56,16 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/auth/login").permitAll()
                         .requestMatchers("/api/ads/admin/**").hasRole("OWNER")
                         .requestMatchers("/api/admin/**").authenticated()
+                        // Телеметрия: только аутентифицированный киоск (X-Kiosk-Key).
+                        // Остальные роуты киоска намеренно оставлены открытыми, чтобы
+                        // уже работающие терминалы не отвалились при обновлении.
+                        .requestMatchers("/api/kiosk/**").hasRole("KIOSK")
                         .anyRequest().permitAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint(authEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(kioskFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

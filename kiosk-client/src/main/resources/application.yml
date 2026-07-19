@@ -10,15 +10,30 @@ kiosk:
     # достучаться по сети. Меняй на реальный IP/домен сервера.
     public-base-url: ${KIOSK_PUBLIC_URL:http://192.168.1.120:8080}
     kiosk-id: ${KIOSK_ID:dev-kiosk}
+    api-key: ${KIOSK_API_KEY:}             # выдаётся при регистрации киоска в админке
     connect-timeout: PT5S
     read-timeout: PT10S
     upload-timeout: PT60S
   upload:
     telegram-bot-url: ${KIOSK_TELEGRAM_BOT_URL:https://t.me/AlaTooPrintKioskBot}
 
+  scanner:
+    # false = реальный сканер (WIA). true/не задано = мок для разработки.
+    mock: ${SCANNER_MOCK:true}
+    device-name: ${SCANNER_DEVICE:Canon MF230 ser_A8E291D1B261}      # точное имя из WIA; пусто = первый сканер
+    dpi: ${SCANNER_DPI:200}
+
   printer:
-    name: "Canon LBP6030/6040/6018L"      # переопредели в application-local.yml на свой
-    snmp-host: ""                          # пусто = USB-принтер, SNMP пропускается
+    name: "Canon MF232w"                   # переопредели в application-local.yml на своё
+    snmp-host: "192.168.1.154"                          # IP принтера; пусто = только USB/драйвер
     snmp-port: 161
     snmp-community: public
+    snmp-version: v1                       # MF232w: SNMPv1 (на v2c может не ответить)
     snmp-poll-interval-ms: 30000
+
+  # Телеметрия на сервер (Фаза 2)
+  client-version: ${KIOSK_CLIENT_VERSION:dev}
+  telemetry:
+    enabled: ${TELEMETRY_ENABLED:true}
+    interval-ms: 30000                     # heartbeat; сервер ждёт максимум 3 мин
+    initial-delay-ms: 10000

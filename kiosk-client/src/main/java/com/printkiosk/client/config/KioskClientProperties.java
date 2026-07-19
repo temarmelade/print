@@ -22,8 +22,14 @@ public class KioskClientProperties {
         /** Имя принтера в системе (PrintServiceLookup). Пусто → системный default. */
         private String name;
 
-        /** SNMP-хост принтера. Пусто → SNMP мониторинг отключён. */
+        /** SNMP-хост принтера. Пусто → SNMP мониторинг отключён (USB-режим). */
         private String snmpHost;
+
+        /**
+         * Версия SNMP: "v1" или "v2c". Canon MF232w заявляет SNMPv1/v3 —
+         * на v2c может не ответить, поэтому по умолчанию v1.
+         */
+        private String snmpVersion = "v1";
 
         @Min(1)
         private int snmpPort = 161;

@@ -9,12 +9,11 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
+import com.printkiosk.shared.api.dto.TelemetryReport;
 import org.springframework.web.client.RestClient;
 
-import java.io.Closeable;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Consumer;
 
 /**
  * Единая точка обращения JavaFX-клиента к серверу.
@@ -55,6 +54,19 @@ public class KioskServerClient {
     public void consumeFile(UUID fileId) {
         execute(() -> http.post()
                 .uri("/api/files/{id}/consume", fileId)
+                .retrieve()
+                .toBodilessEntity());
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  Telemetry (Фаза 2)
+    // ════════════════════════════════════════════════════════════════
+
+    /** Heartbeat + состояние принтера. Требует X-Kiosk-Key (см. HttpClientConfig). */
+    public void sendTelemetry(TelemetryReport report) {
+        execute(() -> http.post()
+                .uri("/api/kiosk/telemetry")
+                .body(report)
                 .retrieve()
                 .toBodilessEntity());
     }

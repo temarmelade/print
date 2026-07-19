@@ -29,6 +29,12 @@ public class ServerProperties {
     @NotBlank
     private String kioskId = "dev-kiosk";
 
+    /**
+     * Секретный ключ киоска (X-Kiosk-Key). Выдаётся один раз при регистрации
+     * киоска в админке. Без него телеметрия не принимается.
+     */
+    private String apiKey = "";
+
     /** Токен для аутентификации (если когда-нибудь добавим). */
     private String authToken;
 

@@ -17,19 +17,6 @@ function Empty({ children }: { children: ReactNode }) {
 
 /* ── Дашборд: демонстрирует role-aware контент ──
    Выручку видит только владелец; техник видит операционные метрики. */
-export function TerminalsPage() {
-  return (
-    <>
-      <PageHead phase="Фаза 2" title="Терминалы" subtitle="Карточки киосков: статус, расходники, управление." />
-      <Empty>
-        Здесь появятся карточки киосков с прогресс-барами бумаги и тонера и кнопками удалённого
-        управления. Нужна <strong>телеметрия</strong>: киоски должны слать heartbeat и уровни
-        расходников — это первый шаг Фазы 2.
-      </Empty>
-    </>
-  );
-}
-
 export function AlertsPage() {
   return (
     <>

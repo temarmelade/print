@@ -9,8 +9,6 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestClient;
 
-import java.util.List;
-
 @Configuration
 @RequiredArgsConstructor
 public class HttpClientConfig {
@@ -40,6 +38,7 @@ public class HttpClientConfig {
         return RestClient.builder()
                 .baseUrl(properties.getBaseUrl())
                 .defaultHeader("X-Kiosk-Id", properties.getKioskId())
+                .defaultHeader("X-Kiosk-Key", properties.getApiKey())
                 .defaultHeaders(headers -> {
                     if (properties.getAuthToken() != null && !properties.getAuthToken().isBlank()) {
                         headers.setBearerAuth(properties.getAuthToken());
