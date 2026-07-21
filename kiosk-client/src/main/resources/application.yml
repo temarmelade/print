@@ -9,8 +9,8 @@ kiosk:
     # скачивание сканов, страница загрузки). Это НЕ localhost — телефон должен
     # достучаться по сети. Меняй на реальный IP/домен сервера.
     public-base-url: ${KIOSK_PUBLIC_URL:http://192.168.1.120:8080}
-    kiosk-id: ${KIOSK_ID:dev-kiosk}
-    api-key: ${KIOSK_API_KEY:}             # выдаётся при регистрации киоска в админке
+    kiosk-id: ${KIOSK_ID:vostok-5}
+    api-key: ${KIOSK_API_KEY:3KyobEm-kRROXDNCUP3I4cyFwRuLarUgGu1R37KRp2o}             # выдаётся при регистрации киоска в админке
     connect-timeout: PT5S
     read-timeout: PT10S
     upload-timeout: PT60S
@@ -19,7 +19,7 @@ kiosk:
 
   scanner:
     # false = реальный сканер (WIA). true/не задано = мок для разработки.
-    mock: ${SCANNER_MOCK:true}
+    mock: ${SCANNER_MOCK:false}
     device-name: ${SCANNER_DEVICE:Canon MF230 ser_A8E291D1B261}      # точное имя из WIA; пусто = первый сканер
     dpi: ${SCANNER_DPI:200}
 

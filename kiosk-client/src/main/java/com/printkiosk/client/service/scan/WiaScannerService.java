@@ -121,23 +121,37 @@ public class WiaScannerService implements ScannerService {
                     + psQuote(deviceName) + " } | Select-Object -First 1";
 
         return """
-               $ErrorActionPreference = 'Stop'
-               $dm = New-Object -ComObject WIA.DeviceManager
-               $info = %NAME%
-               if (-not $info) { Write-Error 'Сканер не найден'; exit 2 }
-               $device = $info.Connect()
-               $item = $device.Items.Item(1)
-
-               # DPI по горизонтали и вертикали
-               function SetProp($props, $id, $val) {
-                 foreach ($p in $props) { if ($p.PropertyID -eq $id) { $p.Value = $val } }
-               }
-               SetProp $item.Properties 6147 %DPI%   # Horizontal Resolution
-               SetProp $item.Properties 6148 %DPI%   # Vertical Resolution
-
-               $image = $item.Transfer('%FORMAT%')
-               $image.SaveFile(%OUT%)
-               exit 0
+                $ErrorActionPreference = 'Stop'
+                      $dm = New-Object -ComObject WIA.DeviceManager
+                      $info = %NAME%
+                      if (-not $info) { Write-Error 'Сканер не найден'; exit 2 }
+                      $device = $info.Connect()
+                      $item = $device.Items.Item(1)
+                
+                      function SetProp($props, $id, $val) {
+                        foreach ($p in $props) {
+                          if ($p.PropertyID -eq $id) { try { $p.Value = $val } catch { } }
+                        }
+                      }
+                
+                      # ПОРЯДОК ВАЖЕН: intent и тип данных — ДО DPI и области, иначе Canon
+                      # сбрасывает границы и уходит в 1-битный ЧБ с обрезанным кадром.
+                      SetProp $item.Properties 6146 1        # Current Intent = Color
+                      SetProp $item.Properties 4103 3        # Data Type = Color
+                      SetProp $item.Properties 4104 24       # Bits Per Pixel = 24
+                      SetProp $item.Properties 6147 %DPI%    # Horizontal Resolution
+                      SetProp $item.Properties 6148 %DPI%    # Vertical Resolution
+                
+                      $w = [int](%DPI% * 8.27)
+                      $h = [int](%DPI% * 11.69)
+                      SetProp $item.Properties 6149 0        # X start
+                      SetProp $item.Properties 6150 0        # Y start
+                      SetProp $item.Properties 6151 $w       # Width
+                      SetProp $item.Properties 6152 $h       # Height
+                
+                      $image = $item.Transfer('%FORMAT%')
+                      $image.SaveFile(%OUT%)
+                      exit 0
                """
                 .replace("%NAME%", nameFilter)
                 .replace("%DPI%", String.valueOf(dpi))
