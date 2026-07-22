@@ -1,5 +1,6 @@
 package com.printkiosk.client.ui.controller;
 
+import com.printkiosk.client.service.i18n.LocalizationService;
 import com.printkiosk.client.ui.*;
 import com.printkiosk.client.ui.state.Language;
 import com.printkiosk.client.config.KioskClientProperties;
@@ -43,16 +44,30 @@ import com.printkiosk.shared.api.dto.PaymentSessionDto;
 import java.util.UUID;
 import com.printkiosk.client.service.PrintFlow;
 import com.printkiosk.client.printer.PrinterReadinessService;
+
 /**
- * Главный контроллер киоска. На этом этапе — скелет без логики:
- * все обработчики кликов логируют TODO и не делают ничего.
- * <p>
- * Подключение сервисов будет идти пошагово:
- *  - PinEntryFlow (вызов server.verify)
- *  - PrintSettingsFlow (управление настройками)
- *  - PrintFlowService (создание job, печать)
- *  - PaymentSessionFlow (оплата)
- *  - AdminFlow (статистика)
+ * Главный контроллер киоска.
+ *
+ * <p><b>Локализация (i18n).</b> Схема такая:
+ * <ul>
+ *   <li>Статические тексты (заголовки, кнопки, подписи) биндятся ОДИН раз в
+ *       {@code initI18nBindings()} через {@code loc.bind(key)}. При смене
+ *       языка все открытые экраны обновляются автоматически.</li>
+ *   <li>Динамические тексты (цена, ошибки, статусы) устанавливаются
+ *       императивно через {@code loc.get(key, args)} в момент показа —
+ *       они всегда рендерятся на актуальном языке.</li>
+ *   <li>Побочные эффекты смены языка (QR-коды, подсветка кнопок, экранная
+ *       клавиатура, формат даты) — в одном листенере
+ *       {@code loc.languageProperty()}.</li>
+ *   <li>Язык живёт в рамках сессии: {@code resetAllAndGoHome()} сбрасывает
+ *       его на язык по умолчанию (это же покрывает idle-таймаут через
+ *       {@code hideScreensaver} и успешную печать через автовозврат).</li>
+ * </ul>
+ *
+ * <p>ВАЖНО: узел, чей textProperty забинден, НЕЛЬЗЯ трогать setText() —
+ * будет RuntimeException. Поэтому лейблы с динамическим контентом
+ * (paymentInstructionLabel, printingStatusLabel и т.п.) сознательно
+ * не биндятся.
  */
 @Slf4j
 @Component
@@ -84,7 +99,9 @@ public class MainController {
     // ══════════════════════════════════════════════════════════════════════
 
     @FXML private Button langRuBtn;
-    @FXML private Button langKgBtn;
+    /** ВНИМАНИЕ: в FXML должен быть fx:id="langKyBtn" (раньше был langKgBtn —
+     *  из-за расхождения имён поле было null и подсветка не работала). */
+    @FXML private Button langKyBtn;
     @FXML private Button langEnBtn;
     @FXML private Button headerHelpBtn;
 
@@ -151,6 +168,8 @@ public class MainController {
     @FXML private Label fileFoundTitleLabel;
     @FXML private Label fileInfoLabel;
     @FXML private Button goToSettingsBtn;
+    /** Заголовок панели выбора страниц. Требует fx:id в FXML (см. чеклист). */
+    @FXML private Label pageSelectTitleLabel;
 
     @FXML private StackPane previewContainer;
     @FXML private ImageView previewImageView;
@@ -170,6 +189,8 @@ public class MainController {
     @FXML private Label settingsTitleLabel;
     @FXML private Label settingsSubtitleLabel;
     @FXML private Label copiesTitleLabel;
+    /** Был в FXML, но отсутствовал в контроллере — добавлен для биндинга. */
+    @FXML private Label copiesDescLabel;
     @FXML private Label copiesValueLabel;
     @FXML private Label colorTitleLabel;
     @FXML private Button bwBtn;
@@ -195,6 +216,8 @@ public class MainController {
     @FXML private Label summarySidesKeyLabel;
     @FXML private Label summaryOrientationKeyLabel;
     @FXML private Label summaryPaperKeyLabel;
+    /** Подпись «Стоимость». Требует fx:id в FXML (см. чеклист). */
+    @FXML private Label summaryPriceKeyLabel;
     @FXML private Label summaryPagesLabel;
     @FXML private Label summaryCopiesLabel;
     @FXML private Label summaryColorLabel;
@@ -219,6 +242,8 @@ public class MainController {
     @FXML private Label paymentErrorLabel;
     @FXML private Button paymentRetryBtn;
     @FXML private Button adminBypassPaymentBtn;
+    /** Был в FXML, но отсутствовал в контроллере — добавлен для биндинга. */
+    @FXML private Button paymentHomeBtn;
 
     // ══════════════════════════════════════════════════════════════════════
     //  PRINTING
@@ -229,12 +254,25 @@ public class MainController {
     @FXML private ImageView printingAnimation;
     @FXML private Label printingHintLabel;
     @FXML private Button printingHomeBtn;
+    /** Пилюля «Печать в процессе» и чипы. Требуют fx:id в FXML (чеклист). */
+    @FXML private Label statusPillLabel;
+    @FXML private Label chipPrinterLabel;
+    @FXML private Label chipTimeLabel;
     @FXML private VBox  printFailedScreen;
     @FXML private Label printErrorMessageLabel;
     @FXML private Label printErrorPinLabel;
+    /** Тексты экрана PRINT_FAILED. Требуют fx:id в FXML (чеклист). */
+    @FXML private Label printFailedTitleLabel;
+    @FXML private Label printFailedHintLabel;
+    @FXML private Label printFailedSupportLabel;
+    @FXML private Button printFailedHomeBtn;
     @FXML private VBox outOfServiceScreen;
+    /** Тексты экрана OUT_OF_SERVICE. Требуют fx:id в FXML (чеклист). */
+    @FXML private Label outOfServiceTitleLabel;
+    @FXML private Label outOfServiceDescLabel;
+    @FXML private Label outOfServiceSupportHintLabel;
+    @FXML private Button outOfServiceHomeBtn;
 
-    // если ещё нет
     // ══════════════════════════════════════════════════════════════════════
     //  COMPLETED
     // ══════════════════════════════════════════════════════════════════════
@@ -245,6 +283,8 @@ public class MainController {
     @FXML private Button completedHomeBtn;
     @FXML private ImageView completedMascot;
     @FXML private Label autoReturnCounterLabel;
+    /** Подпись «Возврат на главный экран через:». Требует fx:id (чеклист). */
+    @FXML private Label autoReturnHintLabel;
     @FXML private ProgressIndicator autoReturnProgress;
 
     /** Сколько секунд показывать экран COMPLETED до автовозврата на HOME. */
@@ -285,9 +325,11 @@ public class MainController {
     @FXML private Button scanDeliveryWebBtn;
     @FXML private Button scanDeliveryTelegramBtn;
     @FXML private Button scanDeliveryBackBtn;
+    /** Был в FXML, но отсутствовал в контроллере — добавлен для биндинга. */
+    @FXML private Button scanDeliveryHomeBtn;
 
     // ══════════════════════════════════════════════════════════════════════
-    //  ADMIN
+    //  ADMIN — сознательно НЕ локализуется: экран для оператора, не клиента.
     // ══════════════════════════════════════════════════════════════════════
 
     @FXML private Label adminTitleLabel;
@@ -335,9 +377,9 @@ public class MainController {
     private VerifyResponse currentFile;
     private String currentPin;
     private JobPreviewResponse currentPreview;
-    private Language  currentLang = Language.RU;
     private KioskStep currentStep = KioskStep.HOME;
     private UUID currentJobId;
+
     // ══════════════════════════════════════════════════════════════════════
     //  CONSTRUCTOR
     // ══════════════════════════════════════════════════════════════════════
@@ -352,6 +394,17 @@ public class MainController {
     private final ServerProperties serverProperties;
     private final ScanFlow scanFlow;
     private final KioskServerClient serverClient;
+    private final LocalizationService loc;
+
+    private static final String LANG_ACTIVE_CLASS = "lang-btn-active";
+
+    /** Формат времени часов на HOME — от языка не зависит. */
+    private static final java.time.format.DateTimeFormatter HOME_TIME_FMT =
+            java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+    /** Формат даты на HOME — пересобирается при смене языка. */
+    private java.time.format.DateTimeFormatter homeDateFmt =
+            java.time.format.DateTimeFormatter.ofPattern(
+                    "d MMMM, EEEE", new java.util.Locale("ru"));
 
     /** Откуда вошли в настройки печати — определяет, куда вернёт «Назад». */
     private enum SettingsOrigin { PRINT_UPLOAD, SCAN, COPY }
@@ -375,7 +428,12 @@ public class MainController {
     /** Сколько киоск должен простаивать до показа заставки. */
     private static final java.time.Duration IDLE_TIMEOUT = java.time.Duration.ofSeconds(60);
 
-    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,  PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow, PrintFlow printFlow, PrinterReadinessService printerReadiness, KioskClientProperties clientProperties, AdPlaylistService adPlaylistService, ServerProperties serverProperties, ScanFlow scanFlow, KioskServerClient serverClient) {
+    public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,
+                          PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow,
+                          PrintFlow printFlow, PrinterReadinessService printerReadiness,
+                          KioskClientProperties clientProperties, AdPlaylistService adPlaylistService,
+                          ServerProperties serverProperties, ScanFlow scanFlow,
+                          KioskServerClient serverClient, LocalizationService loc) {
         this.pinEntryFlow = pinEntryFlow;
         this.clientProperties = clientProperties;
         this.adPlaylistService = adPlaylistService;
@@ -387,6 +445,7 @@ public class MainController {
         this.paymentFlow = paymentFlow;
         this.printFlow = printFlow;
         this.printerReadiness = printerReadiness;
+        this.loc = loc;
     }
 
 
@@ -397,13 +456,13 @@ public class MainController {
     @FXML
     public void initialize() {
         log.info("MainController initialized");
+        initLocalization();
         pinEntryFlow.setListener(buildPinEntryListener());
         previewFlow.setListener(buildPreviewListener());
         settingsFlow.setListener(buildSettingsListener());
         paymentFlow.setListener(buildPaymentListener());
         printFlow.setListener(buildPrintListener());
         showUploadQrStep();        // стартовое состояние upload — подэкран QR-кодов
-        refreshUploadQrCodes();
         showOnly(homeScreen);
         setupIdleScreensaver();
         setupScan();
@@ -415,31 +474,256 @@ public class MainController {
         pageSelection = new PageSelectionPanel(
                 pageListContainer, selectedCountLabel,
                 previewFlow::renderThumbnail,
-                this::onPageSelectionChanged);
+                this::onPageSelectionChanged,
+                (sel, total) -> loc.get("pages.selected.count",
+                        String.valueOf(sel), String.valueOf(total)),
+                n -> loc.get("pages.page.n", String.valueOf(n)));
         startHomeClock();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  LOCALIZATION
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Точка входа локализации: биндит статические тексты, вешает единый
+     * листенер на смену языка и приводит UI к начальному языку (подсветка,
+     * QR-коды, формат даты).
+     */
+    private void initLocalization() {
+        initI18nBindings();
+        loc.languageProperty().addListener((obs, oldLang, newLang) -> onLanguageChanged(newLang));
+        onLanguageChanged(loc.getLanguage());
+    }
+
+    /**
+     * Все побочные эффекты смены языка в одном месте. Вызывается и при
+     * старте (начальное состояние), и при каждом переключении, и при
+     * сбросе сессии на язык по умолчанию.
+     */
+    private void onLanguageChanged(Language lang) {
+        // 1. Подсветка активной языковой кнопки
+        setLangActive(langRuBtn, lang == Language.RU);
+        setLangActive(langKyBtn, lang == Language.KY);
+        setLangActive(langEnBtn, lang == Language.EN);
+
+        // 2. QR-коды загрузки (Telegram + веб) — payload зависит от языка.
+        //    QR эквайринга (qrCodeImageView) НЕ трогаем: там paymentUrl от шлюза.
+        refreshUploadQrCodes();
+
+        // 3. Экранная клавиатура — раскладка под язык
+        if (virtualKeyboard != null) virtualKeyboard.rebuild(lang);
+
+        // 4. Формат даты на часах HOME + мгновенное обновление
+        homeDateFmt = java.time.format.DateTimeFormatter.ofPattern(
+                "d MMMM, EEEE", java.util.Locale.forLanguageTag(langCode(lang)));
+        refreshHomeClockNow();
+
+        // 5. Императивные тексты, которые могут быть на экране прямо сейчас.
+        //    (Сегодня языковые кнопки видны только на HOME, так что это
+        //    страховка на будущее — например, если кнопки переедут в хедер.)
+        if (currentPreview != null) populateSummary(currentPreview);
+        if (currentFile != null) showFileInfo(currentFile);
+        // Панель выбора страниц: счётчик и подписи «Страница N».
+        // null-guard обязателен: первый вызов onLanguageChanged происходит из
+        // initLocalization(), когда pageSelection ещё не создана.
+        if (pageSelection != null) pageSelection.refreshTexts();
+    }
+
+    /**
+     * Биндинги всех статических текстов. Один раз — навсегда.
+     * Хелпер bindText null-безопасен: узлы, для которых fx:id ещё не
+     * добавлен в FXML, просто пропускаются (и начнут работать сразу после
+     * добавления fx:id, без правок этого кода).
+     */
+    private void initI18nBindings() {
+        // ---- HOME ----
+        bindText(homeWelcomeLabel, "home.welcome");
+        bindText(homeSubtitleLabel, "home.subtitle");
+        bindText(headerHelpBtn, "home.help.btn");
+        bindText(printCardTitle, "home.card.print.title");
+        bindText(printCardDesc, "home.card.print.desc");
+        bindText(copyCardTitle, "home.card.copy.title");
+        bindText(copyCardDesc, "home.card.copy.desc");
+        bindText(scanCardTitle, "home.card.scan.title");
+        bindText(scanCardDesc, "home.card.scan.desc");
+        // Языковые кнопки «Рус/Кыр/Eng» не переводим — эндонимы.
+
+        // ---- Кнопки «Назад» / «На главный экран» ----
+        bindText(backBtnUpload, "btn.back");
+        bindText(backBtnFileInfo, "btn.back");
+        bindText(backBtnSettings, "btn.back");
+        bindText(backBtnSummary, "btn.back");
+        bindText(backBtnPayment, "btn.back");
+        bindText(backBtnScanInstruction, "btn.back");
+        bindText(backBtnScanPreview, "btn.back");
+        bindText(scanDeliveryBackBtn, "btn.back");
+        bindText(helpBackBtn, "btn.back");
+        bindText(paymentHomeBtn, "btn.home");
+        bindText(scanDeliveryHomeBtn, "btn.home");
+        bindText(printingHomeBtn, "btn.home");
+        bindText(completedHomeBtn, "btn.home");
+        bindText(printFailedHomeBtn, "btn.home");
+        bindText(outOfServiceHomeBtn, "btn.home");
+
+        // ---- UPLOAD ----
+        bindText(uploadTitleLabel, "upload.title");
+        bindText(uploadDescLabel, "upload.desc");
+        bindText(uploadTgTitle, "upload.tg.title");
+        bindText(uploadTgDesc, "upload.tg.desc");
+        bindText(uploadTgLabel, "upload.tg.note");
+        bindText(uploadWebTitle, "upload.web.title");
+        bindText(uploadWebDesc, "upload.web.desc");
+        bindText(uploadWebLabel, "upload.web.note");
+        bindText(goToEmojiCodeBtn, "upload.have.code.btn");
+        bindText(backToUploadMethodsBtn, "upload.back.to.qr.btn");
+
+        // ---- PIN ----
+        bindText(uploadOrLabel, "pin.title");
+        bindText(uploadOrLabelDesc, "pin.desc");
+        // pinStatusLabel / pinErrorLabel / selectedPinCodeLabel — динамические.
+
+        // ---- FILE INFO ----
+        bindText(fileFoundTitleLabel, "fileinfo.found");
+        bindText(goToSettingsBtn, "fileinfo.configure.btn");
+        bindText(previewLoadingLabel, "preview.loading");
+        bindText(pageSelectTitleLabel, "pages.panel.title");
+        bindText(selectAllBtn, "pages.select.all");
+        bindText(clearSelectionBtn, "pages.clear");
+        // fileInfoLabel, previewErrorLabel, previewPageLabel — динамические.
+
+        // ---- SETTINGS ----
+        bindText(settingsTitleLabel, "settings.title");
+        bindText(settingsSubtitleLabel, "settings.subtitle");
+        bindText(copiesTitleLabel, "settings.copies.title");
+        bindText(copiesDescLabel, "settings.copies.desc");
+        bindText(colorTitleLabel, "settings.color.title");
+        bindText(bwBtn, "settings.color.bw");
+        bindText(colorBtn, "settings.color.color");
+        bindText(sidesTitleLabel, "settings.sides.title");
+        bindText(singleSideBtn, "settings.sides.single");
+        bindText(doubleSideBtn, "settings.sides.double");
+        bindText(orientationTitleLabel, "settings.orientation.title");
+        bindText(portraitBtn, "settings.orientation.portrait");
+        bindText(landscapeBtn, "settings.orientation.landscape");
+        bindText(paperTitleLabel, "settings.paper.title");
+        bindText(settingsNextBtn, "settings.next.btn");
+        // copiesValueLabel — динамический. a4Btn ("A4") — нейтральный.
+
+        // ---- SUMMARY ----
+        bindText(summaryTitleLabel, "summary.title");
+        bindText(summaryCopiesKeyLabel, "summary.copies");
+        bindText(summaryColorKeyLabel, "summary.color");
+        bindText(summarySidesKeyLabel, "summary.sides");
+        bindText(summaryOrientationKeyLabel, "summary.orientation");
+        bindText(summaryPaperKeyLabel, "summary.paper");
+        bindText(summaryPagesKeyLabel, "summary.pages");
+        bindText(summaryPriceKeyLabel, "summary.price");
+        bindText(proceedToPaymentBtn, "summary.confirm.btn");
+        // summary*Label (значения) заполняются в populateSummary через loc.get.
+
+        // ---- PAYMENT ----
+        bindText(paymentTitleLabel, "payment.title");
+        bindText(paymentRetryBtn, "btn.retry");
+        // paymentInstructionLabel НЕ биндим: его перезаписывает countdown.
+        // paymentLoadingLabel / paymentErrorLabel / paymentAmountLabel — динамические.
+        // adminBypassPaymentBtn — dev-кнопка, не переводим.
+
+        // ---- PRINTING ----
+        bindText(printingTitleLabel, "printing.title");
+        bindText(printingHintLabel, "printing.hint");
+        bindText(statusPillLabel, "printing.pill");
+        bindText(chipPrinterLabel, "printing.chip.printer");
+        bindText(chipTimeLabel, "printing.chip.time");
+        // printingStatusLabel — динамический (PrintFlow).
+
+        // ---- PRINT FAILED / OUT OF SERVICE ----
+        bindText(printFailedTitleLabel, "printfail.title");
+        bindText(printFailedHintLabel, "printfail.save.pin");
+        bindText(printFailedSupportLabel, "printfail.support");
+        bindText(outOfServiceTitleLabel, "oos.title");
+        bindText(outOfServiceDescLabel, "oos.desc");
+        bindText(outOfServiceSupportHintLabel, "oos.support");
+        // printErrorMessageLabel / printErrorPinLabel — динамические.
+
+        // ---- COMPLETED ----
+        bindText(completedMessageLabel, "completed.title");
+        bindText(completedSubMessageLabel, "completed.desc");
+        bindText(printAnotherBtn, "completed.print.another");
+        bindText(autoReturnHintLabel, "completed.autoreturn.hint");
+        // autoReturnCounterLabel — динамический (счётчик).
+
+        // ---- SCAN ----
+        bindText(scanInstructionTitleLabel, "scan.instruction.title");
+        bindText(scanInstructionDescLabel, "scan.instruction.desc");
+        bindPrompt(scanFileNameField, "scan.name.prompt");
+        bindText(startScanPageBtn, "scan.start.btn");
+        bindText(scanProgressTitleLabel, "scan.progress.title");
+        bindText(scanProgressStatusLabel, "scan.progress.status");
+        bindText(deleteScanPageBtn, "scan.delete");
+        bindText(rescanPageBtn, "scan.rescan");
+        bindText(addScanPageBtn, "scan.add.page");
+        bindText(finishScanBtn, "scan.finish");
+        bindText(scanDeliveryTitleLabel, "scan.delivery.title");
+        bindText(scanDeliveryDescLabel, "scan.delivery.desc");
+        bindText(scanDeliveryPrintBtn, "scan.delivery.print");
+        bindText(scanDeliveryWebBtn, "scan.delivery.web");
+        bindText(scanDeliveryTelegramBtn, "scan.delivery.telegram");
+        // scanPreviewTitleLabel — перезаписывается именем файла, НЕ биндим.
+        // scanDeliveryInfoLabel — динамический.
+
+        // ---- HELP ----
+        bindText(helpTitleLabel, "help.title");
+        bindText(helpSubtitleLabel, "help.subtitle");
+        bindText(helpStep1Label, "help.step1");
+        bindText(helpStep2Label, "help.step2");
+        bindText(helpStep3Label, "help.step3");
+        bindText(helpStep4Label, "help.step4");
+        bindText(helpFormatsTitleLabel, "help.formats.title");
+        bindText(helpFormatsValueLabel, "help.formats.value");
+        bindText(helpFormatsLimitLabel, "help.formats.limit");
+        bindText(helpSupportTitleLabel, "help.support.title");
+        bindText(helpSupportPhoneLabel, "help.support.phone");
+        bindText(helpSupportTelegramLabel, "help.support.telegram");
+        bindText(helpHintLabel, "help.hint");
+
+        // ADMIN-экран сознательно не биндим — он для оператора.
+    }
+
+    /** Null-безопасный биндинг текста: пропускает не-инжектированные узлы. */
+    private void bindText(Labeled node, String key) {
+        if (node != null) {
+            node.textProperty().bind(loc.bind(key));
+        }
+    }
+
+    /** Null-безопасный биндинг prompt-текста для полей ввода. */
+    private void bindPrompt(TextInputControl field, String key) {
+        if (field != null) {
+            field.promptTextProperty().bind(loc.bind(key));
+        }
     }
 
     /**
      * Живые часы на главном экране: раз в секунду обновляют время и дату.
      * Timeline-колбэки выполняются на JavaFX Application Thread — Platform.
-     * runLater не нужен.
+     * runLater не нужен. Формат даты (homeDateFmt) зависит от языка и
+     * пересобирается в onLanguageChanged.
      */
     private void startHomeClock() {
-        final var timeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
-        final var dateFmt = java.time.format.DateTimeFormatter
-                .ofPattern("d MMMM, EEEE", new java.util.Locale("ru"));
-
-        Timeline clock = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            var now = java.time.LocalDateTime.now();
-            if (homeTimeLabel != null) homeTimeLabel.setText(now.format(timeFmt));
-            if (homeDateLabel != null) homeDateLabel.setText(now.format(dateFmt));
-        }));
+        Timeline clock = new Timeline(new KeyFrame(Duration.seconds(1),
+                e -> refreshHomeClockNow()));
         clock.setCycleCount(Timeline.INDEFINITE);
         clock.play();
         // Первое обновление сразу, не дожидаясь первой секунды.
+        refreshHomeClockNow();
+    }
+
+    /** Немедленно перерисовывает время и дату по текущему формату. */
+    private void refreshHomeClockNow() {
         var now = java.time.LocalDateTime.now();
-        if (homeTimeLabel != null) homeTimeLabel.setText(now.format(timeFmt));
-        if (homeDateLabel != null) homeDateLabel.setText(now.format(dateFmt));
+        if (homeTimeLabel != null) homeTimeLabel.setText(now.format(HOME_TIME_FMT));
+        if (homeDateLabel != null) homeDateLabel.setText(now.format(homeDateFmt));
     }
 
     /** Подключает слушатель сессии сканирования и экранную клавиатуру. */
@@ -467,7 +751,7 @@ public class MainController {
             rootStack.getChildren().add(virtualKeyboard);
             StackPane.setAlignment(virtualKeyboard, javafx.geometry.Pos.BOTTOM_CENTER);
             StackPane.setMargin(virtualKeyboard, new javafx.geometry.Insets(0, 0, 28, 0));
-            virtualKeyboard.attachTo(scanFileNameField, currentLang);
+            virtualKeyboard.attachTo(scanFileNameField, loc.getLanguage());
 
             // Ширина поля = ширине кнопки «Начать сканирование» (точное совпадение,
             // не зависит от текста кнопки). maxWidth тоже фиксируем, иначе TextField
@@ -488,8 +772,10 @@ public class MainController {
             scanPreviewPageLabel.setText(
                     scanFlow.currentPageNumber() + " / " + scanFlow.pageCount());
         }
-        if (scanPreviewTitleLabel != null && scanFlow.fileName() != null) {
-            scanPreviewTitleLabel.setText(scanFlow.fileName());
+        if (scanPreviewTitleLabel != null) {
+            scanPreviewTitleLabel.setText(scanFlow.fileName() != null
+                    ? scanFlow.fileName()
+                    : loc.get("scan.preview.title"));
         }
     }
 
@@ -531,7 +817,11 @@ public class MainController {
         screensaver.toFront();
     }
 
-    /** Скрыть заставку и вернуть киоск на главный экран. */
+    /**
+     * Скрыть заставку и вернуть киоск на главный экран.
+     * resetAllAndGoHome внутри сбросит и язык на дефолтный — заставка
+     * появляется по idle-таймауту, т.е. сессия считается завершённой.
+     */
     private void hideScreensaver() {
         screensaver.stop();
         resetAllAndGoHome();
@@ -570,7 +860,14 @@ public class MainController {
             case SETTINGS         -> showOnly(settingsScreen);
             case SUMMARY          -> showOnly(summaryScreen);
             case PAYMENT          -> showOnly(paymentScreen);
-            case PRINTING         -> showOnly(printingScreen);
+            case PRINTING         -> {
+                // До первого события PrintFlow в лейбле висел бы русский
+                // дефолт из FXML — ставим переведённый текст сразу.
+                if (printingStatusLabel != null) {
+                    printingStatusLabel.setText(loc.get("printing.wait"));
+                }
+                showOnly(printingScreen);
+            }
             case COMPLETED        -> showOnly(completedScreen);
             case SCAN_INSTRUCTION -> {
                 // Очищаем поле имени файла при каждом входе на экран старта
@@ -590,7 +887,7 @@ public class MainController {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    //  EVENT HANDLERS — все TODO, на следующих шагах будем заполнять
+    //  EVENT HANDLERS
     // ══════════════════════════════════════════════════════════════════════
 
     // ---- HOME ----
@@ -601,46 +898,36 @@ public class MainController {
     @FXML public void onHelpBackClicked()         { changeStep(KioskStep.HOME); }
 
     // ---- LANGUAGE ----
-    @FXML public void onSelectRuTop() { setLanguage(Language.RU); }
-    @FXML public void onSelectKgTop() { setLanguage(Language.KG); }
-    @FXML public void onSelectEnTop() { setLanguage(Language.EN); }
-
-    /**
-     * Переключает язык интерфейса киоска: подсвечивает выбранную кнопку и
-     * перегенерирует QR-коды загрузки так, чтобы бот и сайт открылись сразу
-     * на нужной локали (язык вшит в ссылку).
-     */
-    private void setLanguage(Language lang) {
-        currentLang = lang;
-        setLangActive(langRuBtn, lang == Language.RU);
-        setLangActive(langKgBtn, lang == Language.KG);
-        setLangActive(langEnBtn, lang == Language.EN);
-        refreshUploadQrCodes();
-        if (virtualKeyboard != null) virtualKeyboard.rebuild(lang);
-        log.info("Language switched to {}", lang);
-    }
+    // Смена языка централизована в LocalizationService: setLanguage триггерит
+    // languageProperty, от которого пересчитываются все биндинги, а
+    // onLanguageChanged делает побочные эффекты (QR, подсветка, клавиатура).
+    @FXML public void onSelectRuTop() { loc.setLanguage(Language.RU); }
+    @FXML public void onSelectKgTop() { loc.setLanguage(Language.KY); }
+    @FXML public void onSelectEnTop() { loc.setLanguage(Language.EN); }
 
     /** Подсветка активной языковой кнопки (класс lang-btn-active). */
     private static void setLangActive(Node btn, boolean active) {
         if (btn == null) return;
-        btn.getStyleClass().remove("lang-btn-active");
+        btn.getStyleClass().remove(LANG_ACTIVE_CLASS);
         if (active) {
-            btn.getStyleClass().add("lang-btn-active");
+            btn.getStyleClass().add(LANG_ACTIVE_CLASS);
         }
     }
 
     /**
      * Генерирует QR-коды для Telegram-бота и веб-портала с учётом текущего
      * языка и помещает их в карточки экрана UPLOAD.
+     * QR оплаты эквайринга сюда не входит — его payload задаёт платёжный шлюз.
      */
     private void refreshUploadQrCodes() {
+        Language lang = loc.getLanguage();
         if (telegramQrImageView != null) {
             telegramQrImageView.setImage(
-                    QrCodeGenerator.generate(buildTelegramUrl(currentLang), 185));
+                    QrCodeGenerator.generate(buildTelegramUrl(lang), 185));
         }
         if (webQrImageView != null) {
             webQrImageView.setImage(
-                    QrCodeGenerator.generate(buildWebUrl(currentLang), 185));
+                    QrCodeGenerator.generate(buildWebUrl(lang), 185));
         }
     }
 
@@ -661,7 +948,7 @@ public class MainController {
     private static String langCode(Language lang) {
         return switch (lang) {
             case RU -> "ru";
-            case KG -> "ky";
+            case KY -> "ky";
             case EN -> "en";
         };
     }
@@ -772,16 +1059,25 @@ public class MainController {
         changeStep(KioskStep.SUMMARY);
     }
 
+    /**
+     * Значения summary — динамические, поэтому не биндятся, а рендерятся
+     * через loc.get(...) в момент показа. При смене языка (если summary
+     * уже заполнен) метод повторно вызывается из onLanguageChanged.
+     */
     private void populateSummary(JobPreviewResponse preview) {
         var price = preview.price();
 
         summaryPagesLabel      .setText(String.valueOf(price.pageCount()));
         summaryCopiesLabel     .setText(String.valueOf(price.copies()));
-        summaryColorLabel      .setText("COLOR".equals(price.colorMode()) ? "Цветная" : "Чёрно-белая");
-        summarySidesLabel      .setText(price.doubleSided() ? "Двусторонняя" : "Односторонняя");
-        summaryOrientationLabel.setText("PORTRAIT".equals(settingsFlow.orientation()) ? "Книжная" : "Альбомная");
+        summaryColorLabel      .setText(loc.get("COLOR".equals(price.colorMode())
+                ? "settings.color.color" : "settings.color.bw"));
+        summarySidesLabel      .setText(loc.get(price.doubleSided()
+                ? "settings.sides.double" : "settings.sides.single"));
+        summaryOrientationLabel.setText(loc.get(
+                "PORTRAIT".equals(settingsFlow.orientation())
+                        ? "settings.orientation.portrait" : "settings.orientation.landscape"));
         summaryPaperLabel      .setText(settingsFlow.paperSize());
-        summaryPriceLabel      .setText(price.totalSom() + " сом");
+        summaryPriceLabel      .setText(loc.get("price.som", String.valueOf(price.totalSom())));
     }
 
     // ---- SUMMARY ----
@@ -831,16 +1127,17 @@ public class MainController {
      */
     private void confirmAbandonAndGoHome() {
         showConfirmOverlay(
-                "Вернуться на главный экран?",
-                "Текущий заказ будет отменён, а введённый код станет недоступен.",
-                "Да, выйти",
-                "Остаться",
+                loc.get("confirm.abandon.title"),
+                loc.get("confirm.abandon.message"),
+                loc.get("confirm.abandon.yes"),
+                loc.get("confirm.stay"),
                 this::resetAllAndGoHome);
     }
 
     /**
      * Универсальный модальный оверлей подтверждения поверх всего интерфейса.
      * Фон затемняется; клик по затемнению = «остаться» (безопасный выбор).
+     * Тексты приходят уже локализованными от вызывающего кода.
      *
      * @param onConfirm действие при нажатии подтверждающей (красной) кнопки
      */
@@ -908,6 +1205,15 @@ public class MainController {
         in.play();
     }
 
+    /**
+     * Полный сброс сессии и возврат на HOME. Это ЕДИНСТВЕННАЯ точка
+     * завершения сессии — сюда сходятся idle-таймаут (через hideScreensaver),
+     * автовозврат после успешной печати, все кнопки «На главный экран» и
+     * подтверждённый уход из активного заказа. Поэтому именно здесь язык
+     * сбрасывается на дефолтный: биндинги вернут тексты, а листенер —
+     * QR-коды, подсветку кнопок и клавиатуру. Никакого отдельного кода
+     * отката не требуется.
+     */
     private void resetAllAndGoHome() {
         stopAutoReturnCountdown();
         paymentFlow.stop();
@@ -922,6 +1228,7 @@ public class MainController {
         currentPin  = null;
         currentPreview = null;
         currentJobId = null;
+        loc.resetToDefault();   // язык живёт в рамках сессии
         changeStep(KioskStep.HOME);
     }
 
@@ -963,21 +1270,31 @@ public class MainController {
     private void updateAutoReturnUi(int secondsLeft, int total) {
         int shown = Math.max(secondsLeft, 0);
         if (autoReturnCounterLabel != null) {
-            autoReturnCounterLabel.setText(shown + " " + pluralSeconds(shown));
+            autoReturnCounterLabel.setText(shown + " " + secondsWord(shown));
         }
         if (autoReturnProgress != null) {
             autoReturnProgress.setProgress((double) shown / total);
         }
     }
 
-    /** Русское склонение слова «секунда» по числу. */
-    private static String pluralSeconds(int n) {
-        int mod100 = n % 100;
-        int mod10  = n % 10;
-        if (mod100 >= 11 && mod100 <= 14) return "секунд";
-        if (mod10 == 1)                   return "секунда";
-        if (mod10 >= 2 && mod10 <= 4)     return "секунды";
-        return "секунд";
+    /**
+     * Слово «секунда» в правильной форме для текущего языка.
+     * Русский — три формы по правилам склонения; английский — one/other;
+     * кыргызский — после числительного форма не меняется.
+     */
+    private String secondsWord(int n) {
+        return switch (loc.getLanguage()) {
+            case RU -> {
+                int mod100 = n % 100;
+                int mod10  = n % 10;
+                if (mod100 >= 11 && mod100 <= 14) yield loc.get("time.sec.many");
+                if (mod10 == 1)                   yield loc.get("time.sec.one");
+                if (mod10 >= 2 && mod10 <= 4)     yield loc.get("time.sec.few");
+                yield loc.get("time.sec.many");
+            }
+            case EN -> loc.get(n == 1 ? "time.sec.one" : "time.sec.many");
+            case KY -> loc.get("time.sec.one");
+        };
     }
 
     // ---- PRINTING / COMPLETED ----
@@ -1002,7 +1319,8 @@ public class MainController {
         resetAllAndGoHome();
     }
 
-    @FXML public void onFinishClicked()              { changeStep(KioskStep.HOME); }
+    /** Завершение = конец сессии: полный сброс, включая язык. */
+    @FXML public void onFinishClicked()              { resetAllAndGoHome(); }
 
     // ---- BACK BUTTONS ----
     @FXML public void onBackClicked() {
@@ -1139,9 +1457,9 @@ public class MainController {
             log.error("Scan upload for printing failed", cause);
             String detail = (cause != null)
                     ? (cause.getClass().getSimpleName() + ": " + cause.getMessage())
-                    : "неизвестная ошибка";
-            showConfirmOverlay("Не удалось подготовить к печати", detail,
-                    "Понятно", "Закрыть", () -> {});
+                    : loc.get("error.unknown");
+            showConfirmOverlay(loc.get("scanupload.print.failed"), detail,
+                    loc.get("dialog.ok"), loc.get("dialog.close"), () -> {});
         }));
 
         Thread t = new Thread(task, "scan-print-upload");
@@ -1166,6 +1484,8 @@ public class MainController {
     /**
      * Общий флоу доставки сканов: собирает PDF, заливает на сервер, получает
      * PIN и по нему строит ссылку (linkBuilder), которую показывает QR-кодом.
+     * QR доставки сканов ведёт на конкретный файл по PIN — язык в payload
+     * не нужен (страница скачивания контента не имеет).
      */
     private void deliverScans(java.util.function.Function<String, String> linkBuilder,
                               Button triggerBtn) {
@@ -1193,7 +1513,7 @@ public class MainController {
                 scanDeliveryQrBox.setManaged(true);
             }
             if (scanDeliveryInfoLabel != null) {
-                scanDeliveryInfoLabel.setText("Отсканируйте QR-код, чтобы получить документ");
+                scanDeliveryInfoLabel.setText(loc.get("scan.delivery.scan.qr"));
                 scanDeliveryInfoLabel.setVisible(true);
                 scanDeliveryInfoLabel.setManaged(true);
             }
@@ -1204,9 +1524,9 @@ public class MainController {
             log.error("Scan delivery upload failed", cause);
             String detail = (cause != null)
                     ? (cause.getClass().getSimpleName() + ": " + cause.getMessage())
-                    : "неизвестная ошибка";
-            showConfirmOverlay("Не удалось подготовить документ", detail,
-                    "Понятно", "Закрыть", () -> {});
+                    : loc.get("error.unknown");
+            showConfirmOverlay(loc.get("scanupload.delivery.failed"), detail,
+                    loc.get("dialog.ok"), loc.get("dialog.close"), () -> {});
         }));
 
         Thread t = new Thread(task, "scan-delivery-upload");
@@ -1234,13 +1554,13 @@ public class MainController {
 
             @Override
             public void onShortPin() {
-                showError("Введите все 4 цифры");
+                showError(loc.get("pin.error.short"));
             }
 
             @Override
             public void onLoading() {
                 hideError();
-                showStatus("Проверяем код...");
+                showStatus(loc.get("pin.checking"));
                 pinSubmitBtn.setDisable(true);
             }
 
@@ -1264,7 +1584,7 @@ public class MainController {
                 pinSubmitBtn.setDisable(false);
                 hideStatus();
                 selectedPinCodeLabel.setText("");
-                showError("Код не найден или истёк. Проверьте, что код актуален.");
+                showError(loc.get("pin.error.notfound"));
             }
 
             @Override
@@ -1272,7 +1592,7 @@ public class MainController {
                 pinSubmitBtn.setDisable(false);
                 hideStatus();
                 selectedPinCodeLabel.setText("");
-                showError("Этот код сейчас используется на другом терминале.");
+                showError(loc.get("pin.error.locked"));
             }
 
             @Override
@@ -1280,7 +1600,7 @@ public class MainController {
                 pinSubmitBtn.setDisable(false);
                 hideStatus();
                 selectedPinCodeLabel.setText("");
-                showError("Сервер недоступен. Попробуйте ещё раз через минуту.");
+                showError(loc.get("pin.error.server"));
             }
         };
     }
@@ -1312,7 +1632,8 @@ public class MainController {
 
             @Override
             public void onLoading() {
-                previewLoadingLabel.setText("Загружаем документ...");
+                // Текст previewLoadingLabel забинден на ключ preview.loading —
+                // setText здесь больше не нужен (и запрещён для bound-свойства).
                 showPreviewLoading();
                 pageSelection.clear();
             }
@@ -1332,6 +1653,8 @@ public class MainController {
 
             @Override
             public void onError(String message) {
+                // message приходит из PreviewFlow — переведём на уровне flow
+                // (следующая итерация: flow отдаёт ключ, контроллер — loc.get).
                 previewErrorLabel.setText(message);
                 showPreviewError();
             }
@@ -1371,18 +1694,26 @@ public class MainController {
         previewNavBox    .setVisible(false);  previewNavBox    .setManaged(false);
     }
 
+    /**
+     * Имя файла и размер — динамические. Заголовок «Файл найден» забинден
+     * на ключ fileinfo.found, поэтому здесь его больше не трогаем.
+     */
     private void showFileInfo(VerifyResponse response) {
-        fileFoundTitleLabel.setText("Файл найден");
         fileInfoLabel.setText(
                 response.originalFilename() + "\n" +
                         formatSize(response.fileSize())
         );
     }
 
-    private static String formatSize(long bytes) {
-        if (bytes < 1024)         return bytes + " Б";
-        if (bytes < 1024 * 1024)  return (bytes / 1024) + " КБ";
-        return String.format("%.1f МБ", bytes / 1024.0 / 1024.0);
+    /** Человекочитаемый размер файла с локализованными единицами. */
+    private String formatSize(long bytes) {
+        if (bytes < 1024) {
+            return loc.get("size.b", String.valueOf(bytes));
+        }
+        if (bytes < 1024 * 1024) {
+            return loc.get("size.kb", String.valueOf(bytes / 1024));
+        }
+        return loc.get("size.mb", String.format("%.1f", bytes / 1024.0 / 1024.0));
     }
 
     private PrintSettingsFlow.Listener buildSettingsListener() {
@@ -1464,22 +1795,27 @@ public class MainController {
 
             @Override
             public void onLoading() {
-                paymentLoadingLabel.setText("Создаём платёжную сессию...");
+                paymentLoadingLabel.setText(loc.get("payment.creating"));
+                // Инструкция видна и во время создания сессии — переводим сразу,
+                // иначе до onSessionReady висит русский текст-дефолт из FXML.
+                paymentInstructionLabel.setText(loc.get("payment.instruction"));
                 showPaymentLoading();
             }
 
             @Override
             public void onSessionReady(PaymentSessionDto session) {
-                paymentAmountLabel.setText(session.priceSom() + " сом");
-                paymentInstructionLabel.setText("Отсканируйте QR-код в банковском приложении");
+                paymentAmountLabel.setText(
+                        loc.get("price.som", String.valueOf(session.priceSom())));
+                paymentInstructionLabel.setText(loc.get("payment.instruction"));
 
-                // Генерируем QR из paymentUrl
+                // Генерируем QR из paymentUrl. Payload оплаты приходит от
+                // платёжного шлюза и от языка киоска НЕ зависит — не трогаем.
                 try {
                     Image qrImage = QrCodeGenerator.generate(session.paymentUrl(), 280);
                     qrCodeImageView.setImage(qrImage);
                 } catch (Exception e) {
                     log.error("Failed to generate QR code", e);
-                    paymentErrorLabel.setText("Не удалось сгенерировать QR-код");
+                    paymentErrorLabel.setText(loc.get("payment.qr.failed"));
                     showPaymentError();
                     return;
                 }
@@ -1492,9 +1828,8 @@ public class MainController {
             public void onCountdownTick(int secondsLeft) {
                 int min = secondsLeft / 60;
                 int sec = secondsLeft % 60;
-                paymentInstructionLabel.setText(String.format(
-                        "Отсканируйте QR-код в банковском приложении • Осталось %d:%02d",
-                        min, sec));
+                paymentInstructionLabel.setText(loc.get("payment.countdown",
+                        String.valueOf(min), String.format("%02d", sec)));
             }
 
             @Override
@@ -1509,12 +1844,14 @@ public class MainController {
             public void onExpired() {
                 log.info("Payment session expired");
                 paymentFlow.stop();
-                paymentErrorLabel.setText("Время оплаты истекло. Вернитесь на главную и попробуйте снова.");
+                paymentErrorLabel.setText(loc.get("payment.expired"));
                 showPaymentError();
             }
 
             @Override
             public void onError(String message) {
+                // message приходит из PaymentSessionFlow — переведём на уровне
+                // flow (следующая итерация: flow отдаёт ключ вместо текста).
                 paymentErrorLabel.setText(message);
                 showPaymentError();
             }
@@ -1544,11 +1881,13 @@ public class MainController {
 
             @Override
             public void onStarted() {
-                printingStatusLabel.setText("Запускаем печать...");
+                printingStatusLabel.setText(loc.get("printing.starting"));
             }
 
             @Override
             public void onStatus(String message) {
+                // message приходит из PrintFlow — переведём на уровне flow
+                // (следующая итерация: flow отдаёт ключ вместо текста).
                 printingStatusLabel.setText(message);
             }
 
@@ -1563,7 +1902,7 @@ public class MainController {
             public void onFailed(String message) {
                 log.warn("Print failed: {}", message);
                 printErrorMessageLabel.setText(message);
-                printErrorPinLabel.setText("PIN: " + currentPin);    // для ручного refund'а
+                printErrorPinLabel.setText(loc.get("printfail.pin", currentPin));  // для ручного refund'а
                 changeStep(KioskStep.PRINT_FAILED);
             }
         };

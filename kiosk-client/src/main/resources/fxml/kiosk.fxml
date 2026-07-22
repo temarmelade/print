@@ -788,7 +788,7 @@
 
                     <VBox styleClass="page-select-panel" spacing="14"
                           minWidth="320" prefWidth="320" maxWidth="320">
-                        <Label text="Выберите страницы для печати" styleClass="panel-title"
+                        <Label fx:id="pageSelectTitleLabel" text="Выберите страницы для печати" styleClass="panel-title"
                                wrapText="true" maxWidth="280"/>
 
                         <ScrollPane fx:id="pageListScroll" styleClass="page-list-scroll"
@@ -1035,7 +1035,7 @@
                     <HBox styleClass="stat-item" alignment="CENTER_LEFT" spacing="12" HBox.hgrow="ALWAYS">
                         <FontIcon iconLiteral="fas-coins" iconSize="20" styleClass="stat-icon"/>
                         <VBox alignment="TOP_LEFT" spacing="0">
-                            <Label text="Стоимость" styleClass="stat-label"/>
+                            <Label fx:id="summaryPriceKeyLabel" text="Стоимость" styleClass="stat-label"/>
                             <Label fx:id="summaryPriceLabel" text="0 сом" styleClass="stat-value"/>
                         </VBox>
                     </HBox>
@@ -1132,7 +1132,7 @@
                     <HBox styleClass="status-pill" alignment="CENTER" spacing="10"
                           maxWidth="-Infinity">
                         <StackPane styleClass="status-pill-dot"/>
-                        <Label text="Печать в процессе" styleClass="status-pill-label"/>
+                        <Label fx:id="statusPillLabel" text="Печать в процессе" styleClass="status-pill-label"/>
                     </HBox>
 
                     <!-- 2. Title + subtitle -->
@@ -1159,12 +1159,12 @@
                         <HBox styleClass="info-chip" alignment="CENTER" spacing="10">
                             <FontIcon iconLiteral="fas-print" iconSize="16"
                                       styleClass="info-chip-icon"/>
-                            <Label text="Принтер активен" styleClass="info-chip-label"/>
+                            <Label fx:id="chipPrinterLabel" text="Принтер активен" styleClass="info-chip-label"/>
                         </HBox>
                         <HBox styleClass="info-chip" alignment="CENTER" spacing="10">
                             <FontIcon iconLiteral="far-clock" iconSize="16"
                                       styleClass="info-chip-icon"/>
-                            <Label text="Осталось совсем немного" styleClass="info-chip-label"/>
+                            <Label fx:id="chipTimeLabel" text="Осталось совсем немного" styleClass="info-chip-label"/>
                         </HBox>
                     </HBox>
 

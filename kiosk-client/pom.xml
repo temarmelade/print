@@ -13,6 +13,7 @@
 
     <properties>
         <javafx.version>21.0.3</javafx.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencies>

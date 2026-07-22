@@ -11,7 +11,9 @@ import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.IntFunction;
 
 /**
  * Панель выбора страниц для печати — вертикальный список миниатюр с чекбоксами.
@@ -26,6 +28,13 @@ import java.util.function.Consumer;
  *
  * <p>Миниатюры подгружаются асинхронно через {@link ThumbnailProvider}, поэтому
  * на больших документах панель не блокирует UI-поток.
+ *
+ * <p><b>Локализация.</b> Панель не знает про LocalizationService — тексты
+ * приходят снаружи через два провайдера: {@code countTextProvider}
+ * (счётчик «Выбрано: X из Y») и {@code pageCaptionProvider} (подпись
+ * «Страница N»). При смене языка контроллер вызывает {@link #refreshTexts()},
+ * и уже построенный список перерисовывает подписи без пересоздания строк
+ * (выбор страниц и загруженные миниатюры сохраняются).
  */
 public class PageSelectionPanel {
 
@@ -38,9 +47,15 @@ public class PageSelectionPanel {
     private final Label countLabel;
     private final ThumbnailProvider thumbnailProvider;
     private final Runnable onSelectionChanged;
+    /** (выбрано, всего) → текст счётчика. */
+    private final BiFunction<Integer, Integer, String> countTextProvider;
+    /** Номер страницы (1-based) → подпись под миниатюрой. */
+    private final IntFunction<String> pageCaptionProvider;
 
     private final List<CheckBox>  checkBoxes = new ArrayList<>();
     private final List<ImageView> thumbViews = new ArrayList<>();
+    /** Подписи «Страница N» — храним, чтобы перерисовать при смене языка. */
+    private final List<Label> pageCaptions = new ArrayList<>();
     private int totalPages = 0;
 
     /** Подавляет пер-чекбоксовые уведомления во время массовых операций. */
@@ -50,15 +65,39 @@ public class PageSelectionPanel {
     private boolean dragging = false;
     private boolean paintSelected = false;   // целевое состояние «мазка»
 
+    /**
+     * Полный конструктор с провайдерами локализованных текстов.
+     *
+     * @param countTextProvider   (выбрано, всего) → текст счётчика; null —
+     *                            русский текст по умолчанию
+     * @param pageCaptionProvider (номер 1-based) → подпись страницы; null —
+     *                            русская подпись по умолчанию
+     */
     public PageSelectionPanel(VBox listContainer,
                               Label countLabel,
                               ThumbnailProvider thumbnailProvider,
-                              Runnable onSelectionChanged) {
+                              Runnable onSelectionChanged,
+                              BiFunction<Integer, Integer, String> countTextProvider,
+                              IntFunction<String> pageCaptionProvider) {
         this.listContainer = listContainer;
         this.countLabel = countLabel;
         this.thumbnailProvider = thumbnailProvider;
         this.onSelectionChanged = onSelectionChanged;
+        this.countTextProvider = (countTextProvider != null)
+                ? countTextProvider
+                : PageSelectionPanel::defaultCountText;
+        this.pageCaptionProvider = (pageCaptionProvider != null)
+                ? pageCaptionProvider
+                : PageSelectionPanel::defaultPageCaption;
         updateCountLabel();
+    }
+
+    /** Старая сигнатура — русские тексты по умолчанию (обратная совместимость). */
+    public PageSelectionPanel(VBox listContainer,
+                              Label countLabel,
+                              ThumbnailProvider thumbnailProvider,
+                              Runnable onSelectionChanged) {
+        this(listContainer, countLabel, thumbnailProvider, onSelectionChanged, null, null);
     }
 
     /**
@@ -70,6 +109,7 @@ public class PageSelectionPanel {
         listContainer.getChildren().clear();
         checkBoxes.clear();
         thumbViews.clear();
+        pageCaptions.clear();
 
         for (int i = 0; i < this.totalPages; i++) {
             listContainer.getChildren().add(buildRow(i));
@@ -93,6 +133,7 @@ public class PageSelectionPanel {
         listContainer.getChildren().clear();
         checkBoxes.clear();
         thumbViews.clear();
+        pageCaptions.clear();
         updateCountLabel();
         fireChanged();
     }
@@ -102,6 +143,18 @@ public class PageSelectionPanel {
 
     /** Кнопка «Снять все». */
     public void clearSelection() { setAllChecked(false); }
+
+    /**
+     * Перерисовать все локализуемые тексты панели (счётчик и подписи страниц)
+     * по актуальному языку. Вызывается контроллером при смене языка. Строки
+     * не пересоздаются: выбор и миниатюры сохраняются.
+     */
+    public void refreshTexts() {
+        updateCountLabel();
+        for (int i = 0; i < pageCaptions.size(); i++) {
+            pageCaptions.get(i).setText(pageCaptionProvider.apply(i + 1));
+        }
+    }
 
     /** Итоговый список номеров страниц (1-based), по порядку. */
     public List<Integer> getPagesToPrint() {
@@ -144,7 +197,7 @@ public class PageSelectionPanel {
 
         Label num = new Label(String.valueOf(pageIndex + 1));
         num.getStyleClass().add("page-row-number");
-        Label sub = new Label("Страница " + (pageIndex + 1));
+        Label sub = new Label(pageCaptionProvider.apply(pageIndex + 1));
         sub.getStyleClass().add("page-row-subtitle");
         VBox texts = new VBox(2, num, sub);
         texts.setAlignment(Pos.CENTER_LEFT);
@@ -175,6 +228,7 @@ public class PageSelectionPanel {
 
         checkBoxes.add(cb);
         thumbViews.add(iv);
+        pageCaptions.add(sub);
         return row;
     }
 
@@ -191,9 +245,19 @@ public class PageSelectionPanel {
     }
 
     private void updateCountLabel() {
-        long sel = checkBoxes.stream().filter(CheckBox::isSelected).count();
-        countLabel.setText("Выбрано: " + sel + " из " + totalPages
-                + " " + pluralPagesGen(totalPages));
+        if (countLabel != null) {
+            countLabel.setText(countTextProvider.apply(selectedCount(), totalPages));
+        }
+    }
+
+    // ---- Русские тексты по умолчанию (когда провайдеры не заданы) ----
+
+    private static String defaultCountText(int sel, int total) {
+        return "Выбрано: " + sel + " из " + total + " " + pluralPagesGen(total);
+    }
+
+    private static String defaultPageCaption(int pageNumber) {
+        return "Страница " + pageNumber;
     }
 
     /** Форма слова «страница» в родительном падеже после «из N». */
