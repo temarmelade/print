@@ -571,73 +571,216 @@
                 </StackPane>
             </VBox>
 
-            <!-- SCAN INSTRUCTION SCREEN -->
+            <!-- ════════════════════════════════════════════════════════════════════
+     SCAN INSTRUCTION SCREEN (редизайн, v2)
+     Заменяет целиком старый блок <VBox fx:id="scanInstructionScreen">...</VBox>
+     в main-view.fxml.
+
+     v2: PNG вставляются напрямую, без StackPane-кругов — подложка уже
+     нарисована в самих ассетах. Если какую-то картинку нужно скруглить
+     принудительно, у ImageView нет CSS border-radius; аналог — clip
+     (пример закомментирован у иллюстрации).
+
+     Требования:
+       1. PNG-ассеты в src/main/resources/images/scan/
+       2. kiosk.css дополнен классами из kiosk-css-additions.css (v2)
+       3. MainController обновлён (уже сделано ранее)
+     ════════════════════════════════════════════════════════════════════ -->
+
             <VBox fx:id="scanInstructionScreen"
-                  styleClass="screen"
-                  spacing="26"
+                  styleClass="screen, scan-instruction-screen"
+                  spacing="0"
                   visible="false"
                   managed="false">
 
-                <HBox alignment="CENTER_LEFT">
+                <!-- Назад: иконка + текст -->
+                <HBox alignment="CENTER_LEFT" styleClass="scan-instr-top">
                     <Button fx:id="backBtnScanInstruction"
-                            text="← Назад"
+                            text="&#8592; Назад"
                             onAction="#onBackClicked"
                             styleClass="btn-back"/>
                 </HBox>
 
-                <VBox styleClass="content-card"
-                      spacing="26"
-                      alignment="CENTER"
-                      maxWidth="760">
+                <!-- Центральная карточка -->
+                <StackPane VBox.vgrow="ALWAYS" alignment="CENTER">
+                    <VBox fx:id="scanInstrCard"
+                          styleClass="content-card, scan-instr-card"
+                          spacing="18"
+                          alignment="CENTER"
+                          maxWidth="880">
 
-                    <FontIcon iconLiteral="fas-file-import" iconSize="72" styleClass="scan-start-icon"/>
+                        <!-- Иллюстрация сканера (подложка — в самом PNG).
+                             Если понадобится скругление, аналог border-radius для
+                             ImageView — clip:
+                             <clip>
+                                 <Rectangle width="272" height="272" arcWidth="60" arcHeight="60"/>
+                             </clip>
+                             (Rectangle — из javafx.scene.shape, размеры = fitWidth/fitHeight) -->
+                        <ImageView fitWidth="272" fitHeight="272" preserveRatio="true">
+                            <Image url="@/images/scan/scanner_illustration.png"/>
+                        </ImageView>
 
-                    <Label fx:id="scanInstructionTitleLabel"
-                           text="Положите документ в сканер"
-                           styleClass="h1-text"/>
+                        <Label fx:id="scanInstructionTitleLabel"
+                               text="Положите документ в сканер"
+                               styleClass="h1-text"/>
 
-                    <Label fx:id="scanInstructionDescLabel"
-                           text="Положите лист ровно на стекло сканера или в автоподатчик. Затем нажмите кнопку ниже."
-                           styleClass="body-text-muted"
-                           textAlignment="CENTER"
-                           wrapText="true"/>
+                        <Label fx:id="scanInstructionDescLabel"
+                               text="Положите лист ровно на стекло сканера.&#10;Затем нажмите кнопку ниже."
+                               styleClass="body-text-muted"
+                               textAlignment="CENTER"
+                               wrapText="true"/>
 
-                    <TextField fx:id="scanFileNameField"
-                               promptText="Дайте имя файлу"
-                               styleClass="scan-name-field"/>
+                        <!-- Инфо-баннер про имя файла -->
+                        <HBox styleClass="scan-hint-banner"
+                              alignment="CENTER"
+                              spacing="14"
+                              maxWidth="700">
+                            <ImageView fitWidth="26" fitHeight="34" preserveRatio="true">
+                                <Image url="@/images/scan/info_icon.png"/>
+                            </ImageView>
+                            <Label fx:id="scanNameHintLabel"
+                                   text="Рекомендуется дать название файлу, или будет выбрано случайно"
+                                   styleClass="scan-hint-text"
+                                   wrapText="true"/>
+                        </HBox>
 
-                    <Button fx:id="startScanPageBtn"
-                            text="Начать сканирование"
-                            onAction="#onStartScanPageClicked"
-                            styleClass="btn-primary"/>
-                </VBox>
+                        <!-- Поле имени файла с кастомным prompt-оверлеем по центру.
+                             promptText НЕ задавать: его роль играет оверлей (см. контроллер). -->
+                        <StackPane maxWidth="700">
+                            <TextField fx:id="scanFileNameField"
+                                       alignment="CENTER"
+                                       styleClass="scan-name-field"/>
+                            <HBox fx:id="scanNamePromptBox"
+                                  alignment="CENTER"
+                                  spacing="10"
+                                  mouseTransparent="true">
+                                <ImageView fitWidth="24" fitHeight="30" preserveRatio="true">
+                                    <Image url="@/images/scan/edit_name_icon.png"/>
+                                </ImageView>
+                                <Label fx:id="scanNamePromptLabel"
+                                       text="Дать имя файлу"
+                                       styleClass="scan-name-prompt"/>
+                            </HBox>
+                        </StackPane>
+
+                        <Button fx:id="startScanPageBtn"
+                                text="Начать сканирование"
+                                onAction="#onStartScanPageClicked"
+                                styleClass="btn-primary, scan-start-cta"
+                                contentDisplay="LEFT"
+                                graphicTextGap="14">
+                            <graphic>
+                                <ImageView fitWidth="28" fitHeight="32" preserveRatio="true">
+                                    <Image url="@/images/scan/scan_button_icon.png"/>
+                                </ImageView>
+                            </graphic>
+                        </Button>
+                    </VBox>
+                </StackPane>
+
+                <!-- Нижний статус-бар: сканер / режим / формат -->
+                <HBox styleClass="scan-status-bar" alignment="CENTER" spacing="140">
+
+                    <HBox alignment="CENTER_LEFT" spacing="14" styleClass="scan-status-item">
+                        <ImageView fitWidth="68" fitHeight="68" preserveRatio="true">
+                            <Image url="@/images/scan/status_scanner_icon.png"/>
+                        </ImageView>
+                        <VBox spacing="2">
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <!-- Модель — из конфигурации железа, не переводится -->
+                                <Label text="Canon MF233w" styleClass="scan-status-title"/>
+                                <Label text="✓" styleClass="scan-status-check"/>
+                            </HBox>
+                            <Label fx:id="scanStatusConnectedLabel"
+                                   text="Сканер подключен"
+                                   styleClass="scan-status-sub"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox alignment="CENTER_LEFT" spacing="14" styleClass="scan-status-item">
+                        <ImageView fitWidth="68" fitHeight="68" preserveRatio="true">
+                            <Image url="@/images/scan/status_color_icon.png"/>
+                        </ImageView>
+                        <VBox spacing="2">
+                            <Label fx:id="scanStatusColorLabel"
+                                   text="Цветной режим"
+                                   styleClass="scan-status-title"/>
+                            <Label text="300 DPI" styleClass="scan-status-sub"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox alignment="CENTER_LEFT" spacing="14" styleClass="scan-status-item">
+                        <ImageView fitWidth="68" fitHeight="68" preserveRatio="true">
+                            <Image url="@/images/scan/status_format_icon.png"/>
+                        </ImageView>
+                        <VBox spacing="2">
+                            <Label fx:id="scanStatusFormatLabel"
+                                   text="Формат"
+                                   styleClass="scan-status-title"/>
+                            <Label text="A4" styleClass="scan-status-sub"/>
+                        </VBox>
+                    </HBox>
+                </HBox>
             </VBox>
 
-            <!-- SCAN PROGRESS SCREEN -->
+
+
+            <!-- ════════════════════════════════════════════════════════════════════
+     SCAN PROGRESS SCREEN (редизайн)
+     Заменяет целиком старый блок <VBox fx:id="scanProgressScreen">...</VBox>
+     в main-view.fxml. ProgressBar убран — вместо него бегущие точки.
+
+     Требования:
+       1. Видео положить в src/main/resources/videos/scan_loop.mp4
+          (зацикливание/маска — в контроллере; без файла или без модуля
+          javafx-media экран покажет статичную иллюстрацию).
+     ════════════════════════════════════════════════════════════════════ -->
+
             <VBox fx:id="scanProgressScreen"
                   styleClass="screen"
                   spacing="28"
                   visible="false"
                   managed="false">
 
-                <VBox styleClass="content-card"
-                      spacing="26"
+                <VBox styleClass="content-card, scan-progress-card"
+                      spacing="18"
                       alignment="CENTER"
-                      maxWidth="680">
+                      maxWidth="900">
 
                     <Label fx:id="scanProgressTitleLabel"
-                           text="Сканирование..."
+                           text="Сканирование документа"
                            styleClass="h1-text"/>
 
                     <Label fx:id="scanProgressStatusLabel"
-                           text="Пожалуйста, подождите..."
+                           text="Пожалуйста, подождите, идет сканирование."
                            styleClass="body-text-muted"/>
 
-                    <ProgressBar fx:id="scanProgressBar"
-                                 prefWidth="520"
-                                 prefHeight="24"/>
+                    <!-- Круглое окно видео. Круглую маску и MediaView монтирует
+                         контроллер (setupScanProgressVisuals) — здесь только слот. -->
+                    <StackPane fx:id="scanVideoBox"
+                               styleClass="scan-video-box"
+                               prefWidth="460" prefHeight="460"
+                               minWidth="460"  minHeight="460"
+                               maxWidth="460"  maxHeight="460"/>
+
+                    <!-- Бегущая точка: подсветку двигает контроллер -->
+                    <HBox fx:id="scanDotsBox"
+                          alignment="CENTER"
+                          spacing="14"
+                          styleClass="scan-dots-box">
+                        <Region styleClass="scan-dot"/>
+                        <Region styleClass="scan-dot"/>
+                        <Region styleClass="scan-dot"/>
+                        <Region styleClass="scan-dot"/>
+                        <Region styleClass="scan-dot"/>
+                    </HBox>
+
+                    <Label fx:id="scanProgressAutoCloseLabel"
+                           text="Окно закроется автоматически после завершения."
+                           styleClass="body-text-muted, scan-progress-autoclose"/>
                 </VBox>
             </VBox>
+
 
             <!-- SCAN PREVIEW SCREEN -->
             <VBox fx:id="scanPreviewScreen"

@@ -20,6 +20,7 @@ import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.animation.FadeTransition;
+import javafx.animation.TranslateTransition;
 import javafx.animation.Timeline;
 import javafx.animation.KeyFrame;
 import javafx.util.Duration;
@@ -299,12 +300,31 @@ public class MainController {
     @FXML private Label scanInstructionTitleLabel;
     @FXML private Label scanInstructionDescLabel;
     @FXML private Button startScanPageBtn;
+    /** Карточка экрана SCAN_INSTRUCTION — поднимается при открытой клавиатуре. */
+    @FXML private VBox scanInstrCard;
+    /** Насколько поднимать карточку, чтобы клавиатура не перекрывала поле. */
+    private static final double SCAN_CARD_LIFT_Y = -170;
     @FXML private TextField scanFileNameField;   // поле имени файла (добавить в FXML)
+    /** Редизайн SCAN_INSTRUCTION: баннер-подсказка, кастомный prompt, статус-бар. */
+    @FXML private Label scanNameHintLabel;
+    @FXML private HBox  scanNamePromptBox;
+    @FXML private Label scanNamePromptLabel;
+    @FXML private Label scanStatusConnectedLabel;
+    @FXML private Label scanStatusColorLabel;
+    @FXML private Label scanStatusFormatLabel;
     private VirtualKeyboard virtualKeyboard;
     @FXML private StackPane scanDeliveryQrBox;
     @FXML private Label scanProgressTitleLabel;
     @FXML private Label scanProgressStatusLabel;
     @FXML private ProgressBar scanProgressBar;
+    /** Редизайн SCAN_PROGRESS: круглое окно видео, точки-индикатор, подпись. */
+    @FXML private StackPane scanVideoBox;
+    @FXML private HBox scanDotsBox;
+    @FXML private Label scanProgressAutoCloseLabel;
+    /** Плеер зацикленного видео сканирования (null — javafx-media недоступна). */
+    private javafx.scene.media.MediaPlayer scanVideoPlayer;
+    /** Анимация бегущей точки под видео. */
+    private Timeline scanDotsTimeline;
 
     @FXML private Label scanPreviewTitleLabel;
     @FXML private Label scanPreviewPageLabel;
@@ -656,10 +676,23 @@ public class MainController {
         // ---- SCAN ----
         bindText(scanInstructionTitleLabel, "scan.instruction.title");
         bindText(scanInstructionDescLabel, "scan.instruction.desc");
-        bindPrompt(scanFileNameField, "scan.name.prompt");
+        bindText(scanNameHintLabel, "scan.name.hint");
+        // Prompt поля имени: в новом дизайне это оверлей «иконка + текст» по
+        // центру поля. Если оверлея в FXML нет (старый экран) — обычный
+        // promptText. Оба сразу нельзя: текст задвоится.
+        if (scanNamePromptLabel != null) {
+            bindText(scanNamePromptLabel, "scan.name.prompt");
+        } else {
+            bindPrompt(scanFileNameField, "scan.name.prompt");
+        }
         bindText(startScanPageBtn, "scan.start.btn");
+        // Статус-бар внизу: модель сканера, «300 DPI» и «A4» — нейтральные.
+        bindText(scanStatusConnectedLabel, "scan.status.connected");
+        bindText(scanStatusColorLabel, "scan.status.color.mode");
+        bindText(scanStatusFormatLabel, "scan.status.format");
         bindText(scanProgressTitleLabel, "scan.progress.title");
         bindText(scanProgressStatusLabel, "scan.progress.status");
+        bindText(scanProgressAutoCloseLabel, "scan.progress.autoclose");
         bindText(deleteScanPageBtn, "scan.delete");
         bindText(rescanPageBtn, "scan.rescan");
         bindText(addScanPageBtn, "scan.add.page");
@@ -728,6 +761,7 @@ public class MainController {
 
     /** Подключает слушатель сессии сканирования и экранную клавиатуру. */
     private void setupScan() {
+        setupScanProgressVisuals();
         scanFlow.setListener(new ScanFlow.Listener() {
             @Override public void onScanStarted() {
                 changeStep(KioskStep.SCAN_PROGRESS);
@@ -760,6 +794,117 @@ public class MainController {
                 scanFileNameField.prefWidthProperty().bind(startScanPageBtn.widthProperty());
                 scanFileNameField.maxWidthProperty().bind(startScanPageBtn.widthProperty());
             }
+
+            // Кастомный prompt-оверлей (иконка + текст по центру поля):
+            // виден, только пока поле пустое. mouseTransparent задан в FXML,
+            // клики проходят сквозь него в TextField.
+            if (scanNamePromptBox != null) {
+                scanNamePromptBox.visibleProperty().bind(
+                        scanFileNameField.textProperty().isEmpty());
+            }
+
+            // Подъём карточки, пока клавиатура открыта: после добавления
+            // иллюстрации сверху выехавшая клавиатура перекрывала поле ввода.
+            // Едем синхронно с анимацией клавиатуры (180 мс) и возвращаемся
+            // на место при её закрытии.
+            if (scanInstrCard != null) {
+                TranslateTransition cardLift =
+                        new TranslateTransition(Duration.millis(180), scanInstrCard);
+                virtualKeyboard.showingProperty().addListener((obs, was, nowShown) -> {
+                    cardLift.stop();
+                    cardLift.setToY(nowShown ? SCAN_CARD_LIFT_Y : 0);
+                    cardLift.play();
+                });
+            }
+        }
+    }
+
+    /**
+     * Готовит круглое окно видео на экране SCAN_PROGRESS: круглая маска,
+     * подгонка под размер контейнера и зацикленный беззвучный плеер из
+     * ресурса /videos/scan_loop.mp4. Если модуля javafx-media нет в сборке
+     * или файл отсутствует — тихо откатываемся на статичную иллюстрацию,
+     * экран остаётся рабочим.
+     */
+    private void setupScanProgressVisuals() {
+        if (scanVideoBox == null) return;
+
+        // Круглая маска по размеру контейнера (следит за изменением размера).
+        javafx.scene.shape.Circle mask = new javafx.scene.shape.Circle();
+        mask.radiusProperty().bind(javafx.beans.binding.Bindings
+                .min(scanVideoBox.widthProperty(), scanVideoBox.heightProperty())
+                .divide(2));
+        mask.centerXProperty().bind(scanVideoBox.widthProperty().divide(2));
+        mask.centerYProperty().bind(scanVideoBox.heightProperty().divide(2));
+        scanVideoBox.setClip(mask);
+
+        try {
+            var url = getClass().getResource("/videos/scan_loop.mp4");
+            if (url != null) {
+                var media  = new javafx.scene.media.Media(url.toExternalForm());
+                scanVideoPlayer = new javafx.scene.media.MediaPlayer(media);
+                scanVideoPlayer.setCycleCount(javafx.scene.media.MediaPlayer.INDEFINITE);
+                scanVideoPlayer.setMute(true);
+                var view = new javafx.scene.media.MediaView(scanVideoPlayer);
+                // Заполняем круг: fit по большей стороне контейнера.
+                view.fitWidthProperty().bind(scanVideoBox.widthProperty());
+                view.fitHeightProperty().bind(scanVideoBox.heightProperty());
+                view.setPreserveRatio(true);
+                scanVideoBox.getChildren().add(view);
+                return;
+            }
+            log.warn("scan_loop.mp4 not found in /videos — using fallback illustration");
+        } catch (Throwable t) {
+            // NoClassDefFoundError, если javafx-media не подключён в pom.
+            log.warn("JavaFX media unavailable ({}) — using fallback illustration",
+                    t.toString());
+        }
+        var fallbackUrl = getClass().getResource("/images/scan/scanner_illustration.png");
+        if (fallbackUrl != null) {
+            ImageView iv = new ImageView(new Image(fallbackUrl.toExternalForm()));
+            iv.fitWidthProperty().bind(scanVideoBox.widthProperty());
+            iv.fitHeightProperty().bind(scanVideoBox.heightProperty());
+            iv.setPreserveRatio(true);
+            scanVideoBox.getChildren().add(iv);
+        }
+    }
+
+    /** Запуск анимаций экрана SCAN_PROGRESS: видео + бегущая точка. */
+    private void startScanProgressAnim() {
+        if (scanVideoPlayer != null) scanVideoPlayer.play();
+        if (scanDotsBox != null && !scanDotsBox.getChildren().isEmpty()) {
+            stopDotsOnly();
+            final int count = scanDotsBox.getChildren().size();
+            final int[] idx = { 0 };
+            applyActiveDot(0);
+            scanDotsTimeline = new Timeline(new KeyFrame(Duration.millis(420), e -> {
+                idx[0] = (idx[0] + 1) % count;
+                applyActiveDot(idx[0]);
+            }));
+            scanDotsTimeline.setCycleCount(Timeline.INDEFINITE);
+            scanDotsTimeline.play();
+        }
+    }
+
+    /** Остановка анимаций экрана SCAN_PROGRESS (при уходе с экрана). */
+    private void stopScanProgressAnim() {
+        if (scanVideoPlayer != null) scanVideoPlayer.pause();
+        stopDotsOnly();
+    }
+
+    private void stopDotsOnly() {
+        if (scanDotsTimeline != null) {
+            scanDotsTimeline.stop();
+            scanDotsTimeline = null;
+        }
+    }
+
+    /** Подсвечивает точку с индексом i, гасит остальные. */
+    private void applyActiveDot(int i) {
+        var dots = scanDotsBox.getChildren();
+        for (int d = 0; d < dots.size(); d++) {
+            dots.get(d).getStyleClass().remove("scan-dot-active");
+            if (d == i) dots.get(d).getStyleClass().add("scan-dot-active");
         }
     }
 
@@ -853,6 +998,18 @@ public class MainController {
 
     private void changeStep(KioskStep step) {
         this.currentStep = step;
+        // Уход с экрана ввода имени = клавиатура больше не нужна. Без этого
+        // она осталась бы висеть поверх следующего экрана, если пользователь
+        // ушёл, не закрыв её (showingProperty вернёт карточку на место).
+        if (virtualKeyboard != null && step != KioskStep.SCAN_INSTRUCTION) {
+            virtualKeyboard.hideKeyboard();
+        }
+        // Видео и точки крутятся только на экране прогресса сканирования.
+        if (step == KioskStep.SCAN_PROGRESS) {
+            startScanProgressAnim();
+        } else {
+            stopScanProgressAnim();
+        }
         switch (step) {
             case HOME             -> showOnly(homeScreen);
             case UPLOAD           -> { showOnly(uploadScreen); showUploadQrStep(); }

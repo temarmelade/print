@@ -2,6 +2,9 @@ package com.printkiosk.client.ui;
 
 import com.printkiosk.client.ui.state.Language;
 import javafx.animation.TranslateTransition;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanWrapper;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
@@ -14,8 +17,19 @@ import org.kordamp.ikonli.javafx.FontIcon;
 
 /**
  * Кастомная экранная клавиатура в стиле киоска. Монтируется в корневой
- * контейнер (rootStack), выезжает снизу при фокусе на привязанном поле и
- * прячется по кнопке-галочке. Раскладка переключается по языку из стейта.
+ * контейнер (rootStack), выезжает снизу при фокусе/тапе на привязанном поле
+ * и прячется по кнопке-галочке или тапу вне клавиатуры. Раскладка
+ * переключается по языку из стейта.
+ *
+ * <p>Показ управляется двумя триггерами: фокусом поля И тапом по полю.
+ * Второй обязателен: hideKeyboard() не снимает фокус, поэтому после
+ * закрытия поле остаётся focused, focusedProperty при повторном тапе не
+ * меняется — и без обработчика тапа клавиатура открылась бы только один
+ * раз за жизнь экрана.
+ *
+ * <p>Наружу отдаётся {@link #showingProperty()} — единственный источник
+ * правды «открыта/закрыта». Контроллер по нему поднимает карточку экрана,
+ * чтобы клавиатура не перекрывала поле ввода.
  *
  * Допускаются только безопасные для имени файла символы: буквы, цифры,
  * пробел, дефис, подчёркивание. Запрещённые (/ \ : * ? " < > | .) отсутствуют
@@ -38,7 +52,15 @@ public class VirtualKeyboard extends VBox {
 
     private TextField target;
     private final TranslateTransition slide;
-    private boolean shown = false;
+
+    /**
+     * Открыта ли клавиатура. ReadOnly-обёртка: снаружи только чтение и
+     * листенеры, менять состояние могут лишь show()/hideKeyboard().
+     */
+    private final ReadOnlyBooleanWrapper showing = new ReadOnlyBooleanWrapper(false);
+
+    /** Защита от повторной установки фильтров на сцену. */
+    private boolean sceneFiltersInstalled = false;
 
     /** Регистр ввода. false — строчные, true — заглавные. */
     private boolean capsOn = false;
@@ -57,8 +79,8 @@ public class VirtualKeyboard extends VBox {
     }
 
     /**
-     * Привязать клавиатуру к полю: показывать при фокусе, фильтровать ввод.
-     * Вызывай при инициализации экрана ScanStart.
+     * Привязать клавиатуру к полю: показывать при фокусе И при тапе,
+     * фильтровать ввод. Вызывай при инициализации экрана ScanStart.
      */
     public void attachTo(TextField field, Language lang) {
         this.target = field;
@@ -67,23 +89,38 @@ public class VirtualKeyboard extends VBox {
         field.setTextFormatter(new TextFormatter<>(c ->
                 c.getControlNewText().matches(SAFE_REGEX) ? c : null));
 
+        // Триггер 1: получение фокуса (первый тап по полю).
         field.focusedProperty().addListener((obs, was, now) -> {
             if (now) show();
         });
+        // Триггер 2: тап по полю, КОГДА ФОКУС УЖЕ НА НЁМ. Без этого после
+        // hideKeyboard() клавиатуру нельзя открыть снова: поле остаётся
+        // focused, и listener фокуса больше не срабатывает.
+        field.addEventHandler(MouseEvent.MOUSE_PRESSED, e -> show());
+        field.addEventHandler(TouchEvent.TOUCH_PRESSED, e -> show());
 
         // Скрытие при касании в любой точке ВНЕ клавиатуры и вне самого поля.
-        // Ставим фильтр на сцену, когда она станет доступна.
-        sceneProperty().addListener((o, oldScene, scene) -> {
-            if (scene != null) {
-                scene.addEventFilter(MouseEvent.MOUSE_PRESSED, this::handleOutsideTap);
-                scene.addEventFilter(TouchEvent.TOUCH_PRESSED, this::handleOutsideTap);
-            }
-        });
+        // Если Scene уже есть — ставим фильтры сразу; иначе прежний листенер
+        // sceneProperty никогда бы не сработал и «тап снаружи» не работал бы.
+        if (getScene() != null) {
+            installSceneFilters(getScene());
+        } else {
+            sceneProperty().addListener((o, oldScene, scene) -> {
+                if (scene != null) installSceneFilters(scene);
+            });
+        }
+    }
+
+    private void installSceneFilters(Scene scene) {
+        if (sceneFiltersInstalled) return;
+        sceneFiltersInstalled = true;
+        scene.addEventFilter(MouseEvent.MOUSE_PRESSED, this::handleOutsideTap);
+        scene.addEventFilter(TouchEvent.TOUCH_PRESSED, this::handleOutsideTap);
     }
 
     /** Если тап пришёлся не по клавиатуре и не по полю — прячем клавиатуру. */
     private void handleOutsideTap(javafx.event.Event e) {
-        if (!shown) return;
+        if (!showing.get()) return;
         javafx.scene.Node t = (javafx.scene.Node) e.getTarget();
         // Проверяем, находится ли цель внутри клавиатуры или это само поле.
         for (javafx.scene.Node n = t; n != null; n = n.getParent()) {
@@ -200,8 +237,8 @@ public class VirtualKeyboard extends VBox {
     // ── показ / скрытие ────────────────────────────────────────────
 
     private void show() {
-        if (shown) return;
-        shown = true;
+        if (showing.get()) return;
+        showing.set(true);
         setVisible(true);
         setManaged(true);
         double h = Math.max(getHeight(), prefHeight(-1));
@@ -215,8 +252,10 @@ public class VirtualKeyboard extends VBox {
 
     /** Спрятать клавиатуру (по кнопке-галочке), сохранив текст в поле. */
     public void hideKeyboard() {
-        if (!shown) return;
-        shown = false;
+        if (!showing.get()) return;
+        // Свойство переводим сразу: слушатели (подъём карточки) должны
+        // реагировать параллельно с анимацией ухода, а не после неё.
+        showing.set(false);
         double h = Math.max(getHeight(), prefHeight(-1));
         slide.stop();
         slide.setFromY(0);
@@ -228,5 +267,10 @@ public class VirtualKeyboard extends VBox {
         slide.play();
     }
 
-    public boolean isShown() { return shown; }
+    /** Открыта ли клавиатура — для подъёма карточки и прочей логики UI. */
+    public ReadOnlyBooleanProperty showingProperty() {
+        return showing.getReadOnlyProperty();
+    }
+
+    public boolean isShown() { return showing.get(); }
 }
