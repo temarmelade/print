@@ -852,74 +852,161 @@
                 </VBox>
             </VBox>
 
-            <!-- SCAN DELIVERY SCREEN -->
+            <!-- ════════════════════════════════════════════════════════════════════
+                 SCAN DELIVERY SCREEN (редизайн)
+                 Заменяет целиком старый блок <VBox fx:id="scanDeliveryScreen">...</VBox>
+                 в main-view.fxml.
+
+                 Иконки способов — из ikonli FontAwesome:
+                   fas-print, fas-globe (модуль ikonli-fontawesome5)
+                   fab-telegram-plane (модуль ikonli-fontawesome5 BRANDS — убедитесь, что
+                   в pom подключён org.kordamp.ikonli:ikonli-fontawesome5-pack; brands
+                   входят в этот же пак). Если fab-* не резолвится — замените на
+                   fas-paper-plane.
+
+                 Сохранены (важно для логики): scanDeliveryQrBox + scanDeliveryQrImageView
+                 (показываются после выбора web/telegram) и scanDeliveryInfoLabel.
+                 ════════════════════════════════════════════════════════════════════ -->
+
             <VBox fx:id="scanDeliveryScreen"
-                  styleClass="screen"
-                  spacing="22"
+                  styleClass="screen, scan-delivery-screen"
+                  spacing="0"
                   visible="false"
                   managed="false">
 
-                <HBox alignment="CENTER_LEFT">
-                    <Button fx:id="scanDeliveryBackBtn"
-                            text="← Назад"
-                            onAction="#onBackClicked"
-                            styleClass="btn-back"/>
-                </HBox>
-
-                <Button fx:id="scanDeliveryHomeBtn"
-                        text="На главный экран"
-                        onAction="#onScanDeliveryHomeClicked"
-                        styleClass="btn-back"/>
-
-                <VBox styleClass="content-card"
-                      spacing="22"
-                      alignment="CENTER"
-                      maxWidth="820">
-
-                    <Label fx:id="scanDeliveryTitleLabel"
-                           text="Сканирование завершено"
-                           styleClass="h1-text"/>
-
-                    <Label fx:id="scanDeliveryDescLabel"
-                           text="Выберите, как хотите получить документ"
-                           styleClass="body-text-muted"
-                           textAlignment="CENTER"
-                           wrapText="true"/>
-
-                    <HBox alignment="CENTER" spacing="18">
-                        <Button fx:id="scanDeliveryPrintBtn"
-                                text="Распечатать"
-                                onAction="#onScanDeliveryPrintClicked"
-                                styleClass="delivery-choice-card"/>
-
-                        <Button fx:id="scanDeliveryWebBtn"
-                                text="Получить в браузере"
-                                onAction="#onScanDeliveryWebClicked"
-                                styleClass="delivery-choice-card"/>
-
-                        <Button fx:id="scanDeliveryTelegramBtn"
-                                text="Получить в Telegram"
-                                onAction="#onScanDeliveryTelegramClicked"
-                                styleClass="delivery-choice-card"/>
+                <!-- Верхняя панель: «Назад» слева в круге, «На главный экран» по центру -->
+                <StackPane styleClass="scan-delivery-top">
+                    <HBox alignment="CENTER_LEFT" StackPane.alignment="CENTER_LEFT">
+                        <Button fx:id="scanDeliveryBackBtn"
+                                text="&#8592; Назад"
+                                onAction="#onBackClicked"
+                                styleClass="btn-back"/>
                     </HBox>
 
-                    <Label fx:id="scanDeliveryInfoLabel"
-                           text="Выберите один из способов выше"
-                           styleClass="body-text-muted"
-                           textAlignment="CENTER"
-                           wrapText="true"/>
+                    <Button fx:id="scanDeliveryHomeBtn"
+                            text="На главный экран"
+                            onAction="#onScanDeliveryHomeClicked"
+                            styleClass="home-link"
+                            contentDisplay="LEFT"
+                            graphicTextGap="10"
+                            StackPane.alignment="CENTER">
+                        <graphic>
+                            <FontIcon iconLiteral="fas-home" iconSize="18" styleClass="home-link-icon"/>
+                        </graphic>
+                    </Button>
+                </StackPane>
 
-                    <StackPane fx:id="scanDeliveryQrBox"
-                               styleClass="qr-box"
-                               visible="false"
-                               managed="false">
-                        <ImageView fx:id="scanDeliveryQrImageView"
-                                   fitWidth="260"
-                                   fitHeight="260"
-                                   preserveRatio="true"/>
-                    </StackPane>
-                </VBox>
+                <StackPane VBox.vgrow="ALWAYS" alignment="CENTER">
+                    <VBox fx:id="scanDeliveryCard"
+                          styleClass="content-card, scan-delivery-card"
+                          spacing="16"
+                          alignment="CENTER"
+                          maxWidth="1000">
+
+                        <!-- Иллюстрация «документ готов» -->
+                        <StackPane styleClass="delivery-illu-circle">
+                            <FontIcon iconLiteral="fas-file-alt" iconSize="86"
+                                      styleClass="delivery-illu-doc"/>
+                            <StackPane styleClass="delivery-illu-check"
+                                       StackPane.alignment="BOTTOM_RIGHT">
+                                <FontIcon iconLiteral="fas-check" iconSize="22"
+                                          styleClass="delivery-illu-check-mark"/>
+                            </StackPane>
+                        </StackPane>
+
+                        <Label fx:id="scanDeliveryTitleLabel"
+                               text="Сканирование завершено"
+                               styleClass="h1-text"/>
+
+                        <Label fx:id="scanDeliveryDescLabel"
+                               text="Выберите, как хотите получить документ"
+                               styleClass="body-text-muted"
+                               textAlignment="CENTER"
+                               wrapText="true"/>
+
+                        <!-- Три способа -->
+                        <HBox fx:id="deliveryChoicesRow" alignment="CENTER" spacing="24" styleClass="delivery-choices">
+                            <Button fx:id="scanDeliveryPrintBtn"
+                                    onAction="#onScanDeliveryPrintClicked"
+                                    styleClass="delivery-card"
+                                    contentDisplay="TOP">
+                                <graphic>
+                                    <VBox alignment="CENTER" spacing="20">
+                                        <StackPane styleClass="delivery-icon-circle">
+                                            <FontIcon iconLiteral="fas-print" iconSize="34"
+                                                      styleClass="delivery-icon"/>
+                                        </StackPane>
+                                        <Label fx:id="scanDeliveryPrintLabel"
+                                               text="Распечатать"
+                                               styleClass="delivery-card-label"/>
+                                    </VBox>
+                                </graphic>
+                            </Button>
+
+                            <Button fx:id="scanDeliveryWebBtn"
+                                    onAction="#onScanDeliveryWebClicked"
+                                    styleClass="delivery-card"
+                                    contentDisplay="TOP">
+                                <graphic>
+                                    <VBox alignment="CENTER" spacing="20">
+                                        <StackPane styleClass="delivery-icon-circle">
+                                            <FontIcon iconLiteral="fas-globe" iconSize="34"
+                                                      styleClass="delivery-icon"/>
+                                        </StackPane>
+                                        <Label fx:id="scanDeliveryWebLabel"
+                                               text="Получить в браузере"
+                                               styleClass="delivery-card-label"/>
+                                    </VBox>
+                                </graphic>
+                            </Button>
+
+                            <Button fx:id="scanDeliveryTelegramBtn"
+                                    onAction="#onScanDeliveryTelegramClicked"
+                                    styleClass="delivery-card"
+                                    contentDisplay="TOP">
+                                <graphic>
+                                    <VBox alignment="CENTER" spacing="20">
+                                        <StackPane styleClass="delivery-icon-circle">
+                                            <FontIcon iconLiteral="fab-telegram-plane" iconSize="34"
+                                                      styleClass="delivery-icon"/>
+                                        </StackPane>
+                                        <Label fx:id="scanDeliveryTelegramLabel"
+                                               text="Получить в Telegram"
+                                               styleClass="delivery-card-label"/>
+                                    </VBox>
+                                </graphic>
+                            </Button>
+                        </HBox>
+
+                        <!-- Разделитель-подпись «Выберите один из способов выше» -->
+                        <HBox alignment="CENTER" spacing="18" styleClass="delivery-divider-row"
+                              maxWidth="900">
+                            <Region styleClass="delivery-divider-line" HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="scanDeliveryInfoLabel"
+                                   text="Выберите один из способов выше"
+                                   styleClass="body-text-muted"
+                                   textAlignment="CENTER"
+                                   wrapText="true"/>
+                            <Region styleClass="delivery-divider-line" HBox.hgrow="ALWAYS"/>
+                        </HBox>
+
+                        <!-- QR (скрыт; появляется после выбора web/telegram) -->
+                        <StackPane fx:id="scanDeliveryQrBox"
+                                   styleClass="qr-box"
+                                   visible="false"
+                                   managed="false">
+                            <ImageView fx:id="scanDeliveryQrImageView"
+                                       fitWidth="240"
+                                       fitHeight="240"
+                                       preserveRatio="true"/>
+                        </StackPane>
+                    </VBox>
+                </StackPane>
             </VBox>
+
+
+
+
 
             <!-- FILE FOUND SCREEN -->
             <VBox fx:id="fileInfoScreen" styleClass="screen" spacing="20" visible="false" managed="false">

@@ -2595,3 +2595,128 @@
 .scan-progress-autoclose {
     -fx-padding: 6 0 0 0;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   SCAN DELIVERY SCREEN (редизайн)
+   ════════════════════════════════════════════════════════════════════ */
+
+.scan-delivery-screen {
+    -fx-padding: 28 48 0 48;
+}
+.scan-delivery-top {
+    -fx-padding: 0 0 8 0;
+}
+
+/* «На главный экран» — кнопка с округлой рамкой */
+.home-link {
+    -fx-background-color: white;
+    -fx-background-radius: 999;
+    -fx-border-color: #C9D8F2;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 999;
+    -fx-font-size: 20px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #2563EB;
+    -fx-cursor: hand;
+    -fx-padding: 12 26 12 22;
+}
+.home-link-icon { -fx-icon-color: #2563EB; }
+.home-link:hover {
+    -fx-background-color: #F0F5FF;
+    -fx-border-color: #2563EB;
+}
+
+/* Карточка */
+.scan-delivery-card {
+    -fx-padding: 40 64 40 64;
+}
+
+/* Иллюстрация «документ готов» */
+.delivery-illu-circle {
+    -fx-min-width: 200;  -fx-min-height: 200;
+    -fx-max-width: 200;  -fx-max-height: 200;
+    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, #EAF1FE, transparent);
+}
+.delivery-illu-doc { -fx-icon-color: #9DBBF0; }
+.delivery-illu-check {
+    -fx-background-color: #2563EB;
+    -fx-background-radius: 50%;
+    -fx-min-width: 46;  -fx-min-height: 46;
+    -fx-max-width: 46;  -fx-max-height: 46;
+    -fx-alignment: center;
+    -fx-translate-x: -18;
+    -fx-translate-y: -14;
+    -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.35), 10, 0, 0, 3);
+}
+.delivery-illu-check-mark { -fx-icon-color: white; }
+
+/* Три карточки-способа */
+.delivery-choices { -fx-padding: 10 0 0 0; }
+.delivery-card {
+    -fx-background-color: white;
+    -fx-background-radius: 20;
+    -fx-border-color: #E3E9F2;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 20;
+    -fx-pref-width: 300;
+    -fx-pref-height: 210;
+    -fx-cursor: hand;
+}
+.delivery-card:hover {
+    -fx-border-color: #2563EB;
+    -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.16), 18, 0, 0, 6);
+}
+.delivery-icon-circle {
+    -fx-background-color: #EAF1FE;
+    -fx-background-radius: 50%;
+    -fx-min-width: 88;  -fx-min-height: 88;
+    -fx-max-width: 88;  -fx-max-height: 88;
+    -fx-alignment: center;
+}
+.delivery-icon { -fx-icon-color: #2563EB; }
+.delivery-card-label {
+    -fx-font-size: 21px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #1F2937;
+}
+
+/* Разделитель-подпись */
+.delivery-divider-row { -fx-padding: 8 0 0 0; }
+.delivery-divider-line {
+    -fx-min-height: 1.5;  -fx-max-height: 1.5;
+    -fx-background-color: #E3E9F2;
+}
+
+
+
+/* ---- Компактный режим карточек способов (когда показан QR) ---- */
+/* Плавное сжатие: анимируем через FX-переходы размеров не выйдет в чистом
+   CSS JavaFX, поэтому просто уменьшаем габариты — переключение мгновенное,
+   но аккуратное. */
+.delivery-choices-compact .delivery-card {
+    -fx-pref-width: 116;
+    -fx-pref-height: 108;
+}
+.delivery-choices-compact .delivery-icon-circle {
+    -fx-min-width: 64;  -fx-min-height: 64;
+    -fx-max-width: 64;  -fx-max-height: 64;
+}
+.delivery-choices-compact .delivery-icon {
+    -fx-icon-size: 26;
+}
+/* внутренний VBox графики: убираем вертикальный отступ подписи */
+.delivery-choices-compact .delivery-card > .vbox,
+.delivery-choices-compact .delivery-card VBox {
+    -fx-spacing: 0;
+}
+
+/* QR-контейнер: нормальный размер, места теперь достаточно */
+.scan-delivery-screen .qr-box {
+    -fx-background-color: white;
+    -fx-background-radius: 16;
+    -fx-border-color: #E3E9F2;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 16;
+    -fx-padding: 24;
+    -fx-max-width: 300;
+}

@@ -344,6 +344,12 @@ public class MainController {
     @FXML private Button scanDeliveryPrintBtn;
     @FXML private Button scanDeliveryWebBtn;
     @FXML private Button scanDeliveryTelegramBtn;
+    /** Редизайн: подписи внутри карточек (текст в graphic, а не на кнопке). */
+    @FXML private Label scanDeliveryPrintLabel;
+    @FXML private Label scanDeliveryWebLabel;
+    @FXML private Label scanDeliveryTelegramLabel;
+    /** Ряд карточек способов — сжимается в компактный режим при показе QR. */
+    @FXML private HBox deliveryChoicesRow;
     @FXML private Button scanDeliveryBackBtn;
     /** Был в FXML, но отсутствовал в контроллере — добавлен для биндинга. */
     @FXML private Button scanDeliveryHomeBtn;
@@ -699,9 +705,11 @@ public class MainController {
         bindText(finishScanBtn, "scan.finish");
         bindText(scanDeliveryTitleLabel, "scan.delivery.title");
         bindText(scanDeliveryDescLabel, "scan.delivery.desc");
-        bindText(scanDeliveryPrintBtn, "scan.delivery.print");
-        bindText(scanDeliveryWebBtn, "scan.delivery.web");
-        bindText(scanDeliveryTelegramBtn, "scan.delivery.telegram");
+        // Подписи способов — в graphic-лейблах карточек (над ними круг с
+        // иконкой), поэтому биндим лейблы, а не сами кнопки.
+        bindText(scanDeliveryPrintLabel, "scan.delivery.print");
+        bindText(scanDeliveryWebLabel, "scan.delivery.web");
+        bindText(scanDeliveryTelegramLabel, "scan.delivery.telegram");
         // scanPreviewTitleLabel — перезаписывается именем файла, НЕ биндим.
         // scanDeliveryInfoLabel — динамический.
 
@@ -908,6 +916,27 @@ public class MainController {
         }
     }
 
+    /**
+     * Компактный режим ряда способов: карточки сжимаются и прячут подписи,
+     * оставляя только иконки, — освобождая место под QR-код. Управляется
+     * одним style-классом на ряду (delivery-choices-compact), от которого
+     * каскадом сжимаются дочерние карточки в CSS; подписи гасим через
+     * visible+managed, чтобы они не занимали место.
+     */
+    private void setDeliveryCompact(boolean compact) {
+        if (deliveryChoicesRow != null) {
+            deliveryChoicesRow.getStyleClass().remove("delivery-choices-compact");
+            if (compact) deliveryChoicesRow.getStyleClass().add("delivery-choices-compact");
+        }
+        for (Label lbl : new Label[]{scanDeliveryPrintLabel,
+                scanDeliveryWebLabel, scanDeliveryTelegramLabel}) {
+            if (lbl != null) {
+                lbl.setVisible(!compact);
+                lbl.setManaged(!compact);
+            }
+        }
+    }
+
     /** Обновляет предпросмотр текущей отсканированной страницы. */
     private void refreshScanPreview() {
         if (scanPreviewImageView != null) {
@@ -1034,7 +1063,21 @@ public class MainController {
             }
             case SCAN_PROGRESS    -> showOnly(scanProgressScreen);
             case SCAN_PREVIEW     -> showOnly(scanPreviewScreen);
-            case SCAN_DELIVERY    -> showOnly(scanDeliveryScreen);
+            case SCAN_DELIVERY    -> {
+                // Возврат экрана в исходное состояние: QR ещё не строился,
+                // подпись-разделитель показывает приглашение выбрать способ.
+                // (info-лейбл динамический — после выбора web/telegram его
+                // текст меняется в deliverScans на scan.delivery.scan.qr.)
+                if (scanDeliveryQrBox != null) {
+                    scanDeliveryQrBox.setVisible(false);
+                    scanDeliveryQrBox.setManaged(false);
+                }
+                if (scanDeliveryInfoLabel != null) {
+                    scanDeliveryInfoLabel.setText(loc.get("scan.delivery.choose"));
+                }
+                setDeliveryCompact(false);   // полные карточки с подписями
+                showOnly(scanDeliveryScreen);
+            }
             case ADMIN            -> showOnly(adminScreen);
             case HELP             -> showOnly(helpScreen);
             case PRINT_FAILED   -> showOnly(printFailedScreen);
@@ -1292,6 +1335,43 @@ public class MainController {
     }
 
     /**
+     * Подтверждение ухода из сессии сканирования на главный экран. В отличие
+     * от печатного варианта, здесь предупреждаем о безвозвратной потере
+     * отсканированного документа: resetAllAndGoHome вызывает scanFlow.clear(),
+     * который удаляет временные файлы страниц. «Назад» с этого экрана ведёт
+     * на превью сканов (сессия жива), поэтому подтверждение нужно только на
+     * кнопке «На главный экран».
+     */
+    /**
+     * Подтверждение ухода с экрана превью сканов назад на инструкцию.
+     * Экран инструкции — начало новой сессии сканирования, поэтому уже
+     * сделанные снимки теряются: при подтверждении явно чистим scanFlow
+     * (changeStep сам страницы не удаляет — без clear они подмешались бы к
+     * новому скану). PIN/оплаты здесь ещё нет, поэтому используем тот же
+     * текст про безвозвратную потерю документа, что и на экране доставки.
+     */
+    private void confirmDiscardScansAndRestart() {
+        showConfirmOverlay(
+                loc.get("confirm.scan.restart.title"),
+                loc.get("confirm.scan.abandon.message"),
+                loc.get("confirm.scan.abandon.yes"),
+                loc.get("confirm.stay"),
+                () -> {
+                    scanFlow.clear();
+                    changeStep(KioskStep.SCAN_INSTRUCTION);
+                });
+    }
+
+    private void confirmAbandonScanAndGoHome() {
+        showConfirmOverlay(
+                loc.get("confirm.scan.abandon.title"),
+                loc.get("confirm.scan.abandon.message"),
+                loc.get("confirm.scan.abandon.yes"),
+                loc.get("confirm.stay"),
+                this::resetAllAndGoHome);
+    }
+
+    /**
      * Универсальный модальный оверлей подтверждения поверх всего интерфейса.
      * Фон затемняется; клик по затемнению = «остаться» (безопасный выбор).
      * Тексты приходят уже локализованными от вызывающего кода.
@@ -1506,7 +1586,7 @@ public class MainController {
                 paymentFlow.stop();
                 changeStep(KioskStep.SUMMARY);
             }
-            case SCAN_PREVIEW             -> changeStep(KioskStep.SCAN_INSTRUCTION);
+            case SCAN_PREVIEW             -> confirmDiscardScansAndRestart();
             case UPLOAD -> {
                 if (uploadPinStepShown) {
                     // С подэкрана ввода PIN «назад» ведёт на подэкран QR-кодов,
@@ -1573,7 +1653,8 @@ public class MainController {
 
     /** «На главный экран» с экрана действий сканирования. */
     @FXML public void onScanDeliveryHomeClicked() {
-        resetAllAndGoHome();
+        // Уход домой сотрёт отсканированный документ — спрашиваем подтверждение.
+        confirmAbandonScanAndGoHome();
     }
     @FXML public void onScanDeliveryPrintClicked() {
         uploadScansAndOpenPrintSettings(SettingsOrigin.SCAN, scanDeliveryPrintBtn);
@@ -1664,6 +1745,8 @@ public class MainController {
             if (scanDeliveryQrImageView != null) {
                 scanDeliveryQrImageView.setImage(QrCodeGenerator.generate(url, 220));
             }
+            // Место под QR освобождаем, сжав карточки способов в ряд иконок.
+            setDeliveryCompact(true);
             // Контейнер QR по умолчанию скрыт — показываем его.
             if (scanDeliveryQrBox != null) {
                 scanDeliveryQrBox.setVisible(true);
