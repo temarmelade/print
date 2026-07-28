@@ -9,7 +9,9 @@ import com.printkiosk.server.exception.JobNotFoundException;
 import com.printkiosk.server.exception.PinNotFoundException;
 import com.printkiosk.server.service.PricingService;
 import com.printkiosk.server.web.mapper.JobMapper;
+import com.printkiosk.shared.api.OperationType;
 import com.printkiosk.shared.api.PrintJobStatus;
+import com.printkiosk.shared.api.UploadSource;
 import com.printkiosk.shared.api.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +58,9 @@ public class PrintJobService {
         int chargedPages = effectivePageCount(req.pages(), file.getPageCount());
         int priceSom = pricing.calculateTotal(chargedPages, settings, kioskId);   // ← с kioskId
 
+        // Тип операции выводим из источника файла: ксерокопия и скан-на-печать
+        // заливаются с source=COPY/SCAN, обычная печать — с WEBSITE/TELEGRAM.
+        OperationType operationType = printOperationFor(file.getSource());
 
         PrintJobEntity job = PrintJobEntity.builder()
                 .id(UuidCreator.getTimeOrderedEpoch())
@@ -72,14 +77,71 @@ public class PrintJobService {
                 .paperSize(settings.paperSize())
                 .priceSom(priceSom)
                 .status(PrintJobStatus.READY)
+                .operationType(operationType)
                 .kioskId(kioskId)
                 .createdAt(Instant.now())
                 .build();
 
         jobs.save(job);
 
-        log.info("Job created: id={} fileId={} priceSom={} kiosk={}",
-                job.getId(), file.getId(), priceSom, kioskId);
+        log.info("Job created: id={} fileId={} op={} priceSom={} kiosk={}",
+                job.getId(), file.getId(), operationType, priceSom, kioskId);
+
+        return jobMapper.toResponse(job);
+    }
+
+    /**
+     * Создаёт job для <b>цифровой доставки</b> отсканированного документа
+     * (получение через сайт или Telegram). В отличие от печати, цена —
+     * фиксированная плата за страницу ({@code pricePerPageSom}); тариф,
+     * цвет и копии не участвуют. Печать сканов остаётся бесплатной и идёт
+     * обычным трактом печати, поэтому здесь не обрабатывается.
+     * <p>
+     * Идемпотентно по PIN: повторный тап (пользователь переключился между
+     * «веб» и «Telegram») переиспользует уже созданный активный job, а не
+     * плодит дубли — иначе webhook по PIN пометил бы «последний» и
+     * рассинхронизировал бы оплату.
+     */
+    @Transactional
+    public JobResponse createScanDeliveryJob(String pin, int pricePerPageSom,
+                                             OperationType operationType, String kioskId) {
+        FileEntity file = files.findActiveByCode(pin, Instant.now())
+                .orElseThrow(PinNotFoundException::new);
+
+        // Идемпотентность: активный job на этот PIN уже есть → переиспользуем.
+        var existing = jobs.findLatestActiveByPin(pin, Instant.now());
+        if (existing.isPresent()) {
+            log.info("Scan-delivery job already active for pin={}, reusing id={}",
+                    maskPin(pin), existing.get().getId());
+            return jobMapper.toResponse(existing.get());
+        }
+
+        int pages    = file.getPageCount();
+        int priceSom = Math.max(0, pages) * Math.max(0, pricePerPageSom);
+
+        PrintJobEntity job = PrintJobEntity.builder()
+                .id(UuidCreator.getTimeOrderedEpoch())
+                .file(file)
+                .pin(file.getCode())
+                .fileName(file.getOriginalFilename())
+                .pageCount(pages)
+                .printedPages(pages)     // не печатаем, но снимок страниц полезен для отчётности
+                .copies(1)
+                .colorMode("BW")
+                .doubleSided(false)
+                .orientation("PORTRAIT")
+                .paperSize("A4")
+                .priceSom(priceSom)
+                .status(PrintJobStatus.READY)
+                .operationType(operationType)
+                .kioskId(kioskId)
+                .createdAt(Instant.now())
+                .build();
+
+        jobs.save(job);
+
+        log.info("Scan-delivery job created: id={} pin={} op={} pages={} priceSom={}",
+                job.getId(), maskPin(pin), operationType, pages, priceSom);
 
         return jobMapper.toResponse(job);
     }
@@ -249,6 +311,20 @@ public class PrintJobService {
 
     private static String maskPin(String pin) {
         return pin == null || pin.length() < 2 ? "****" : pin.substring(0, 2) + "**";
+    }
+
+    /**
+     * Тип операции печати по источнику файла: ксерокопия и печать скана
+     * заливаются с source COPY/SCAN, всё остальное (сайт/Telegram-бот) —
+     * обычная печать. Источник может быть {@code null} после удаления файла.
+     */
+    private static OperationType printOperationFor(UploadSource source) {
+        if (source == null) return OperationType.PRINT;
+        return switch (source) {
+            case COPY -> OperationType.COPY;
+            case SCAN -> OperationType.SCAN_PRINT;
+            default   -> OperationType.PRINT;
+        };
     }
 
     /**

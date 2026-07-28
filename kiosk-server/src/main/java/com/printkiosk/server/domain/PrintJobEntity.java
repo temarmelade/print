@@ -1,5 +1,6 @@
 package com.printkiosk.server.domain;
 
+import com.printkiosk.shared.api.OperationType;
 import com.printkiosk.shared.api.PrintJobStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -84,6 +85,11 @@ public class PrintJobEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private PrintJobStatus status;
+
+    /** Тип операции (печать / копия / скан+печать / доставка скана). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operation_type", nullable = false, length = 30)
+    private OperationType operationType;
 
     // ── Audit ───────────────────────────────────────────────────────
     @Column(name = "kiosk_id", length = 50)

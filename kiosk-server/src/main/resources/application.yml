@@ -71,6 +71,8 @@ kiosk:
     public-base-url: ${KIOSK_PUBLIC_BASE_URL:http://localhost:8080}
     cleanup-interval: PT1M
     cleanup-grace: PT30S
+  scan-delivery:
+    price-per-page-som: ${KIOSK_SCAN_DELIVERY_PRICE_PER_PAGE_SOM:10}
   printer:
     name: "Canon LBP6030/6040/6018L"      # переопредели в application-local.yml на свой
     snmp-host: ""                          # пусто = USB-принтер, SNMP пропускается

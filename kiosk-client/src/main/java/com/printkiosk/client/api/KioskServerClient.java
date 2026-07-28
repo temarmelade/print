@@ -120,6 +120,21 @@ public class KioskServerClient {
                 .body(PaymentStatusDto.class));
     }
 
+    /**
+     * Открывает оплату цифровой доставки скана (веб/Telegram): под уже
+     * загруженный по PIN документ сервер создаёт job доставки (фиксированная
+     * плата за страницу) и платёжную сессию, возвращая платёжный QR-URL.
+     * {@code channel} — «WEB» или «TELEGRAM», определяет тип операции для
+     * аналитики.
+     */
+    public PaymentSessionDto createScanDeliveryPayment(String pin, String channel) {
+        return execute(() -> http.post()
+                .uri("/api/scan-delivery")
+                .body(new CreateScanDeliveryRequest(pin, channel))
+                .retrieve()
+                .body(PaymentSessionDto.class));
+    }
+
     // ════════════════════════════════════════════════════════════════
     //  Helpers
     // ════════════════════════════════════════════════════════════════
@@ -145,6 +160,9 @@ public class KioskServerClient {
 
     /** Внутренний record для тела запроса. В shared не выносим — это внутреннее. */
     private record CreatePaymentRequest(UUID jobId) {}
+
+    /** Тело запроса на оплату цифровой доставки скана. */
+    private record CreateScanDeliveryRequest(String pin, String channel) {}
 
     public JobPreviewResponse previewJob(JobPreviewRequest request) {
         return execute(() -> http.post()

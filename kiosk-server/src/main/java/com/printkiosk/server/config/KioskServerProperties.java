@@ -3,6 +3,7 @@ package com.printkiosk.server.config;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -29,6 +30,9 @@ public class KioskServerProperties {
 
     /** Хранилище файлов (Docker volume). */
     private Storage storage = new Storage();
+
+    /** Тарификация цифровой доставки отсканированных документов. */
+    private ScanDelivery scanDelivery = new ScanDelivery();
 
     @Getter
     @Setter
@@ -78,5 +82,17 @@ public class KioskServerProperties {
         /** Grace-период перед физическим удалением истёкшего файла. */
         @NotNull
         private Duration cleanupGrace = Duration.ofSeconds(30);
+    }
+
+    @Getter
+    @Setter
+    public static class ScanDelivery {
+        /**
+         * Плата за одну страницу за цифровую доставку отсканированного
+         * документа (получение через сайт или Telegram). Печать сканов от
+         * этой платы не зависит и идёт обычным трактом печати.
+         */
+        @PositiveOrZero
+        private int pricePerPageSom = 10;
     }
 }

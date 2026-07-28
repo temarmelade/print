@@ -1000,6 +1000,15 @@
                                        fitHeight="240"
                                        preserveRatio="true"/>
                         </StackPane>
+
+                        <!-- Подпись под QR: сумма к оплате, затем «Заберите свой документ» -->
+                        <Label fx:id="scanDeliveryQrCaptionLabel"
+                               text=""
+                               styleClass="price-text"
+                               textAlignment="CENTER"
+                               wrapText="true"
+                               visible="false"
+                               managed="false"/>
                     </VBox>
                 </StackPane>
             </VBox>

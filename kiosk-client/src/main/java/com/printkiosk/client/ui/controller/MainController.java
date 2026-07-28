@@ -40,6 +40,7 @@ import com.printkiosk.shared.api.dto.JobPreviewResponse;
 import com.printkiosk.shared.api.dto.PrintSettings;
 import javafx.scene.Node;
 import com.printkiosk.client.service.PaymentSessionFlow;
+import com.printkiosk.client.service.ScanDeliveryFlow;
 import com.printkiosk.client.ui.util.QrCodeGenerator;
 import com.printkiosk.shared.api.dto.PaymentSessionDto;
 import java.util.UUID;
@@ -341,6 +342,8 @@ public class MainController {
     @FXML private Label scanDeliveryDescLabel;
     @FXML private ImageView scanDeliveryQrImageView;
     @FXML private Label scanDeliveryInfoLabel;
+    /** Подпись под QR: во время оплаты — сумма, после оплаты — «заберите документ». */
+    @FXML private Label scanDeliveryQrCaptionLabel;
     @FXML private Button scanDeliveryPrintBtn;
     @FXML private Button scanDeliveryWebBtn;
     @FXML private Button scanDeliveryTelegramBtn;
@@ -412,6 +415,7 @@ public class MainController {
     private final PreviewFlow previewFlow;
     private final PrintSettingsFlow settingsFlow;
     private final PaymentSessionFlow paymentFlow;
+    private final ScanDeliveryFlow scanDeliveryFlow;
     private final PinEntryFlow pinEntryFlow;
     private final PrintFlow printFlow;
     private final PrinterReadinessService printerReadiness;
@@ -447,6 +451,12 @@ public class MainController {
     private PageSelectionPanel pageSelection;
     /** Снимок выбранных страниц (1-based) для текущего задания. null = все. */
     private java.util.List<Integer> jobPages = null;
+    /**
+     * Выбранный способ получения скана (веб/Telegram): по PIN строит ссылку,
+     * которую покажем QR-кодом ПОСЛЕ оплаты. Задаётся при тапе на способ,
+     * применяется в onPaid.
+     */
+    private java.util.function.Function<String, String> pendingDeliveryLink = null;
     private NumericKeyboard numericKeyboard;
     /** Рекламная заставка по бездействию. */
     private IdleScreensaver screensaver;
@@ -459,7 +469,8 @@ public class MainController {
                           PrintFlow printFlow, PrinterReadinessService printerReadiness,
                           KioskClientProperties clientProperties, AdPlaylistService adPlaylistService,
                           ServerProperties serverProperties, ScanFlow scanFlow,
-                          KioskServerClient serverClient, LocalizationService loc) {
+                          KioskServerClient serverClient, LocalizationService loc,
+                          ScanDeliveryFlow scanDeliveryFlow) {
         this.pinEntryFlow = pinEntryFlow;
         this.clientProperties = clientProperties;
         this.adPlaylistService = adPlaylistService;
@@ -472,6 +483,7 @@ public class MainController {
         this.printFlow = printFlow;
         this.printerReadiness = printerReadiness;
         this.loc = loc;
+        this.scanDeliveryFlow = scanDeliveryFlow;
     }
 
 
@@ -487,6 +499,7 @@ public class MainController {
         previewFlow.setListener(buildPreviewListener());
         settingsFlow.setListener(buildSettingsListener());
         paymentFlow.setListener(buildPaymentListener());
+        scanDeliveryFlow.setListener(buildScanDeliveryListener());
         printFlow.setListener(buildPrintListener());
         showUploadQrStep();        // стартовое состояние upload — подэкран QR-кодов
         showOnly(homeScreen);
@@ -735,6 +748,19 @@ public class MainController {
     private void bindText(Labeled node, String key) {
         if (node != null) {
             node.textProperty().bind(loc.bind(key));
+        }
+    }
+
+    /**
+     * Ставит кастомный текст на лейбл, чьё {@code textProperty} могло быть
+     * привязано к локализации через {@link #bindText}. Привязку сначала
+     * снимаем — иначе JavaFX бросит «A bound value cannot be set». Вернуть
+     * локализацию можно повторным {@link #bindText}.
+     */
+    private void setUnboundText(Labeled node, String text) {
+        if (node != null) {
+            node.textProperty().unbind();
+            node.setText(text);
         }
     }
 
@@ -1064,16 +1090,21 @@ public class MainController {
             case SCAN_PROGRESS    -> showOnly(scanProgressScreen);
             case SCAN_PREVIEW     -> showOnly(scanPreviewScreen);
             case SCAN_DELIVERY    -> {
-                // Возврат экрана в исходное состояние: QR ещё не строился,
-                // подпись-разделитель показывает приглашение выбрать способ.
-                // (info-лейбл динамический — после выбора web/telegram его
-                // текст меняется в deliverScans на scan.delivery.scan.qr.)
-                if (scanDeliveryQrBox != null) {
-                    scanDeliveryQrBox.setVisible(false);
-                    scanDeliveryQrBox.setManaged(false);
-                }
+                // Свежий вход на экран действий: обрываем прежнюю оплату доставки
+                // (если была), возвращаем экран в исходное состояние — QR скрыт,
+                // описание и подпись-разделитель показывают приглашение выбрать
+                // способ. После выбора web/telegram текст меняется в листенере.
+                scanDeliveryFlow.stop();
+                pendingDeliveryLink = null;
+                hideDeliveryQr();
+                // Описание привязано к локализации (bindText). На входе
+                // восстанавливаем привязку — на случай, если её сняли ранее
+                // (после оплаты текст меняется на «Заберите свой документ»).
+                bindText(scanDeliveryDescLabel, "scan.delivery.desc");
                 if (scanDeliveryInfoLabel != null) {
                     scanDeliveryInfoLabel.setText(loc.get("scan.delivery.choose"));
+                    scanDeliveryInfoLabel.setVisible(true);
+                    scanDeliveryInfoLabel.setManaged(true);
                 }
                 setDeliveryCompact(false);   // полные карточки с подписями
                 showOnly(scanDeliveryScreen);
@@ -1454,6 +1485,8 @@ public class MainController {
     private void resetAllAndGoHome() {
         stopAutoReturnCountdown();
         paymentFlow.stop();
+        scanDeliveryFlow.stop();
+        pendingDeliveryLink = null;
         settingsFlow.stop();
         previewFlow.close();
         pageSelection.clear();
@@ -1663,9 +1696,10 @@ public class MainController {
     /**
      * Общий тракт «сканы → печать» для обычного сканирования («Распечатать»
      * на экране действий) и ксерокопии («Завершить» в превью): собирает PDF,
-     * заливает на сервер как файл печати (source=COPY), получает PIN и
-     * открывает стандартные настройки печати. origin определяет, куда
-     * вернёт «Назад» из настроек.
+     * заливает на сервер как файл печати и открывает стандартные настройки
+     * печати. origin определяет, куда вернёт «Назад» из настроек, И источник
+     * файла: ксерокопия → COPY, скан-на-печать → SCAN. По источнику сервер
+     * различает тип операции (COPY vs SCAN_PRINT) в истории.
      */
     private void uploadScansAndOpenPrintSettings(SettingsOrigin origin, Button triggerBtn) {
         if (!scanFlow.hasPages()) {
@@ -1673,12 +1707,14 @@ public class MainController {
             return;
         }
         settingsOrigin = origin;
+        UploadSource uploadSource =
+                (origin == SettingsOrigin.COPY) ? UploadSource.COPY : UploadSource.SCAN;
         if (triggerBtn != null) triggerBtn.setDisable(true);
 
         Task<UploadResponse> task = new Task<>() {
             @Override protected UploadResponse call() throws Exception {
                 java.io.File pdf = scanFlow.buildPdf();
-                return serverClient.uploadFile(pdf, UploadSource.COPY);
+                return serverClient.uploadFile(pdf, uploadSource);
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
@@ -1706,72 +1742,125 @@ public class MainController {
     }
 
     @FXML public void onScanDeliveryWebClicked() {
-        // Веб-доставка: сканы → PDF → заливаем на сервер → получаем PIN →
-        // QR ведёт на прямое скачивание файла по этому PIN. Адрес — публичный
-        // (сетевой), чтобы телефон пользователя мог открыть ссылку.
-        deliverScans(pin -> serverProperties.getPublicBaseUrl() + "/api/files/" + pin + "/download",
-                scanDeliveryWebBtn);
+        // Веб-доставка платная: сначала оплата (10 сом/страница), затем QR
+        // получения. Ссылка получения ведёт на прямое скачивание файла по
+        // PIN; адрес публичный (сетевой), чтобы телефон открыл ссылку.
+        pendingDeliveryLink = pin ->
+                serverProperties.getPublicBaseUrl() + "/api/files/" + pin + "/download";
+        scanDeliveryFlow.preparePayment("WEB");
     }
 
     @FXML public void onScanDeliveryTelegramClicked() {
-        // Телеграм-доставка (реализуем следующей): пока используем заглушку.
-        deliverScans(pin -> clientProperties.getUpload().getTelegramBotUrl()
-                + "?start=get_" + pin, scanDeliveryTelegramBtn);
+        // Телеграм-доставка платная: та же оплата, после неё QR ведёт в бота.
+        pendingDeliveryLink = pin ->
+                clientProperties.getUpload().getTelegramBotUrl() + "?start=get_" + pin;
+        scanDeliveryFlow.preparePayment("TELEGRAM");
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  Оплата и показ QR цифровой доставки скана
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * Слушатель оплаты цифровой доставки. Сценарий по ТЗ: при выборе веб/
+     * Telegram сначала появляется QR оплаты с суммой под ним; после webhook'а
+     * PAID тот же QR-бокс заменяется на QR получения документа, а описание
+     * меняется на «Заберите свой документ».
+     */
+    private ScanDeliveryFlow.Listener buildScanDeliveryListener() {
+        return new ScanDeliveryFlow.Listener() {
+            @Override public void onPreparing() {
+                hideDeliveryQr();
+                if (scanDeliveryInfoLabel != null) {
+                    scanDeliveryInfoLabel.setText(loc.get("scan.delivery.preparing"));
+                    scanDeliveryInfoLabel.setVisible(true);
+                    scanDeliveryInfoLabel.setManaged(true);
+                }
+            }
+
+            @Override public void onPaymentReady(String paymentUrl, int priceSom) {
+                // QR оплаты + подпись под ним с суммой к оплате.
+                renderDeliveryQr(paymentUrl,
+                        loc.get("scan.delivery.pay.info"),
+                        loc.get("scan.delivery.pay.amount", String.valueOf(priceSom)));
+            }
+
+            @Override public void onPaid() {
+                if (pendingDeliveryLink == null) {
+                    log.warn("Payment confirmed but no delivery method chosen");
+                    return;
+                }
+                String link = pendingDeliveryLink.apply(scanDeliveryFlow.pin());
+                // Описание всего экрана меняется на «Заберите свой документ».
+                // Лейбл привязан к локализации — сначала снимаем привязку,
+                // иначе JavaFX бросит «A bound value cannot be set».
+                setUnboundText(scanDeliveryDescLabel, loc.get("scan.delivery.pickup"));
+                renderDeliveryQr(link,
+                        loc.get("scan.delivery.scan.qr"),
+                        loc.get("scan.delivery.pickup"));
+            }
+
+            @Override public void onExpired() {
+                hideDeliveryQr();
+                if (scanDeliveryInfoLabel != null) {
+                    scanDeliveryInfoLabel.setText(loc.get("payment.expired"));
+                }
+            }
+
+            @Override public void onError(String messageKey) {
+                hideDeliveryQr();
+                if (scanDeliveryInfoLabel != null) {
+                    scanDeliveryInfoLabel.setText(loc.get(messageKey));
+                }
+            }
+        };
     }
 
     /**
-     * Общий флоу доставки сканов: собирает PDF, заливает на сервер, получает
-     * PIN и по нему строит ссылку (linkBuilder), которую показывает QR-кодом.
-     * QR доставки сканов ведёт на конкретный файл по PIN — язык в payload
-     * не нужен (страница скачивания контента не имеет).
+     * Показывает QR в общем боксе доставки: {@code infoAbove} — подпись-
+     * разделитель над QR, {@code captionBelow} — крупная подпись под QR
+     * (сумма при оплате / «заберите документ» после). Карточки способов
+     * сжимаются, освобождая место под QR.
      */
-    private void deliverScans(java.util.function.Function<String, String> linkBuilder,
-                              Button triggerBtn) {
-        if (!scanFlow.hasPages()) {
-            log.warn("Delivery requested with no scanned pages");
-            return;
+    private void renderDeliveryQr(String url, String infoAbove, String captionBelow) {
+        if (scanDeliveryQrImageView != null) {
+            try {
+                scanDeliveryQrImageView.setImage(QrCodeGenerator.generate(url, 240));
+            } catch (Exception ex) {
+                log.error("Failed to generate delivery QR", ex);
+                if (scanDeliveryInfoLabel != null) {
+                    scanDeliveryInfoLabel.setText(loc.get("payment.qr.failed"));
+                }
+                return;
+            }
         }
-        if (triggerBtn != null) triggerBtn.setDisable(true);
+        setDeliveryCompact(true);
+        if (scanDeliveryQrBox != null) {
+            scanDeliveryQrBox.setVisible(true);
+            scanDeliveryQrBox.setManaged(true);
+        }
+        if (scanDeliveryInfoLabel != null) {
+            scanDeliveryInfoLabel.setText(infoAbove);
+            scanDeliveryInfoLabel.setVisible(true);
+            scanDeliveryInfoLabel.setManaged(true);
+        }
+        if (scanDeliveryQrCaptionLabel != null) {
+            scanDeliveryQrCaptionLabel.setText(captionBelow);
+            scanDeliveryQrCaptionLabel.setVisible(true);
+            scanDeliveryQrCaptionLabel.setManaged(true);
+        }
+    }
 
-        Task<UploadResponse> task = new Task<>() {
-            @Override protected UploadResponse call() throws Exception {
-                java.io.File pdf = scanFlow.buildPdf();
-                return serverClient.uploadFile(pdf, UploadSource.SCAN);
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            if (triggerBtn != null) triggerBtn.setDisable(false);
-            String url = linkBuilder.apply(task.getValue().pin());
-            if (scanDeliveryQrImageView != null) {
-                scanDeliveryQrImageView.setImage(QrCodeGenerator.generate(url, 220));
-            }
-            // Место под QR освобождаем, сжав карточки способов в ряд иконок.
-            setDeliveryCompact(true);
-            // Контейнер QR по умолчанию скрыт — показываем его.
-            if (scanDeliveryQrBox != null) {
-                scanDeliveryQrBox.setVisible(true);
-                scanDeliveryQrBox.setManaged(true);
-            }
-            if (scanDeliveryInfoLabel != null) {
-                scanDeliveryInfoLabel.setText(loc.get("scan.delivery.scan.qr"));
-                scanDeliveryInfoLabel.setVisible(true);
-                scanDeliveryInfoLabel.setManaged(true);
-            }
-        }));
-        task.setOnFailed(e -> Platform.runLater(() -> {
-            if (triggerBtn != null) triggerBtn.setDisable(false);
-            Throwable cause = task.getException();
-            log.error("Scan delivery upload failed", cause);
-            String detail = (cause != null)
-                    ? (cause.getClass().getSimpleName() + ": " + cause.getMessage())
-                    : loc.get("error.unknown");
-            showConfirmOverlay(loc.get("scanupload.delivery.failed"), detail,
-                    loc.get("dialog.ok"), loc.get("dialog.close"), () -> {});
-        }));
-
-        Thread t = new Thread(task, "scan-delivery-upload");
-        t.setDaemon(true);
-        t.start();
+    /** Прячет QR-бокс доставки и подпись под ним. */
+    private void hideDeliveryQr() {
+        if (scanDeliveryQrBox != null) {
+            scanDeliveryQrBox.setVisible(false);
+            scanDeliveryQrBox.setManaged(false);
+        }
+        if (scanDeliveryQrCaptionLabel != null) {
+            scanDeliveryQrCaptionLabel.setVisible(false);
+            scanDeliveryQrCaptionLabel.setManaged(false);
+        }
     }
 
     // ---- ADMIN ----
