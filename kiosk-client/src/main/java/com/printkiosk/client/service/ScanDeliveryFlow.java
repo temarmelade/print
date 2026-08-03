@@ -54,6 +54,8 @@ public class ScanDeliveryFlow {
     private boolean paid;
     /** Идёт подготовка оплаты — защищает от повторного запуска при двойном тапе. */
     private boolean preparing;
+    /** Последний выбранный канал («WEB»/«TELEGRAM») — фиксируется в БД при оплате. */
+    private String  channel;
 
     private Closeable sseSubscription;
     private Timeline  timeout;
@@ -77,6 +79,9 @@ public class ScanDeliveryFlow {
      * при первом создании).
      */
     public void preparePayment(String channel) {
+        // Запоминаем последний выбор всегда — даже если QR уже готов и мы
+        // короткозамыкаемся ниже: при оплате зафиксируем именно этот канал.
+        this.channel = channel;
         if (paid) {                         // уже оплачено — ничего не пересоздаём
             notifyPaid();
             return;
@@ -154,6 +159,7 @@ public class ScanDeliveryFlow {
                 paid = true;
                 closeSse();
                 stopTimeout();          // pin сохраняем — по нему строим ссылку получения
+                finalizeChannelAsync(); // фиксируем фактический канал в БД (в фоне)
                 notifyPaid();
             }
             case "FAILED", "CANCELLED" -> {
@@ -186,6 +192,27 @@ public class ScanDeliveryFlow {
     //  Internal
     // ════════════════════════════════════════════════════════════════
 
+    /**
+     * Фиксирует фактический канал в БД после оплаты. Сетевой вызов — уводим
+     * с FX-потока в фон; UI при этом уже показывает QR получения. Ошибку лишь
+     * логируем: документ пользователь получит в любом случае, а тип операции
+     * в худшем случае останется тем, что был при создании сессии.
+     */
+    private void finalizeChannelAsync() {
+        final String p = pin;
+        final String ch = channel;
+        if (p == null || ch == null) return;
+        Thread t = new Thread(() -> {
+            try {
+                server.finalizeScanDeliveryChannel(p, ch);
+            } catch (Exception e) {
+                log.warn("Failed to finalize scan delivery channel: {}", e.getMessage());
+            }
+        }, "scan-delivery-finalize");
+        t.setDaemon(true);
+        t.start();
+    }
+
     private void closeSse() {
         if (sseSubscription != null) {
             try { sseSubscription.close(); }
@@ -206,6 +233,7 @@ public class ScanDeliveryFlow {
         priceSom   = 0;
         paid       = false;
         preparing  = false;
+        channel    = null;
     }
 
     // ── listener bridge ────────────────────────────────────────────

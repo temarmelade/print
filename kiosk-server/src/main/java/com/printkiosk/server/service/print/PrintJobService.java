@@ -146,6 +146,33 @@ public class PrintJobService {
         return jobMapper.toResponse(job);
     }
 
+    /**
+     * Фиксирует фактический канал получения скана после подтверждения оплаты.
+     * Пользователь мог переключиться между веб и Telegram до оплаты, поэтому
+     * тип операции job'а доставки перезаписывается на реально выбранный к
+     * моменту оплаты канал. Трогает только job'ы цифровой доставки — печатные
+     * записи не затрагиваются.
+     */
+    @Transactional
+    public void finalizeScanDeliveryChannel(String pin, OperationType channelType) {
+        if (channelType != OperationType.SCAN_DOWNLOAD_WEB
+                && channelType != OperationType.SCAN_SEND_TELEGRAM) {
+            log.warn("finalizeScanDeliveryChannel called with non-delivery type {}", channelType);
+            return;
+        }
+        jobs.findLatestActiveByPin(pin, Instant.now()).ifPresent(job -> {
+            OperationType current = job.getOperationType();
+            // Меняем только у доставки и только если канал реально другой.
+            boolean isDelivery = current == OperationType.SCAN_DOWNLOAD_WEB
+                    || current == OperationType.SCAN_SEND_TELEGRAM;
+            if (isDelivery && current != channelType) {
+                job.setOperationType(channelType);
+                log.info("Scan-delivery channel finalized: pin={} {} → {}",
+                        maskPin(pin), current, channelType);
+            }
+        });
+    }
+
     // ════════════════════════════════════════════════════════════════
     //  PAYMENT TRANSITIONS
     // ════════════════════════════════════════════════════════════════

@@ -3,10 +3,14 @@ import { api } from "./apiClient.ts";
 export type JobStatus =
   | "READY" | "PAYMENT_PENDING" | "PAID" | "PRINTING" | "COMPLETED" | "FAILED" | "EXPIRED";
 
+export type OperationType =
+  | "PRINT" | "COPY" | "SCAN_PRINT" | "SCAN_DOWNLOAD_WEB" | "SCAN_SEND_TELEGRAM";
+
 export interface Transaction {
   id: string;
   pin: string;
   fileName: string;
+  operationType: OperationType;
   pageCount: number;
   copies: number;
   colorMode: string;
@@ -51,10 +55,37 @@ export const STATUS_TONE: Record<JobStatus, "ok" | "warn" | "down" | "idle"> = {
   EXPIRED: "idle",
 };
 
+export const OPERATION_LABEL: Record<OperationType, string> = {
+  PRINT: "Печать",
+  COPY: "Копия",
+  SCAN_PRINT: "Скан → печать",
+  SCAN_DOWNLOAD_WEB: "Скан → веб",
+  SCAN_SEND_TELEGRAM: "Скан → Telegram",
+};
+
+/**
+ * Семейство операции для визуального выделения. «digital» — платная цифровая
+ * доставка скана (веб/Telegram): именно её раньше не было видно в отчётах,
+ * поэтому подсвечиваем акцентом. Остальное — бумага на выходе (нейтрально).
+ */
+export const OPERATION_FAMILY: Record<OperationType, "print" | "digital"> = {
+  PRINT: "print",
+  COPY: "print",
+  SCAN_PRINT: "print",
+  SCAN_DOWNLOAD_WEB: "digital",
+  SCAN_SEND_TELEGRAM: "digital",
+};
+
+/** Порядок в фильтре — печать, копия, затем сканы. */
+export const OPERATIONS: OperationType[] = [
+  "PRINT", "COPY", "SCAN_PRINT", "SCAN_DOWNLOAD_WEB", "SCAN_SEND_TELEGRAM",
+];
+
 export interface TxFilters {
   from?: string;      // ISO
   to?: string;        // ISO
   status?: JobStatus | "";
+  operationType?: OperationType | "";
   paymentStatus?: string;
   kioskId?: string;
   q?: string;
@@ -67,6 +98,7 @@ export function fetchTransactions(f: TxFilters): Promise<TransactionPage> {
   if (f.from) qs.set("from", f.from);
   if (f.to) qs.set("to", f.to);
   if (f.status) qs.set("status", f.status);
+  if (f.operationType) qs.set("operationType", f.operationType);
   if (f.paymentStatus) qs.set("paymentStatus", f.paymentStatus);
   if (f.kioskId) qs.set("kioskId", f.kioskId);
   if (f.q?.trim()) qs.set("q", f.q.trim());

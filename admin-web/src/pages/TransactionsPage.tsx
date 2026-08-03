@@ -4,7 +4,9 @@ import { RoleGate } from "../components/RoleGate.tsx";
 import {
   fetchTransactions, fetchKiosks, formatSom, formatDateTime,
   STATUS_LABEL, STATUS_TONE, dayRange,
-  type Transaction, type TransactionPage, type JobStatus, type TxFilters,
+  OPERATION_LABEL, OPERATION_FAMILY, OPERATIONS,
+  type Transaction, type TransactionPage, type JobStatus,
+  type OperationType, type TxFilters,
 } from "../lib/txApi.ts";
 import "./pages.css";
 import "./tx.css";
@@ -23,6 +25,7 @@ const STATUSES: JobStatus[] = [
 export function TransactionsPage() {
   const [preset, setPreset] = useState(2);          // по умолчанию 30 дней
   const [status, setStatus] = useState<JobStatus | "">("");
+  const [operationType, setOperationType] = useState<OperationType | "">("");
   const [kioskId, setKioskId] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
@@ -42,14 +45,14 @@ export function TransactionsPage() {
     try {
       const days = PRESETS[preset].days;
       const range = days === null ? {} : dayRange(days);
-      const filters: TxFilters = { ...range, status, kioskId, q, page, size: 25 };
+      const filters: TxFilters = { ...range, status, operationType, kioskId, q, page, size: 25 };
       setData(await fetchTransactions(filters));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось загрузить транзакции");
     } finally {
       setLoading(false);
     }
-  }, [preset, status, kioskId, q, page]);
+  }, [preset, status, operationType, kioskId, q, page]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -126,6 +129,17 @@ export function TransactionsPage() {
 
           <select
             className="input select"
+            value={operationType}
+            onChange={(e) => changeFilter(() => setOperationType(e.target.value as OperationType | ""))}
+          >
+            <option value="">Все действия</option>
+            {OPERATIONS.map((o) => (
+              <option key={o} value={o}>{OPERATION_LABEL[o]}</option>
+            ))}
+          </select>
+
+          <select
+            className="input select"
             value={kioskId}
             onChange={(e) => changeFilter(() => setKioskId(e.target.value))}
           >
@@ -158,6 +172,7 @@ export function TransactionsPage() {
                   <th>Дата</th>
                   <th>PIN</th>
                   <th>Файл</th>
+                  <th>Действие</th>
                   <th className="num">Стр.</th>
                   <th className="num">Копий</th>
                   <th className="num">Сумма</th>
@@ -213,6 +228,11 @@ function Row({ t }: { t: Transaction }) {
       <td className="mono nowrap">{formatDateTime(t.createdAt)}</td>
       <td className="mono pin">{t.pin}</td>
       <td className="file" title={t.fileName}>{t.fileName}</td>
+      <td>
+        <span className={`tx-op ${OPERATION_FAMILY[t.operationType] ?? ""}`}>
+          {OPERATION_LABEL[t.operationType] ?? "—"}
+        </span>
+      </td>
       <td className="num mono">{t.pageCount}</td>
       <td className="num mono">{t.copies}</td>
       <td className="num mono strong">{formatSom(t.priceSom)}</td>

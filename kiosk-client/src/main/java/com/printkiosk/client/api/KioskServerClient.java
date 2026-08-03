@@ -135,6 +135,18 @@ public class KioskServerClient {
                 .body(PaymentSessionDto.class));
     }
 
+    /**
+     * Фиксирует фактический канал получения скана после подтверждения оплаты
+     * (пользователь мог переключиться между веб и Telegram до оплаты).
+     */
+    public void finalizeScanDeliveryChannel(String pin, String channel) {
+        execute(() -> http.post()
+                .uri("/api/scan-delivery/finalize")
+                .body(new FinalizeScanDeliveryRequest(pin, channel))
+                .retrieve()
+                .toBodilessEntity());
+    }
+
     // ════════════════════════════════════════════════════════════════
     //  Helpers
     // ════════════════════════════════════════════════════════════════
@@ -163,6 +175,9 @@ public class KioskServerClient {
 
     /** Тело запроса на оплату цифровой доставки скана. */
     private record CreateScanDeliveryRequest(String pin, String channel) {}
+
+    /** Тело запроса на фиксацию фактического канала после оплаты. */
+    private record FinalizeScanDeliveryRequest(String pin, String channel) {}
 
     public JobPreviewResponse previewJob(JobPreviewRequest request) {
         return execute(() -> http.post()

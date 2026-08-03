@@ -1,6 +1,7 @@
 package com.printkiosk.server.web;
 
 import com.printkiosk.server.service.TransactionService;
+import com.printkiosk.shared.api.OperationType;
 import com.printkiosk.shared.api.PrintJobStatus;
 import com.printkiosk.shared.api.dto.TransactionPageDto;
 import lombok.RequiredArgsConstructor;
@@ -31,13 +32,14 @@ public class AdminTransactionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
             @RequestParam(required = false) PrintJobStatus status,
+            @RequestParam(required = false) OperationType operationType,
             @RequestParam(required = false) String paymentStatus,
             @RequestParam(required = false) String kioskId,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size) {
 
-        return transactions.search(from, to, status, paymentStatus, kioskId, q, page, size);
+        return transactions.search(from, to, status, operationType, paymentStatus, kioskId, q, page, size);
     }
 
     @GetMapping("/kiosks")

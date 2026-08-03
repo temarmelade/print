@@ -49,7 +49,24 @@ public class ScanDeliveryController {
         return ResponseEntity.ok(session);
     }
 
+    /**
+     * Фиксирует фактический канал получения после подтверждения оплаты —
+     * киоск вызывает при событии PAID. Если пользователь до оплаты
+     * переключился между веб и Telegram, тип операции доставки
+     * перезаписывается на реально выбранный канал.
+     */
+    @PostMapping("/finalize")
+    public ResponseEntity<Void> finalizeChannel(@Valid @RequestBody FinalizeRequest request) {
+        jobService.finalizeScanDeliveryChannel(
+                request.pin(), request.channel().toOperationType());
+        return ResponseEntity.noContent().build();
+    }
+
     public record CreateScanDeliveryRequest(
+            @NotNull @Pattern(regexp = "\\d{4}") String pin,
+            @NotNull Channel channel) {}
+
+    public record FinalizeRequest(
             @NotNull @Pattern(regexp = "\\d{4}") String pin,
             @NotNull Channel channel) {}
 

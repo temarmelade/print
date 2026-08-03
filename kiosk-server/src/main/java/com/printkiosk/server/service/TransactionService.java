@@ -2,6 +2,7 @@ package com.printkiosk.server.service;
 
 import com.printkiosk.server.domain.PrintJobEntity;
 import com.printkiosk.server.domain.PrintJobRepository;
+import com.printkiosk.shared.api.OperationType;
 import com.printkiosk.shared.api.PrintJobStatus;
 import com.printkiosk.shared.api.dto.TransactionDto;
 import com.printkiosk.shared.api.dto.TransactionPageDto;
@@ -38,12 +39,14 @@ public class TransactionService {
 
     /** Нормализованный набор фильтров. */
     private record Filters(Instant from, Instant to, PrintJobStatus status,
+                           OperationType operationType,
                            String paymentStatus, String kioskId, String q) {}
 
     @Transactional(readOnly = true)
     public TransactionPageDto search(Instant from,
                                      Instant to,
                                      PrintJobStatus status,
+                                     OperationType operationType,
                                      String paymentStatus,
                                      String kioskId,
                                      String q,
@@ -53,7 +56,7 @@ public class TransactionService {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         int safePage = Math.max(page, 0);
 
-        Filters f = new Filters(from, to, status,
+        Filters f = new Filters(from, to, status, operationType,
                 blankToNull(paymentStatus), blankToNull(kioskId), blankToNull(q));
 
         Page<PrintJobEntity> result =
@@ -111,6 +114,9 @@ public class TransactionService {
         if (f.status() != null) {
             ps.add(cb.equal(root.get("status"), f.status()));
         }
+        if (f.operationType() != null) {
+            ps.add(cb.equal(root.get("operationType"), f.operationType()));
+        }
         if (f.paymentStatus() != null) {
             ps.add(cb.equal(root.get("paymentStatus"), f.paymentStatus()));
         }
@@ -166,6 +172,7 @@ public class TransactionService {
                 j.getId(),
                 j.getPin(),
                 j.getFileName(),
+                j.getOperationType(),
                 j.getPageCount(),
                 j.getCopies(),
                 j.getColorMode(),
