@@ -1,0 +1,122 @@
+/* Инциденты. Использует переменные темы из index.css, ряды-бары из
+   analytics.css и общие таблицы из tx.css. */
+
+@import "./analytics.css";
+
+.incident-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.incident {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border-left: 3px solid var(--border);
+}
+/* Блокирующие видны сразу — цветом рамки, а не только текстом. */
+.incident.blocking { border-left-color: var(--down); }
+.incident.warning  { border-left-color: var(--warn); }
+
+.incident-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.incident-body { flex: 1; min-width: 0; }
+
+.incident-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.sev-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.sev-chip.down {
+  color: var(--down);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.sev-chip.warn {
+  color: var(--warn);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.incident-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 3px; }
+
+.incident-reason {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.incident-time { font-size: 12px; color: var(--text-dim); }
+
+.incident-ack {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--ok);
+}
+
+.incident-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* Счётчик открытых прямо на вкладке — дежурный видит его не заходя внутрь. */
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  background: var(--down);
+  color: #fff;
+}
+
+.kpi-alert { border-color: rgba(239, 68, 68, 0.4); }
+
+.empty.all-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--ok);
+}
+
+.type-label {
+  width: 190px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

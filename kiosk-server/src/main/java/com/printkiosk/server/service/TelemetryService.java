@@ -40,6 +40,7 @@ public class TelemetryService {
     private final KioskRepository kiosks;
     private final KioskTelemetryRepository telemetry;
     private final KioskTelemetryHistoryRepository history;
+    private final IncidentService incidents;
 
     // ════════════════════════════════════════════════════════════════
     //  Приём телеметрии от киоска
@@ -112,6 +113,10 @@ public class TelemetryService {
                 .paperPercent(t.getPaperPercent())
                 .pageCounter(t.getPageCounter())
                 .build());
+
+        // Состояние → интервалы: открываем появившиеся проблемы, закрываем ушедшие.
+        // Телеметрия хранит только «сейчас», а для SLA нужна история.
+        incidents.syncFromTelemetry(kiosk, t);
     }
 
     // ════════════════════════════════════════════════════════════════

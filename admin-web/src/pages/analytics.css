@@ -1,0 +1,123 @@
+/* Аналитика. Опирается на переменные темы из index.css и общие классы
+   таблиц из tx.css — здесь только то, чего там нет. */
+
+.analytics-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .analytics-2col { grid-template-columns: 1fr; }
+}
+
+/* ── Доля услуги в таблице ── */
+.share-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+}
+.share-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.share-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.share-num { font-size: 12px; white-space: nowrap; }
+
+/* ── Часы ── */
+.hour-bar { fill: var(--accent); opacity: 0.85; }
+.hour-bar:hover { opacity: 1; }
+
+.hour-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* ── Горизонтальные ряды (дни недели, объём заказов) ── */
+.weekday-rows { display: flex; flex-direction: column; gap: 9px; }
+
+.weekday-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.weekday-label {
+  width: 42px;
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.weekday-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.weekday-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.weekday-num {
+  width: 46px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Воронка ── */
+.funnel-card { padding: 18px; margin-top: 20px; }
+
+.funnel-step { margin-bottom: 14px; }
+.funnel-step:last-of-type { margin-bottom: 0; }
+
+.funnel-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.funnel-label { font-size: 13px; color: var(--text-muted); }
+.funnel-value { font-size: 14px; color: var(--text); font-weight: 600; }
+.funnel-rate { color: var(--text-dim); font-weight: 400; font-size: 12px; }
+
+.funnel-bar {
+  height: 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.funnel-bar span {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.funnel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.funnel-foot span { display: inline-flex; align-items: center; gap: 6px; }
+.funnel-foot b { color: var(--text-muted); }

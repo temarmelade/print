@@ -70,6 +70,9 @@ public class PrintJobService {
                 .fileName(file.getOriginalFilename())
                 .pageCount(file.getPageCount())
                 .printedPages(chargedPages)     // реально печатаемые страницы
+                .uploadSource(sourceOf(file))
+                .contentType(file.getContentType())
+                .fileExtension(extensionOf(file.getOriginalFilename()))
                 .copies(settings.copies())
                 .colorMode(settings.colorMode())
                 .doubleSided(settings.doubleSided())
@@ -126,6 +129,9 @@ public class PrintJobService {
                 .fileName(file.getOriginalFilename())
                 .pageCount(pages)
                 .printedPages(pages)     // не печатаем, но снимок страниц полезен для отчётности
+                .uploadSource(sourceOf(file))
+                .contentType(file.getContentType())
+                .fileExtension(extensionOf(file.getOriginalFilename()))
                 .copies(1)
                 .colorMode("BW")
                 .doubleSided(false)
@@ -345,6 +351,29 @@ public class PrintJobService {
      * заливаются с source COPY/SCAN, всё остальное (сайт/Telegram-бот) —
      * обычная печать. Источник может быть {@code null} после удаления файла.
      */
+    /**
+     * Источник загрузки для снимка. Колонка NOT NULL, а source у файла
+     * теоретически может отсутствовать — не роняем создание задания.
+     */
+    private static UploadSource sourceOf(FileEntity file) {
+        UploadSource s = (file == null) ? null : file.getSource();
+        return (s == null) ? UploadSource.UNKNOWN : s;
+    }
+
+    /**
+     * Расширение файла в нижнем регистре без точки. Нужно отдельно от MIME:
+     * браузер и Telegram часто присылают octet-stream, и тогда расширение —
+     * единственный признак формата. Имя без точки или подозрительно длинный
+     * «хвост» расширением не считаем.
+     */
+    private static String extensionOf(String fileName) {
+        if (fileName == null) return null;
+        int dot = fileName.lastIndexOf('.');
+        if (dot < 0 || dot == fileName.length() - 1) return null;
+        String ext = fileName.substring(dot + 1).toLowerCase();
+        return (ext.length() <= 16 && ext.matches("[a-z0-9]+")) ? ext : null;
+    }
+
     private static OperationType printOperationFor(UploadSource source) {
         if (source == null) return OperationType.PRINT;
         return switch (source) {

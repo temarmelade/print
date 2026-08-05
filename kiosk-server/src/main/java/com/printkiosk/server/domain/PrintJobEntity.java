@@ -2,6 +2,7 @@ package com.printkiosk.server.domain;
 
 import com.printkiosk.shared.api.OperationType;
 import com.printkiosk.shared.api.PrintJobStatus;
+import com.printkiosk.shared.api.UploadSource;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -46,6 +47,22 @@ public class PrintJobEntity {
 
     @Column(name = "page_count", nullable = false)
     private int pageCount;
+
+    /**
+     * Снимок источника загрузки. Живёт в транзакции, а не читается из files:
+     * файл удаляется по TTL, а история должна остаться (см. V12).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "upload_source", nullable = false, length = 20)
+    private UploadSource uploadSource;
+
+    /** Снимок MIME-типа документа. */
+    @Column(name = "content_type", length = 100)
+    private String contentType;
+
+    /** Расширение файла в нижнем регистре, без точки: «pdf», «docx». */
+    @Column(name = "file_extension", length = 16)
+    private String fileExtension;
 
     /** Фактически печатаемые страницы (выбор пользователя), не весь файл. */
     @Column(name = "printed_pages", nullable = false)
