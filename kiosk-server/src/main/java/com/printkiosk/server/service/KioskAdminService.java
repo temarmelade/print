@@ -6,6 +6,7 @@ import com.printkiosk.server.exception.AdminRuleViolationException;
 import com.printkiosk.server.security.KioskAuthService;
 import com.printkiosk.server.web.AdminKioskController.CreateKioskRequest;
 import com.printkiosk.server.web.AdminKioskController.CreatedKiosk;
+import com.printkiosk.server.web.AdminKioskController.UpdateKioskRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -69,6 +70,35 @@ public class KioskAdminService {
         log.warn("Kiosk {}: API-ключ перевыпущен", id);
 
         return new CreatedKiosk(k.getId(), k.getName(), apiKey);
+    }
+
+    /**
+     * Редактирование киоска. ID и ключ не трогаем: ID — это идентификатор,
+     * под которым терминал уже настроен, а ключ меняется только через
+     * перевыпуск. Незаданные (null) поля оставляем как есть — форма может
+     * прислать только изменённое.
+     */
+    @Transactional
+    public void update(String id, UpdateKioskRequest req) {
+        KioskEntity k = kiosks.findById(id)
+                .orElseThrow(() -> new AdminRuleViolationException("Киоск не найден"));
+
+        if (req.name() != null && !req.name().isBlank()) k.setName(req.name().trim());
+        if (req.location() != null)  k.setLocation(blankToNull(req.location()));
+        if (req.latitude() != null)  k.setLatitude(req.latitude());
+        if (req.longitude() != null) k.setLongitude(req.longitude());
+        if (req.paperCapacity() != null && req.paperCapacity() > 0) {
+            k.setPaperCapacity(req.paperCapacity());
+        }
+        if (req.cartridgeYield() != null && req.cartridgeYield() > 0) {
+            k.setCartridgeYield(req.cartridgeYield());
+        }
+
+        log.info("Kiosk {} обновлён", id);
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
     }
 
     @Transactional

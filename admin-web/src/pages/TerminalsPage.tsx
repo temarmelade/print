@@ -1,16 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, lazy, Suspense } from "react";
 import {
   RefreshCw, Plus, Wrench, Droplet, FileStack, KeyRound, Trash2, Copy, Check, Info,
+  Map as MapIcon, List, Pencil, TrendingDown,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.tsx";
 import {
-  listKiosks, createKiosk, rotateKey, markPaperRefilled, markCartridgeChanged,
-  setMaintenance, deleteKiosk, lastSeen,
+  listKiosks, createKiosk, updateKiosk, rotateKey, markPaperRefilled, markCartridgeChanged,
+  setMaintenance, deleteKiosk, lastSeen, fetchForecast, formatDaysLeft,
   HEALTH_TONE, HEALTH_LABEL, SOURCE_HINT,
-  type Kiosk, type CreatedKiosk, type SupplySource,
+  type Kiosk, type CreatedKiosk, type SupplySource, type SupplyForecast,
 } from "../lib/kiosksApi.ts";
 import "./pages.css";
 import "./terminals.css";
+
+/**
+ * Карта тянет за собой Leaflet (~150 КБ) — грузим её только когда открыли,
+ * иначе каждый заход в панель платил бы за карту, которой чаще не пользуются.
+ */
+const KioskMap = lazy(() =>
+  import("./KioskMap.tsx").then((m) => ({ default: m.KioskMap })));
 
 export function TerminalsPage() {
   const { user } = useAuth();
@@ -21,6 +29,8 @@ export function TerminalsPage() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [issuedKey, setIssuedKey] = useState<CreatedKiosk | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const [editing, setEditing] = useState<Kiosk | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,6 +63,10 @@ export function TerminalsPage() {
       <div className="list-head">
         <h3>Киоски{kiosks.length > 0 && <span className="count mono">{kiosks.length}</span>}</h3>
         <div className="head-actions">
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowMap((v) => !v)}>
+            {showMap ? <List size={15} /> : <MapIcon size={15} />}
+            {showMap ? "Скрыть карту" : "Карта сети"}
+          </button>
           <button className="btn btn-ghost btn-sm" onClick={() => void load()} disabled={loading}>
             <RefreshCw size={15} className={loading ? "spin" : undefined} />
             Обновить
@@ -66,10 +80,24 @@ export function TerminalsPage() {
         </div>
       </div>
 
+      {showMap && kiosks.length > 0 && (
+        <Suspense fallback={<div className="empty">Загружаем карту…</div>}>
+          <KioskMap kiosks={kiosks} />
+        </Suspense>
+      )}
+
       {adding && (
         <CreateForm
           onCancel={() => setAdding(false)}
           onCreated={(k) => { setIssuedKey(k); setAdding(false); void load(); }}
+        />
+      )}
+
+      {editing && (
+        <EditForm
+          kiosk={editing}
+          onCancel={() => setEditing(null)}
+          onSaved={() => { setEditing(null); void load(); }}
         />
       )}
 
@@ -92,6 +120,7 @@ export function TerminalsPage() {
               key={k.id} k={k} isOwner={isOwner}
               onRefresh={load} onError={setError}
               onKeyIssued={setIssuedKey}
+              onEdit={() => setEditing(k)}
             />
           ))}
         </div>
@@ -112,17 +141,29 @@ export function TerminalsPage() {
 /* ── Карточка киоска ── */
 
 function KioskCard({
-  k, isOwner, onRefresh, onError, onKeyIssued,
+  k, isOwner, onRefresh, onError, onKeyIssued, onEdit,
 }: {
   k: Kiosk;
   isOwner: boolean;
   onRefresh: () => Promise<void>;
   onError: (m: string) => void;
   onKeyIssued: (c: CreatedKiosk) => void;
+  onEdit: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [forecast, setForecast] = useState<SupplyForecast | null>(null);
   const tone = HEALTH_TONE[k.health];
+
+  // Прогноз грузим отдельно от списка: он тяжелее (читает историю) и не
+  // должен задерживать отрисовку карточек.
+  useEffect(() => {
+    let cancelled = false;
+    fetchForecast(k.id)
+      .then((f) => { if (!cancelled) setForecast(f); })
+      .catch(() => { /* прогноз необязателен — молча пропускаем */ });
+    return () => { cancelled = true; };
+  }, [k.id]);
 
   async function guard(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -168,6 +209,19 @@ function KioskCard({
         {k.pageCounter != null && <span>Счётчик: {k.pageCounter}</span>}
       </div>
 
+      {forecast?.pagesPerDay != null && (
+        <div className="forecast">
+          <span className="forecast-head">
+            <TrendingDown size={13} /> Прогноз · {forecast.pagesPerDay} стр/сут
+          </span>
+          <span className="forecast-row">
+            бумага: <b>{formatDaysLeft(forecast.paperDaysLeft)}</b>
+            {" · "}
+            тонер: <b>{formatDaysLeft(forecast.tonerDaysLeft)}</b>
+          </span>
+        </div>
+      )}
+
       <div className="kiosk-actions">
         <button className="btn btn-ghost btn-sm" disabled={busy}
                 onClick={() => void guard(() => markPaperRefilled(k.id))}>
@@ -188,6 +242,9 @@ function KioskCard({
 
         {isOwner && (
           <>
+            <button className="btn btn-ghost btn-sm" disabled={busy} onClick={onEdit}>
+              <Pencil size={14} /> Изменить
+            </button>
             <button className="btn btn-ghost btn-sm" disabled={busy}
                     onClick={() => void guard(async () => onKeyIssued(await rotateKey(k.id)))}>
               <KeyRound size={14} /> Новый ключ
@@ -301,6 +358,8 @@ function CreateForm({
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -311,6 +370,8 @@ function CreateForm({
       onCreated(await createKiosk({
         id: id.trim(), name: name.trim(),
         location: location.trim() || undefined,
+        latitude: parseCoord(lat),
+        longitude: parseCoord(lng),
       }));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Не удалось создать киоск");
@@ -337,11 +398,22 @@ function CreateForm({
                  onChange={(e) => setLocation(e.target.value)}
                  placeholder="КГТУ, 1 корпус, холл" />
         </div>
+        <div className="field">
+          <label htmlFor="k-lat">Широта</label>
+          <input id="k-lat" className="input" value={lat} onChange={(e) => setLat(e.target.value)}
+                 placeholder="42.8746" inputMode="decimal" />
+        </div>
+        <div className="field">
+          <label htmlFor="k-lng">Долгота</label>
+          <input id="k-lng" className="input" value={lng} onChange={(e) => setLng(e.target.value)}
+                 placeholder="74.5698" inputMode="decimal" />
+        </div>
       </div>
 
       <p className="role-hint">
         ID должен совпадать с <code>KIOSK_ID</code> в конфиге терминала. Ёмкость кассеты
         (250 л.) и ресурс картриджа (2400 стр.) подставятся под Canon MF232w.
+        Координаты нужны для карты сети — их можно добавить и позже.
       </p>
 
       {err && <div className="login-error" role="alert">{err}</div>}
@@ -355,4 +427,96 @@ function CreateForm({
       </div>
     </div>
   );
+}
+
+/* ── Редактирование киоска ── */
+
+function EditForm({
+  kiosk, onCancel, onSaved,
+}: {
+  kiosk: Kiosk;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(kiosk.name);
+  const [location, setLocation] = useState(kiosk.location ?? "");
+  const [lat, setLat] = useState(kiosk.latitude?.toString() ?? "");
+  const [lng, setLng] = useState(kiosk.longitude?.toString() ?? "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await updateKiosk(kiosk.id, {
+        name: name.trim(),
+        location: location.trim() || null,
+        latitude: parseCoord(lat) ?? null,
+        longitude: parseCoord(lng) ?? null,
+      });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Не удалось сохранить");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card create-card">
+      <div className="list-head" style={{ marginTop: 0 }}>
+        <h3>Изменить «{kiosk.name}»<span className="count mono">{kiosk.id}</span></h3>
+      </div>
+
+      <div className="create-grid">
+        <div className="field">
+          <label htmlFor="e-name">Название</label>
+          <input id="e-name" className="input" value={name}
+                 onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor="e-loc">Локация</label>
+          <input id="e-loc" className="input" value={location}
+                 onChange={(e) => setLocation(e.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor="e-lat">Широта</label>
+          <input id="e-lat" className="input" value={lat} inputMode="decimal"
+                 onChange={(e) => setLat(e.target.value)} placeholder="42.8746" />
+        </div>
+        <div className="field">
+          <label htmlFor="e-lng">Долгота</label>
+          <input id="e-lng" className="input" value={lng} inputMode="decimal"
+                 onChange={(e) => setLng(e.target.value)} placeholder="74.5698" />
+        </div>
+      </div>
+
+      <p className="role-hint">
+        ID и API-ключ здесь не меняются: ID уже прописан в конфиге терминала, а ключ
+        обновляется только кнопкой «Новый ключ». Координаты проще всего скопировать
+        из Google Maps или 2ГИС — правый клик по точке даёт пару «широта, долгота».
+      </p>
+
+      {err && <div className="login-error" role="alert">{err}</div>}
+
+      <div className="create-actions">
+        <button className="btn btn-primary" onClick={() => void submit()}
+                disabled={busy || !name.trim()}>
+          {busy ? "Сохраняем…" : "Сохранить"}
+        </button>
+        <button className="btn btn-ghost" onClick={onCancel} disabled={busy}>Отмена</button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Координата из поля ввода. Пустая строка и мусор дают undefined, а не 0:
+ * ноль — это реальная точка в Атлантике, и киоск уехал бы туда на карте.
+ */
+function parseCoord(raw: string): number | undefined {
+  const trimmed = raw.trim().replace(",", ".");
+  if (!trimmed) return undefined;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : undefined;
 }

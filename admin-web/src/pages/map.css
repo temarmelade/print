@@ -1,0 +1,46 @@
+/* Карта сети киосков. Leaflet приносит свои стили — здесь только рамка
+   и подгонка под тёмную тему панели. */
+
+.map-wrap {
+  padding: 0;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.map-canvas {
+  height: 380px;
+  width: 100%;
+  /* Пока плитки не загрузились, светлый прямоугольник резал бы глаз
+     на тёмной панели. */
+  background: var(--surface-2);
+}
+
+/* Панели Leaflet по умолчанию белые — приводим к теме. */
+.map-wrap .leaflet-control-attribution {
+  background: rgba(11, 14, 20, 0.75);
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.map-wrap .leaflet-control-attribution a { color: var(--text-muted); }
+
+.map-wrap .leaflet-bar a {
+  background: var(--surface);
+  color: var(--text);
+  border-bottom-color: var(--border);
+}
+.map-wrap .leaflet-bar a:hover { background: var(--surface-2); }
+
+.map-wrap .leaflet-popup-content-wrapper,
+.map-wrap .leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.map-wrap .leaflet-popup-content { font-size: 13px; line-height: 1.5; }
+
+.map-hint {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+}

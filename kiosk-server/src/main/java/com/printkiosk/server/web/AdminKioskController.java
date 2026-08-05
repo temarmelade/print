@@ -1,8 +1,10 @@
 package com.printkiosk.server.web;
 
 import com.printkiosk.server.service.KioskAdminService;
+import com.printkiosk.server.service.SupplyForecastService;
 import com.printkiosk.server.service.TelemetryService;
 import com.printkiosk.shared.api.dto.KioskDto;
+import com.printkiosk.shared.api.dto.SupplyForecastDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class AdminKioskController {
 
     private final TelemetryService telemetry;
     private final KioskAdminService admin;
+    private final SupplyForecastService forecasts;
 
     @GetMapping
     public List<KioskDto> list() {
@@ -42,6 +45,24 @@ public class AdminKioskController {
     @PreAuthorize("hasRole('OWNER')")
     public CreatedKiosk rotateKey(@PathVariable String id) {
         return admin.rotateKey(id);
+    }
+
+    /** Редактирование: название, адрес, координаты для карты, ёмкости. */
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('OWNER')")
+    public ResponseEntity<Void> update(@PathVariable String id,
+                                       @Valid @RequestBody UpdateKioskRequest req) {
+        admin.update(id, req);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Прогноз расхода: когда закончатся бумага и тонер. Строится на истории
+     * телеметрии, поэтому на свежем киоске вернёт «данных пока нет».
+     */
+    @GetMapping("/{id}/forecast")
+    public SupplyForecastDto forecast(@PathVariable String id) {
+        return forecasts.forecast(id);
     }
 
     // ── Кнопки техника ──
@@ -77,6 +98,15 @@ public class AdminKioskController {
     public record CreateKioskRequest(
             @NotBlank String id,
             @NotBlank String name,
+            String location,
+            Double latitude,
+            Double longitude,
+            Integer paperCapacity,
+            Integer cartridgeYield) {}
+
+    /** Все поля необязательные: присылаем только то, что меняем. */
+    public record UpdateKioskRequest(
+            String name,
             String location,
             Double latitude,
             Double longitude,

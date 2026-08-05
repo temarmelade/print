@@ -96,6 +96,9 @@ telegram:
     enabled: ${TELEGRAM_BOT_ENABLED:false}     # локально false, на проде true
     token:   ${TELEGRAM_BOT_TOKEN:}
     username: ${TELEGRAM_BOT_USERNAME:PrintKioskBot}
+    # Код доступа к служебным уведомлениям об инцидентах. Пусто = подписка
+    # отключена. На проде ОБЯЗАТЕЛЬНО задать: без него техники не подпишутся.
+    alerts-token: ${TELEGRAM_ALERTS_TOKEN:}
 
 # ───── Админ-панель (пульт управления) ─────
 admin:

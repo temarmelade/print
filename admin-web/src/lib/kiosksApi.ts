@@ -70,10 +70,52 @@ export function createKiosk(body: {
   id: string;
   name: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
   paperCapacity?: number;
   cartridgeYield?: number;
 }): Promise<CreatedKiosk> {
   return api<CreatedKiosk>("/admin/kiosks", { method: "POST", body });
+}
+
+/** Частичное обновление: шлём только изменённые поля. */
+export function updateKiosk(id: string, body: {
+  name?: string;
+  location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  paperCapacity?: number;
+  cartridgeYield?: number;
+}): Promise<void> {
+  return api<void>(`/admin/kiosks/${id}`, { method: "PATCH", body });
+}
+
+export interface SupplyForecast {
+  kioskId: string;
+  pagesPerDay: number | null;
+  paperEmptyAt: string | null;
+  paperDaysLeft: number | null;
+  tonerEmptyAt: string | null;
+  tonerDaysLeft: number | null;
+  samples: number;
+  windowHours: number;
+}
+
+export function fetchForecast(id: string): Promise<SupplyForecast> {
+  return api<SupplyForecast>(`/admin/kiosks/${id}/forecast`);
+}
+
+/**
+ * «через 3 дня» / «завтра» — техник планирует выезд днями, а не датами.
+ * null означает «данных недостаточно», и это надо показать честно.
+ */
+export function formatDaysLeft(days: number | null): string {
+  if (days === null) return "н/д";
+  if (days <= 0) return "уже кончается";
+  if (days === 1) return "завтра";
+  if (days < 5) return `через ${days} дня`;
+  if (days >= 365) return "не скоро";
+  return `через ${days} дней`;
 }
 
 export function rotateKey(id: string): Promise<CreatedKiosk> {

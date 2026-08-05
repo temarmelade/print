@@ -1,6 +1,7 @@
 package com.printkiosk.server.service;
 
 import com.printkiosk.server.domain.*;
+import com.printkiosk.server.service.incident.IncidentEvents;
 import com.printkiosk.shared.api.IncidentSeverity;
 import com.printkiosk.shared.api.IncidentType;
 import com.printkiosk.shared.api.dto.IncidentDto;
@@ -9,6 +10,7 @@ import com.printkiosk.shared.api.dto.IncidentSummaryDto.KioskIncidentCountDto;
 import com.printkiosk.shared.api.dto.IncidentSummaryDto.TypeCountDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -54,6 +56,7 @@ public class IncidentService {
     private final KioskIncidentRepository incidents;
     private final KioskRepository kiosks;
     private final KioskTelemetryRepository telemetry;
+    private final ApplicationEventPublisher events;
 
     // ════════════════════════════════════════════════════════════════
     //  Синхронизация состояния → инциденты
@@ -158,7 +161,7 @@ public class IncidentService {
      */
     private void openIncident(String kioskId, IncidentType type, String reason, Instant now) {
         try {
-            incidents.saveAndFlush(KioskIncidentEntity.builder()
+            KioskIncidentEntity saved = incidents.saveAndFlush(KioskIncidentEntity.builder()
                     .kioskId(kioskId)
                     .incidentType(type)
                     .severity(type.severity())
@@ -168,6 +171,13 @@ public class IncidentService {
                     .occurrences(1)
                     .build());
             log.info("Инцидент открыт: киоск={} тип={} причина={}", kioskId, type, reason);
+
+            KioskEntity k = kiosks.findById(kioskId).orElse(null);
+            events.publishEvent(new IncidentEvents.Opened(
+                    saved.getId(), kioskId, nameOf(k, kioskId),
+                    k != null ? k.getLocation() : null,
+                    type, type.severity(), reason, now));
+
         } catch (DataIntegrityViolationException e) {
             log.debug("Инцидент {} для киоска {} уже открыт (параллельный heartbeat)", type, kioskId);
         }
@@ -178,6 +188,12 @@ public class IncidentService {
         long minutes = Duration.between(incident.getStartedAt(), now).toMinutes();
         log.info("Инцидент закрыт: киоск={} тип={} длился={} мин",
                 incident.getKioskId(), incident.getIncidentType(), minutes);
+
+        KioskEntity k = kiosks.findById(incident.getKioskId()).orElse(null);
+        events.publishEvent(new IncidentEvents.Resolved(
+                incident.getId(), incident.getKioskId(),
+                nameOf(k, incident.getKioskId()),
+                incident.getIncidentType(), incident.getSeverity(), minutes));
     }
 
     private void closeAllOpen(String kioskId, String why) {

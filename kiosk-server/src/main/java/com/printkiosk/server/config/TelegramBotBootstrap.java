@@ -15,9 +15,20 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 public class TelegramBotBootstrap {
 
     private final TelegramPrintBot bot;
+    private final TelegramBotProperties properties;
 
     @EventListener(ApplicationReadyEvent.class)
     public void register() {
+        // Флаг раньше не проверялся: локально бот пытался подключиться с пустым
+        // токеном и сыпал ошибками в лог при каждом старте.
+        if (!properties.isEnabled()) {
+            log.info("Telegram bot отключён (telegram.bot.enabled=false)");
+            return;
+        }
+        if (properties.getToken() == null || properties.getToken().isBlank()) {
+            log.error("Telegram bot включён, но TELEGRAM_BOT_TOKEN не задан — бот не запущен");
+            return;
+        }
         try {
             new TelegramBotsApi(DefaultBotSession.class).registerBot(bot);
             log.info("Telegram bot registered: @{}", bot.getBotUsername());

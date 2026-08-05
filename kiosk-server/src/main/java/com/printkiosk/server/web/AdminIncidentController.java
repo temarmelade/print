@@ -1,6 +1,7 @@
 package com.printkiosk.server.web;
 
 import com.printkiosk.server.service.IncidentService;
+import com.printkiosk.server.service.incident.IncidentSubscriptionService;
 import com.printkiosk.shared.api.dto.IncidentDto;
 import com.printkiosk.shared.api.dto.IncidentSummaryDto;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.util.List;
 public class AdminIncidentController {
 
     private final IncidentService incidents;
+    private final IncidentSubscriptionService subscriptions;
 
     /** Открытые инциденты — главный экран. */
     @GetMapping
@@ -61,4 +63,21 @@ public class AdminIncidentController {
         incidents.resolveManually(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Кто получает уведомления в Telegram. Полезно понять, дошёл ли сигнал:
+     * если подписчиков нет или все отключились (заблокировали бота), поломку
+     * увидят только в панели.
+     */
+    @GetMapping("/subscribers")
+    public List<SubscriberView> subscribers() {
+        return subscriptions.activeSubscribers().stream()
+                .map(s -> new SubscriberView(
+                        s.getChatId(), s.getLabel(),
+                        s.getMinSeverity().name(), s.getLastSentAt()))
+                .toList();
+    }
+
+    public record SubscriberView(long chatId, String label,
+                                 String minSeverity, java.time.Instant lastSentAt) {}
 }
