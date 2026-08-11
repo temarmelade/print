@@ -2720,3 +2720,117 @@
     -fx-padding: 24;
     -fx-max-width: 300;
 }
+/* ================================================================
+   ПОРТРЕТ 27" — дизайн-канва 900x1600
+   Блок идёт последним и намеренно переопределяет более ранние
+   правила: так адаптация под портрет собрана в одном месте и её
+   видно целиком, вместо 480 точечных правок по всему файлу.
+
+   Физика: ширина 27"-панели в портрете ~336 мм / 900 px = 0.37 мм
+   на дизайн-пиксель. Отсюда пересчёт в миллиметры в комментариях.
+   ================================================================ */
+
+/* Поля по краям, если пропорции панели отличаются от 9:16. */
+.kiosk-letterbox {
+    -fx-background-color: #081a3a;
+}
+
+/* ---- Сенсорные габариты: минимум 20 мм, целимся в 26-36 мм ---- */
+
+.btn-primary {
+    -fx-min-height: 96px;          /* ~36 мм */
+    -fx-font-size: 26px;
+    -fx-padding: 20 48;
+}
+
+.btn-secondary {
+    -fx-min-height: 84px;          /* ~31 мм */
+    -fx-font-size: 24px;
+}
+
+.btn-success {
+    -fx-min-height: 96px;
+    -fx-font-size: 26px;
+}
+
+/* «Назад» жмут часто и обычно на ходу — 27 мм. */
+.btn-back {
+    -fx-min-height: 72px;
+    -fx-font-size: 23px;
+    -fx-padding: 14 26;
+}
+
+/* Языковые кнопки были 16px/8px padding — на 27" это ~11 мм, мимо. */
+.home-language-btn {
+    -fx-font-size: 22px;
+    -fx-min-height: 68px;
+    -fx-min-width: 84px;
+    -fx-padding: 12 16;
+}
+
+.home-language-icon { -fx-font-size: 28px; }
+
+.home-help-btn {
+    -fx-font-size: 22px;
+    -fx-min-height: 68px;
+    -fx-padding: 14 28;
+}
+
+/* ---- Главный экран: карточки столбцом ---- */
+
+.home-cards-column {
+    -fx-padding: 30 0 0 0;
+    -fx-fill-width: true;
+}
+
+/* Широкая горизонтальная карточка вместо вертикальной колонки. */
+.home-cards-column .home-action-card {
+    -fx-min-height: 330px;         /* ~123 мм */
+    -fx-padding: 30 36 30 40;
+    -fx-background-radius: 30;
+    -fx-border-radius: 30;
+    /* Акцент переезжает с нижней грани на левую — у горизонтальной
+       карточки это читается как цветовая метка раздела. */
+    -fx-border-width: 0 0 0 12;
+}
+
+.home-cards-column .print-card { -fx-border-color: #1478ff transparent transparent transparent; }
+.home-cards-column .copy-card  { -fx-border-color: #24c263 transparent transparent transparent; }
+.home-cards-column .scan-card  { -fx-border-color: #7657f5 transparent transparent transparent; }
+
+/* Заголовок и описание внутри широкой карточки выравниваются по левому
+   краю — центрирование осталось от вертикального варианта. */
+.home-cards-column .home-card-title {
+    -fx-font-size: 44px;
+    -fx-text-alignment: left;
+}
+
+.home-cards-column .home-card-desc {
+    -fx-font-size: 26px;
+    -fx-text-alignment: left;
+    -fx-line-spacing: 6px;
+}
+
+/* Шеврон-подсказка «здесь можно нажать». */
+.home-card-chevron {
+    -fx-font-size: 62px;
+    -fx-font-weight: 300;
+    -fx-text-fill: #b6c4d8;
+    -fx-padding: 0 6 10 0;
+}
+
+.home-action-card:hover .home-card-chevron { -fx-text-fill: #1478ff; }
+
+/* Иконка операции крупнее: в широкой карточке места хватает. */
+.home-cards-column .operation-svg {
+    -fx-scale-x: 1.45;
+    -fx-scale-y: 1.45;
+}
+
+/* ---- Шапка и заголовок главного экрана ---- */
+
+.home-main-title    { -fx-font-size: 58px; }
+.home-main-subtitle { -fx-font-size: 32px; }
+.home-title-block   { -fx-padding: 40 0 0 0; }
+.home-time          { -fx-font-size: 44px; }
+.home-date          { -fx-font-size: 22px; }

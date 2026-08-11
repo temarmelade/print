@@ -1,0 +1,183 @@
+/* Страница «Цены» */
+
+.pricing-default {
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e5e9f0);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+}
+
+.pricing-default header,
+.pricing-table header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.pricing-default header h3,
+.pricing-table header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.pricing-table header { justify-content: space-between; }
+
+.pricing-values,
+.pricing-edit {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.pricing-values .price {
+    font-size: 15px;
+    color: var(--text-muted, #6b7280);
+}
+
+.pricing-values .price b {
+    font-size: 22px;
+    color: var(--text, #111827);
+    margin-right: 4px;
+}
+
+.pricing-edit label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-muted, #6b7280);
+}
+
+.pricing-edit input,
+.pricing-table input {
+    width: 90px;
+    padding: 7px 10px;
+    border: 1px solid var(--border, #e5e9f0);
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+.pricing-table table,
+.modal table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.pricing-table th,
+.modal th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-muted, #6b7280);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border, #e5e9f0);
+}
+
+.pricing-table td,
+.modal td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-soft, #f1f4f8);
+    vertical-align: middle;
+}
+
+.pricing-table .small { font-size: 12px; }
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* Метка источника цены: сразу видно, где цена своя, а где унаследована. */
+.tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.tag.own {
+    background: #e8f1ff;
+    color: #1478ff;
+}
+
+.tag.inherited {
+    background: #f1f4f8;
+    color: #6b7280;
+}
+
+.btn-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--border, #e5e9f0);
+    background: #fff;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-sm:hover { background: #f7faff; }
+.btn-sm.ghost { border-color: transparent; color: var(--text-muted, #6b7280); }
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border, #e5e9f0);
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-muted, #6b7280);
+}
+
+.btn-icon:hover { background: #f7faff; }
+.btn-icon.ok { border-color: #24c263; color: #24c263; }
+.btn-icon:disabled { opacity: 0.5; cursor: default; }
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 26, 58, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+
+.modal {
+    background: #fff;
+    border-radius: 16px;
+    padding: 22px;
+    width: min(640px, 92vw);
+    max-height: 80vh;
+    overflow: auto;
+}
+
+.modal header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.modal header h3 { margin: 0; font-size: 17px; }
+
+.alert-error {
+    background: #fff1f1;
+    border: 1px solid #ffd4d4;
+    color: #b42318;
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-bottom: 18px;
+    font-size: 14px;
+}

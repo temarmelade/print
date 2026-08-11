@@ -6,6 +6,7 @@ import {
   BarChart3,
   Receipt,
   Megaphone,
+  Wallet,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -31,6 +32,7 @@ export const MODULES: ModuleDef[] = [
   { id: "alerts",       label: "Инциденты",  path: "/alerts",       icon: BellRing,          roles: ["OWNER", "TECHNICIAN"] },
   { id: "analytics",    label: "Аналитика",  path: "/analytics",    icon: BarChart3,         roles: ["OWNER"] },
   { id: "transactions", label: "Транзакции", path: "/transactions", icon: Receipt,           roles: ["OWNER", "SUPPORT"] },
+  { id: "pricing",      label: "Цены",       path: "/pricing",      icon: Wallet,            roles: ["OWNER"] },
   { id: "media",        label: "Реклама",    path: "/media",        icon: Megaphone,         roles: ["OWNER"] },
   { id: "access",       label: "Доступы",    path: "/access",       icon: Users,             roles: ["OWNER"] },
 ];

@@ -17,8 +17,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -29,6 +31,7 @@ public class AdService {
     private final AdCreativeRepository repository;
     private final FileStorageService storage;
     private final KioskServerProperties properties;
+    private final com.printkiosk.server.domain.KioskRepository kioskRepository;
 
     private static final Map<String, String> ALLOWED_TYPES = Map.of(
             "image/jpeg", "jpg",
@@ -38,10 +41,15 @@ public class AdService {
             "video/webm", "webm"
     );
 
+    /**
+     * Плейлист киоска: общесетевые ролики + адресованные этому киоску.
+     * kioskId приходит из заголовка X-Kiosk-Id, который клиент шлёт на
+     * каждом запросе, — отдельного параметра на стороне киоска не нужно.
+     */
     @Transactional(readOnly = true)
-    public List<AdCreativeDto> playlist(AdSlot slot) {
-        return repository
-                .findBySlotAndEnabledTrueOrderBySortOrderAscCreatedAtAsc(slot)
+    public List<AdCreativeDto> playlist(AdSlot slot, String kioskId) {
+        String key = (kioskId == null || kioskId.isBlank()) ? "" : kioskId;
+        return repository.findPlaylistForKiosk(slot, key)
                 .stream()
                 .map(this::toDto)
                 .toList();
@@ -63,7 +71,8 @@ public class AdService {
 
     @Transactional
     public AdCreativeDto upload(MultipartFile file, String title, AdSlot slot,
-                                Integer durationSec, Integer sortOrder) {
+                                Integer durationSec, Integer sortOrder,
+                                List<String> kioskIds) {
         if (file == null || file.isEmpty()) {
             throw new FileValidationException("Файл рекламы пуст");
         }
@@ -110,11 +119,13 @@ public class AdService {
                 .sortOrder(sortOrder != null ? sortOrder : 0)
                 .enabled(true)
                 .createdAt(Instant.now())
+                .kioskIds(validTargets(kioskIds))
                 .build();
 
         repository.save(entity);
-        log.info("Ad creative uploaded: id={} slot={} type={} title='{}'",
-                id, slot, mediaType, entity.getTitle());
+        log.info("Ad creative uploaded: id={} slot={} type={} title='{}' kiosks={}",
+                id, slot, mediaType, entity.getTitle(),
+                entity.getKioskIds().isEmpty() ? "<вся сеть>" : entity.getKioskIds());
 
         return toDto(entity);
     }
@@ -138,6 +149,40 @@ public class AdService {
         return toDto(entity);
     }
 
+    /**
+     * Переназначает киоски показа. Пустой или null-список означает «крутить
+     * везде» — это отдельный осмысленный режим, поэтому обнуление здесь
+     * НЕ игнорируется, в отличие от null-полей в {@link #update}.
+     */
+    @Transactional
+    public AdCreativeDto setTargets(UUID id, List<String> kioskIds) {
+        AdCreative entity = getOrThrow(id);
+        entity.getKioskIds().clear();
+        entity.getKioskIds().addAll(validTargets(kioskIds));
+        log.info("Ad creative {} targets = {}", id,
+                entity.getKioskIds().isEmpty() ? "<вся сеть>" : entity.getKioskIds());
+        return toDto(entity);
+    }
+
+    /**
+     * Отсекает несуществующие киоски. Молча игнорировать их нельзя: иначе
+     * оператор выберет киоск, тот окажется удалён, и ролик тихо уедет в
+     * «показывать везде» — вместо ошибки получим рекламу не по адресу.
+     */
+    private Set<String> validTargets(List<String> kioskIds) {
+        if (kioskIds == null || kioskIds.isEmpty()) return new LinkedHashSet<>();
+        Set<String> cleaned = new LinkedHashSet<>();
+        for (String raw : kioskIds) {
+            if (raw == null || raw.isBlank()) continue;
+            String kioskId = raw.trim();
+            if (!kioskRepository.existsById(kioskId)) {
+                throw new FileValidationException("Неизвестный киоск: " + kioskId);
+            }
+            cleaned.add(kioskId);
+        }
+        return cleaned;
+    }
+
     @Transactional
     public void delete(UUID id) {
         AdCreative entity = getOrThrow(id);
@@ -158,7 +203,8 @@ public class AdService {
                 e.getDurationSec(),
                 e.getSortOrder(),
                 e.isEnabled(),
-                e.getCreatedAt()
+                e.getCreatedAt(),
+                List.copyOf(e.getKioskIds())
         );
     }
 

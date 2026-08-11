@@ -24,9 +24,16 @@ public class AdController {
     private final AdService adService;
     private final FileStorageService storage;
 
+    /**
+     * Плейлист киоска. Киоск не передаёт свой id явно — он уже едет в
+     * заголовке X-Kiosk-Id на каждом запросе (см. HttpClientConfig клиента),
+     * поэтому таргетинг заработал без единой правки на стороне киоска.
+     */
     @GetMapping("/playlist")
-    public List<AdCreativeDto> playlist(@RequestParam("slot") AdSlot slot) {
-        return adService.playlist(slot);
+    public List<AdCreativeDto> playlist(
+            @RequestParam("slot") AdSlot slot,
+            @RequestHeader(value = "X-Kiosk-Id", required = false) String kioskId) {
+        return adService.playlist(slot, kioskId);
     }
 
     @GetMapping("/media/{id}")
@@ -53,8 +60,10 @@ public class AdController {
             @RequestParam("slot") AdSlot slot,
             @RequestParam(value = "title",       required = false) String title,
             @RequestParam(value = "durationSec", required = false) Integer durationSec,
-            @RequestParam(value = "sortOrder",   required = false) Integer sortOrder) {
-        AdCreativeDto created = adService.upload(file, title, slot, durationSec, sortOrder);
+            @RequestParam(value = "sortOrder",   required = false) Integer sortOrder,
+            @RequestParam(value = "kioskIds",    required = false) List<String> kioskIds) {
+        AdCreativeDto created =
+                adService.upload(file, title, slot, durationSec, sortOrder, kioskIds);
         return ResponseEntity.ok(created);
     }
 
@@ -65,6 +74,17 @@ public class AdController {
             @RequestParam(value = "sortOrder",   required = false) Integer sortOrder,
             @RequestParam(value = "durationSec", required = false) Integer durationSec) {
         return adService.update(id, title, sortOrder, durationSec);
+    }
+
+    /**
+     * Список киосков показа. Пустой список = крутить на всей сети, поэтому
+     * параметр обязателен: отсутствие значения и пустое значение здесь
+     * означают разное.
+     */
+    @PutMapping("/admin/{id}/targets")
+    public AdCreativeDto setTargets(@PathVariable UUID id,
+                                    @RequestBody List<String> kioskIds) {
+        return adService.setTargets(id, kioskIds);
     }
 
     @PatchMapping("/admin/{id}/enabled")

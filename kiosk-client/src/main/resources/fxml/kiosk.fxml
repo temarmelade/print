@@ -296,78 +296,90 @@
                            styleClass="home-main-subtitle"/>
                 </VBox>
 
-                <!-- Карточки операций -->
-                <HBox alignment="CENTER" spacing="46" styleClass="home-cards-row">
+                <!-- Карточки операций: в портрете — столбец широких карточек.
+                     Иконка слева, текст справа, шеврон-подсказка у правого края.
+                     Каждая карточка ~330 дизайн-px в высоту = ~123 мм на 27" —
+                     промахнуться пальцем невозможно. -->
+                <VBox alignment="CENTER" spacing="30" styleClass="home-cards-column" VBox.vgrow="ALWAYS">
 
                     <!-- Печать -->
-                    <VBox alignment="CENTER"
-                          spacing="24"
-                          prefWidth="330"
-                          prefHeight="390"
+                    <HBox alignment="CENTER_LEFT"
+                          spacing="34"
+                          maxWidth="Infinity"
                           styleClass="home-action-card, print-card"
                           onMouseClicked="#onPrintOperationSelected">
 
-                        <StackPane prefWidth="130" prefHeight="130">
+                        <StackPane prefWidth="150" prefHeight="150" minWidth="150">
                             <SVGPath styleClass="operation-svg, print-svg"
                                      content="M20 45 H80 Q88 45 88 53 V75 Q88 83 80 83 H72 V100 H28 V83 H20 Q12 83 12 75 V53 Q12 45 20 45 Z M30 15 H70 Q76 15 76 21 V45 H64 V28 H36 V45 H24 V21 Q24 15 30 15 Z M38 75 H62 V88 H38 Z M68 57 Q72 57 72 61 Q72 65 68 65 Q64 65 64 61 Q64 57 68 57 Z"/>
                         </StackPane>
 
-                        <Label fx:id="printCardTitle"
-                               text="Печать"
-                               styleClass="home-card-title"/>
+                        <VBox spacing="12" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                            <Label fx:id="printCardTitle"
+                                   text="Печать"
+                                   styleClass="home-card-title"/>
 
-                        <Label fx:id="printCardDesc"
-                               text="Печать документов&#10;и файлов"
-                               textAlignment="CENTER"
-                               styleClass="home-card-desc"/>
-                    </VBox>
+                            <Label fx:id="printCardDesc"
+                                   text="Печать документов и файлов"
+                                   wrapText="true"
+                                   styleClass="home-card-desc"/>
+                        </VBox>
+
+                        <Label text="›" styleClass="home-card-chevron"/>
+                    </HBox>
 
                     <!-- Копирование -->
-                    <VBox alignment="CENTER"
-                          spacing="24"
-                          prefWidth="330"
-                          prefHeight="390"
+                    <HBox alignment="CENTER_LEFT"
+                          spacing="34"
+                          maxWidth="Infinity"
                           styleClass="home-action-card, copy-card"
                           onMouseClicked="#onCopyOperationSelected">
 
-                        <StackPane prefWidth="130" prefHeight="130">
+                        <StackPane prefWidth="150" prefHeight="150" minWidth="150">
                             <SVGPath styleClass="operation-svg, copy-svg"
                                      content="M28 18 H62 L82 38 V90 Q82 98 74 98 H28 Q20 98 20 90 V26 Q20 18 28 18 Z M62 18 V38 H82 M35 52 H68 V60 H35 Z M35 70 H70 V78 H35 Z M35 36 H52 V44 H35 Z M36 100 H78 Q90 100 90 88 V42 H100 V95 Q100 108 87 108 H36 Z"/>
                         </StackPane>
 
-                        <Label fx:id="copyCardTitle"
-                               text="Копирование"
-                               styleClass="home-card-title"/>
+                        <VBox spacing="12" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                            <Label fx:id="copyCardTitle"
+                                   text="Копирование"
+                                   styleClass="home-card-title"/>
 
-                        <Label fx:id="copyCardDesc"
-                               text="Сделайте копию&#10;документа"
-                               textAlignment="CENTER"
-                               styleClass="home-card-desc"/>
-                    </VBox>
+                            <Label fx:id="copyCardDesc"
+                                   text="Сделайте копию документа"
+                                   wrapText="true"
+                                   styleClass="home-card-desc"/>
+                        </VBox>
+
+                        <Label text="›" styleClass="home-card-chevron"/>
+                    </HBox>
 
                     <!-- Сканирование -->
-                    <VBox alignment="CENTER"
-                          spacing="24"
-                          prefWidth="330"
-                          prefHeight="390"
+                    <HBox alignment="CENTER_LEFT"
+                          spacing="34"
+                          maxWidth="Infinity"
                           styleClass="home-action-card, scan-card"
                           onMouseClicked="#onScanOperationSelected">
 
-                        <StackPane prefWidth="130" prefHeight="130">
+                        <StackPane prefWidth="150" prefHeight="150" minWidth="150">
                             <SVGPath styleClass="operation-svg, scan-svg"
                                      content="M25 20 H78 Q86 20 90 28 L102 68 H34 Z M33 75 H96 Q104 75 104 83 V100 H20 V83 Q20 75 33 75 Z M34 30 L44 58 H88 L80 30 Z M30 88 H42 V94 H30 Z"/>
                         </StackPane>
 
-                        <Label fx:id="scanCardTitle"
-                               text="Сканирование"
-                               styleClass="home-card-title"/>
+                        <VBox spacing="12" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                            <Label fx:id="scanCardTitle"
+                                   text="Сканирование"
+                                   styleClass="home-card-title"/>
 
-                        <Label fx:id="scanCardDesc"
-                               text="Сканирование&#10;в файл"
-                               textAlignment="CENTER"
-                               styleClass="home-card-desc"/>
-                    </VBox>
-                </HBox>
+                            <Label fx:id="scanCardDesc"
+                                   text="Сканирование в файл"
+                                   wrapText="true"
+                                   styleClass="home-card-desc"/>
+                        </VBox>
+
+                        <Label text="›" styleClass="home-card-chevron"/>
+                    </HBox>
+                </VBox>
 
                 <!-- Оставляем эти элементы скрытыми, потому что они есть в Controller -->
                 <HBox visible="false" managed="false">
@@ -630,8 +642,11 @@
                                textAlignment="CENTER"
                                wrapText="true"/>
 
-                        <!-- Инфо-баннер про имя файла -->
-                        <HBox styleClass="scan-hint-banner"
+                        <!-- Инфо-баннер про имя файла.
+                             В режиме копирования скрывается целиком
+                             (см. applyScanInstructionMode в контроллере). -->
+                        <HBox fx:id="scanNameHintBox"
+                              styleClass="scan-hint-banner"
                               alignment="CENTER"
                               spacing="14"
                               maxWidth="700">
@@ -646,7 +661,7 @@
 
                         <!-- Поле имени файла с кастомным prompt-оверлеем по центру.
                              promptText НЕ задавать: его роль играет оверлей (см. контроллер). -->
-                        <StackPane maxWidth="700">
+                        <StackPane fx:id="scanNameFieldBox" maxWidth="700">
                             <TextField fx:id="scanFileNameField"
                                        alignment="CENTER"
                                        styleClass="scan-name-field"/>

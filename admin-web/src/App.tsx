@@ -11,6 +11,7 @@ import { DashboardPage } from "./pages/DashboardPage.tsx";
 import { AccessPage } from "./pages/AccessPage.tsx";
 import { TransactionsPage } from "./pages/TransactionsPage.tsx";
 import { MediaPage } from "./pages/MediaPage.tsx";
+import { PricingPage } from "./pages/PricingPage.tsx";
 import { ForbiddenPage, NotFoundPage } from "./pages/system.tsx";
 
 /** Стартовый редирект «/» на первый доступный роли модуль. */
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/alerts"       element={<RequireModule moduleId="alerts"><AlertsPage /></RequireModule>} />
             <Route path="/analytics"    element={<RequireModule moduleId="analytics"><AnalyticsPage /></RequireModule>} />
             <Route path="/transactions" element={<RequireModule moduleId="transactions"><TransactionsPage /></RequireModule>} />
+            <Route path="/pricing"      element={<RequireModule moduleId="pricing"><PricingPage /></RequireModule>} />
             <Route path="/media"        element={<RequireModule moduleId="media"><MediaPage /></RequireModule>} />
             <Route path="/access"       element={<RequireModule moduleId="access"><AccessPage /></RequireModule>} />
             <Route path="/forbidden"    element={<ForbiddenPage />} />

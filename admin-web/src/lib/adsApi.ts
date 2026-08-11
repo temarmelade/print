@@ -15,6 +15,8 @@ export interface AdCreative {
   sortOrder: number;
   enabled: boolean;
   createdAt: string;
+  /** Киоски показа. Пустой массив = крутится на всей сети. */
+  kioskIds: string[];
 }
 
 export const SLOT_LABEL: Record<AdSlot, string> = {
@@ -42,6 +44,8 @@ export interface UploadParams {
   /** Обязателен для картинок (сервер отклонит IMAGE без длительности). */
   durationSec?: number;
   sortOrder?: number;
+  /** Пусто или не задано — показывать на всех киосках сети. */
+  kioskIds?: string[];
 }
 
 export function uploadAd(p: UploadParams): Promise<AdCreative> {
@@ -49,6 +53,8 @@ export function uploadAd(p: UploadParams): Promise<AdCreative> {
   if (p.title) qs.set("title", p.title);
   if (p.durationSec != null) qs.set("durationSec", String(p.durationSec));
   if (p.sortOrder != null) qs.set("sortOrder", String(p.sortOrder));
+  // Повторяющийся параметр — Spring соберёт его в List<String>.
+  p.kioskIds?.forEach((id) => qs.append("kioskIds", id));
 
   const form = new FormData();
   form.append("file", p.file);
@@ -65,6 +71,23 @@ export function updateAd(
   if (fields.sortOrder != null) qs.set("sortOrder", String(fields.sortOrder));
   if (fields.durationSec != null) qs.set("durationSec", String(fields.durationSec));
   return api<AdCreative>(`/ads/admin/${id}?${qs.toString()}`, { method: "PATCH" });
+}
+
+/**
+ * Задаёт киоски показа. Пустой массив — осознанный режим «вся сеть»,
+ * поэтому отправляем его явно, а не пропускаем как пустое значение.
+ */
+export function setAdTargets(id: string, kioskIds: string[]): Promise<AdCreative> {
+  return api<AdCreative>(`/ads/admin/${id}/targets`, {
+    method: "PUT",
+    body: kioskIds,
+  });
+}
+
+/** Человекочитаемый таргетинг для списка креативов. */
+export function targetLabel(ad: AdCreative, names: Record<string, string>): string {
+  if (ad.kioskIds.length === 0) return "Вся сеть";
+  return ad.kioskIds.map((id) => names[id] ?? id).join(", ");
 }
 
 export function setAdEnabled(id: string, enabled: boolean): Promise<AdCreative> {

@@ -156,3 +156,106 @@
   gap: 8px; margin-top: 2px;
 }
 .confirm { display: flex; gap: 6px; }
+
+/* ─────────── Таргетинг по киоскам ─────────── */
+
+.kiosk-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    margin-right: 12px;
+    font-size: 13px;
+    color: var(--text-muted, #8a94a6);
+    white-space: nowrap;
+}
+
+.kiosk-filter select {
+    padding: 6px 10px;
+    font-size: 13px;
+    min-width: 170px;
+}
+
+.kiosk-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.kp-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Кнопка-чип: выбранное состояние заливкой, не только галочкой —
+   на тёмной теме галочка в списке из 20 точек не читается. */
+.kp-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--border, #2a3550);
+    background: transparent;
+    color: var(--text-muted, #8a94a6);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.kp-option:hover:not(:disabled) { border-color: #3d80ff; color: #cfe0ff; }
+
+.kp-option.on {
+    background: rgba(20, 120, 255, 0.16);
+    border-color: #1478ff;
+    color: #7db4ff;
+}
+
+.kp-option.all.on {
+    background: rgba(36, 194, 99, 0.16);
+    border-color: #24c263;
+    color: #63dd97;
+}
+
+.kp-option:disabled { opacity: 0.5; cursor: default; }
+
+.kp-empty { font-size: 13px; color: var(--text-muted, #8a94a6); }
+
+.field.targets { flex: 1 1 100%; }
+
+/* Метка на карточке: сразу видно, где ролик крутится. */
+.ad-targets {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin: 8px 0 4px;
+    padding: 6px 10px;
+    border: 1px dashed var(--border, #2a3550);
+    background: transparent;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #7db4ff;
+    cursor: pointer;
+    text-align: left;
+}
+
+.ad-targets span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ad-targets:hover { border-color: #1478ff; }
+.ad-targets.all { color: #63dd97; }
+
+.ad-targets-edit {
+    margin: 8px 0;
+    padding: 10px;
+    border: 1px solid var(--border, #2a3550);
+    border-radius: 10px;
+}
+
+.ad-targets-edit .ad-edit-actions { margin-top: 10px; }

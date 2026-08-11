@@ -310,6 +310,14 @@ public class MainController {
     @FXML private Label scanNameHintLabel;
     @FXML private HBox  scanNamePromptBox;
     @FXML private Label scanNamePromptLabel;
+    /**
+     * Контейнеры блока «имя файла»: баннер-подсказка и сам ввод. Экран
+     * SCAN_INSTRUCTION общий для сканирования и копирования, но копии имя
+     * не нужно — документ уходит в печать, файл не сохраняется. Поэтому
+     * в режиме COPY оба блока скрываются целиком (visible + managed).
+     */
+    @FXML private HBox      scanNameHintBox;
+    @FXML private StackPane scanNameFieldBox;
     @FXML private Label scanStatusConnectedLabel;
     @FXML private Label scanStatusColorLabel;
     @FXML private Label scanStatusFormatLabel;
@@ -1051,6 +1059,35 @@ public class MainController {
         }
     }
 
+    /**
+     * Настраивает экран SCAN_INSTRUCTION под текущий режим ({@link #scanMode}).
+     *
+     * <p>Экран один на сканирование и копирование. Разница только в блоке
+     * «имя файла»: при копировании документ сразу уходит в настройки печати
+     * и никуда не сохраняется, поэтому подсказка и поле ввода прячутся —
+     * вместе с {@code managed}, иначе от них осталась бы пустая полоса
+     * в вертикальном стеке карточки.
+     *
+     * <p>Вызывается на каждом входе на экран, а не один раз в init: режим
+     * выбирается на HOME и меняется между сессиями.
+     */
+    private void applyScanInstructionMode() {
+        boolean showNameBlock = (scanMode != ScanMode.COPY);
+        if (scanNameHintBox != null) {
+            scanNameHintBox.setVisible(showNameBlock);
+            scanNameHintBox.setManaged(showNameBlock);
+        }
+        if (scanNameFieldBox != null) {
+            scanNameFieldBox.setVisible(showNameBlock);
+            scanNameFieldBox.setManaged(showNameBlock);
+        }
+        // Клавиатура могла остаться открытой с прошлой сессии сканирования —
+        // в режиме копирования вводить нечего.
+        if (!showNameBlock && virtualKeyboard != null) {
+            virtualKeyboard.hideKeyboard();
+        }
+    }
+
     private void changeStep(KioskStep step) {
         this.currentStep = step;
         // Уход с экрана ввода имени = клавиатура больше не нужна. Без этого
@@ -1085,6 +1122,7 @@ public class MainController {
                 // Очищаем поле имени файла при каждом входе на экран старта
                 // сканирования (например, при повторном заходе с HOME).
                 if (scanFileNameField != null) scanFileNameField.clear();
+                applyScanInstructionMode();
                 showOnly(scanInstructionScreen);
             }
             case SCAN_PROGRESS    -> showOnly(scanProgressScreen);
@@ -1648,7 +1686,10 @@ public class MainController {
     @FXML public void onStartScanPageClicked() {
         // Шаг 1 → запуск сессии с именем файла (из поля; пустое → случайное),
         // затем первый скан. Имя берём из TextField, если он есть в FXML.
-        String name = (scanFileNameField != null) ? scanFileNameField.getText() : null;
+        // При копировании поля на экране нет — имя всегда случайное (null).
+        String name = (scanMode == ScanMode.COPY || scanFileNameField == null)
+                ? null
+                : scanFileNameField.getText();
         scanFlow.startSession(name);
         scanFlow.scanNextPage();
     }

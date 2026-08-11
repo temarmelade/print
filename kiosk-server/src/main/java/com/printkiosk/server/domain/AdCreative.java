@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -53,4 +55,19 @@ public class AdCreative {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    /**
+     * Киоски, на которых крутится креатив. ПУСТОЙ набор = показывать везде.
+     *
+     * <p>EAGER осознанно: плейлист всегда отдаётся вместе с таргетингом,
+     * а размер коллекции ограничен числом киосков сети — ленивая загрузка
+     * дала бы только N+1 на каждом запросе плейлиста.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "ad_creative_kiosks",
+            joinColumns = @JoinColumn(name = "ad_id"))
+    @Column(name = "kiosk_id", length = 64)
+    @Builder.Default
+    private Set<String> kioskIds = new LinkedHashSet<>();
 }
