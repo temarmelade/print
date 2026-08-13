@@ -127,10 +127,11 @@
             <!-- HELP SCREEN -->
             <VBox fx:id="helpScreen"
                   styleClass="screen, help-screen"
-                  spacing="20"
+                  spacing="18"
                   visible="false"
                   managed="false">
 
+                <!-- Назад -->
                 <HBox alignment="CENTER_LEFT">
                     <Button fx:id="helpBackBtn"
                             text="← Назад"
@@ -138,100 +139,160 @@
                             styleClass="btn-back"/>
                 </HBox>
 
-                <VBox styleClass="content-card, help-card"
-                      spacing="20"
-                      alignment="TOP_LEFT"
-                      maxWidth="980">
 
-                    <VBox alignment="CENTER" spacing="6">
+                <!-- Основная карточка -->
+                <VBox styleClass="content-card, help-card"
+                      spacing="22"
+                      alignment="TOP_CENTER"
+                      maxWidth="760">
+
+
+                    <!-- Заголовок -->
+                    <VBox alignment="CENTER"
+                          spacing="6">
+
                         <Label fx:id="helpTitleLabel"
-                               text="Как пользоваться киоском"
+                               text="Как пользоваться"
                                styleClass="h1-text"/>
 
                         <Label fx:id="helpSubtitleLabel"
-                               text="Инструкция в 4 шагах"
+                               text="Всего 4 шага"
                                styleClass="body-text-muted"/>
+
                     </VBox>
 
-                    <!-- 4 шага -->
-                    <VBox spacing="14" styleClass="help-steps">
 
-                        <HBox spacing="16" alignment="TOP_LEFT" styleClass="help-step">
-                            <Label text="1" styleClass="help-step-number"/>
+                    <!-- ШАГИ -->
+                    <VBox spacing="12"
+                          styleClass="help-steps"
+                          maxWidth="680">
+
+
+                        <!-- Шаг 1 -->
+                        <HBox spacing="16"
+                              alignment="CENTER_LEFT"
+                              styleClass="help-step">
+
+                            <Label text="1"
+                                   styleClass="help-step-number"/>
+
                             <Label fx:id="helpStep1Label"
+                                   text="Загрузите файл через Telegram или веб-портал."
                                    styleClass="help-step-text"
                                    wrapText="true"
-                                   maxWidth="820"
-                                   text="Загрузите файл: отправьте документ в Telegram-бот или отсканируйте QR-код на экране для загрузки со смартфона. (USB-флешки не поддерживаются.)"/>
+                                   maxWidth="580"/>
+
                         </HBox>
 
-                        <HBox spacing="16" alignment="TOP_LEFT" styleClass="help-step">
-                            <Label text="2" styleClass="help-step-number"/>
+
+                        <!-- Шаг 2 -->
+                        <HBox spacing="16"
+                              alignment="CENTER_LEFT"
+                              styleClass="help-step">
+
+                            <Label text="2"
+                                   styleClass="help-step-number"/>
+
                             <Label fx:id="helpStep2Label"
+                                   text="Выберите страницы и количество копий."
                                    styleClass="help-step-text"
                                    wrapText="true"
-                                   maxWidth="820"
-                                   text="Настройте печать: выберите нужные страницы и количество копий."/>
+                                   maxWidth="580"/>
+
                         </HBox>
 
-                        <HBox spacing="16" alignment="TOP_LEFT" styleClass="help-step">
-                            <Label text="3" styleClass="help-step-number"/>
+
+                        <!-- Шаг 3 -->
+                        <HBox spacing="16"
+                              alignment="CENTER_LEFT"
+                              styleClass="help-step">
+
+                            <Label text="3"
+                                   styleClass="help-step-number"/>
+
                             <Label fx:id="helpStep3Label"
+                                   text="Оплатите заказ по QR-коду."
                                    styleClass="help-step-text"
                                    wrapText="true"
-                                   maxWidth="820"
-                                   text="Оплатите: отсканируйте появившийся QR-код для оплаты заказа любым мобильным банкингом."/>
+                                   maxWidth="580"/>
+
                         </HBox>
 
-                        <HBox spacing="16" alignment="TOP_LEFT" styleClass="help-step">
-                            <Label text="4" styleClass="help-step-number"/>
+
+                        <!-- Шаг 4 -->
+                        <HBox spacing="16"
+                              alignment="CENTER_LEFT"
+                              styleClass="help-step">
+
+                            <Label text="4"
+                                   styleClass="help-step-number"/>
+
                             <Label fx:id="helpStep4Label"
+                                   text="Заберите готовые документы."
                                    styleClass="help-step-text"
                                    wrapText="true"
-                                   maxWidth="820"
-                                   text="Заберите распечатку: документ будет напечатан автоматически сразу после успешной оплаты."/>
+                                   maxWidth="580"/>
+
                         </HBox>
+
                     </VBox>
 
-                    <!-- Форматы и контакты -->
-                    <HBox spacing="20" alignment="TOP_CENTER" styleClass="help-info-row">
 
+                    <!-- ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ -->
+                    <VBox spacing="12"
+                          maxWidth="680">
+
+
+                        <!-- Форматы -->
                         <VBox styleClass="small-card, help-info-card"
-                              spacing="8"
-                              alignment="TOP_LEFT"
-                              HBox.hgrow="ALWAYS">
+                              spacing="6"
+                              alignment="CENTER_LEFT">
+
                             <Label fx:id="helpFormatsTitleLabel"
                                    text="Поддерживаемые форматы"
                                    styleClass="h3-text"/>
+
                             <Label fx:id="helpFormatsValueLabel"
-                                   text="PDF, JPG, PNG, DOCX"
+                                   text="PDF • JPG • PNG • DOCX"
                                    styleClass="body-text"/>
+
                             <Label fx:id="helpFormatsLimitLabel"
-                                   text="Максимальный размер файла — 20 МБ"
+                                   text="Размер файла — до 20 МБ"
                                    styleClass="body-text-muted"/>
+
                         </VBox>
 
+
+                        <!-- Поддержка -->
                         <VBox styleClass="small-card, help-info-card"
-                              spacing="8"
-                              alignment="TOP_LEFT"
-                              HBox.hgrow="ALWAYS">
-                            <Label fx:id="helpSupportTitleLabel"
-                                   text="Контакты поддержки"
-                                   styleClass="h3-text"/>
-                            <Label fx:id="helpSupportPhoneLabel"
-                                   text="📞 +996 XXX XXX XXX"
-                                   styleClass="body-text"/>
-                            <Label fx:id="helpSupportTelegramLabel"
-                                   text="✈ @printkiosk_support"
-                                   styleClass="body-text"/>
-                        </VBox>
-                    </HBox>
+                              spacing="6"
+                              alignment="CENTER_LEFT">
 
+                            <Label fx:id="helpSupportTitleLabel"
+                                   text="Нужна помощь?"
+                                   styleClass="h3-text"/>
+
+                            <Label fx:id="helpSupportPhoneLabel"
+                                   text="📞+996 XXX XXX XXX"
+                                   styleClass="body-text"/>
+
+                            <Label fx:id="helpSupportTelegramLabel"
+                                   text="✈@printkiosk_support"
+                                   styleClass="body-text"/>
+
+                        </VBox>
+
+                    </VBox>
+
+
+                    <!-- Подсказка -->
                     <Label fx:id="helpHintLabel"
-                           text="Чтобы закрыть инструкцию, нажмите «Назад»."
+                           text="Нажмите «Назад», чтобы выйти."
                            styleClass="body-text-muted, help-hint"
                            wrapText="true"/>
+
                 </VBox>
+
             </VBox>
 
             <!-- HOME SCREEN -->
@@ -1231,7 +1292,7 @@
                     <Button fx:id="backBtnSummary" text="← Назад" onAction="#onBackClicked" styleClass="btn-back"/>
                 </HBox>
 
-                <VBox styleClass="content-card, summary-card" spacing="22" maxWidth="900">
+                <VBox styleClass="content-card, summary-card" spacing="22" maxWidth="820">
 
                     <Label fx:id="summaryTitleLabel" text="Параметры печати" styleClass="h1-text"/>
 
@@ -1275,30 +1336,39 @@
                     </VBox>
                 </VBox>
 
-                <!-- Stats panel + CTA -->
-                <HBox styleClass="summary-stats-bar" alignment="CENTER_LEFT" spacing="20" maxWidth="900">
+                <!-- Итоги + CTA. В портрете кнопка уезжает под цифры:
+                     в ряд с двумя блоками статистики она сжимала их до
+                     нечитаемой ширины, из-за чего подписи наезжали на иконки. -->
+                <VBox styleClass="summary-stats-bar" spacing="22" maxWidth="820">
 
-                    <HBox styleClass="stat-item" alignment="CENTER_LEFT" spacing="12" HBox.hgrow="ALWAYS">
-                        <FontIcon iconLiteral="far-file" iconSize="20" styleClass="stat-icon"/>
-                        <VBox alignment="TOP_LEFT" spacing="0">
-                            <Label fx:id="summaryPagesKeyLabel" text="Всего страниц" styleClass="stat-label"/>
-                            <Label fx:id="summaryPagesLabel" text="0" styleClass="stat-value"/>
-                        </VBox>
-                    </HBox>
+                    <HBox alignment="CENTER_LEFT" spacing="20">
 
-                    <HBox styleClass="stat-item" alignment="CENTER_LEFT" spacing="12" HBox.hgrow="ALWAYS">
-                        <FontIcon iconLiteral="fas-coins" iconSize="20" styleClass="stat-icon"/>
-                        <VBox alignment="TOP_LEFT" spacing="0">
-                            <Label fx:id="summaryPriceKeyLabel" text="Стоимость" styleClass="stat-label"/>
-                            <Label fx:id="summaryPriceLabel" text="0 сом" styleClass="stat-value"/>
-                        </VBox>
+                        <HBox styleClass="stat-item" alignment="CENTER_LEFT" spacing="14" HBox.hgrow="ALWAYS">
+                            <FontIcon iconLiteral="far-file" iconSize="30" styleClass="stat-icon"/>
+                            <!-- CENTER_LEFT, а не TOP_LEFT: иначе иконка
+                                 центрируется по высоте блока, а текст жмётся
+                                 кверху — ровно то расхождение, что видно на экране. -->
+                            <VBox alignment="CENTER_LEFT" spacing="2">
+                                <Label fx:id="summaryPagesKeyLabel" text="Всего страниц" styleClass="stat-label"/>
+                                <Label fx:id="summaryPagesLabel" text="0" styleClass="stat-value"/>
+                            </VBox>
+                        </HBox>
+
+                        <HBox styleClass="stat-item" alignment="CENTER_LEFT" spacing="14" HBox.hgrow="ALWAYS">
+                            <FontIcon iconLiteral="fas-coins" iconSize="30" styleClass="stat-icon"/>
+                            <VBox alignment="CENTER_LEFT" spacing="2">
+                                <Label fx:id="summaryPriceKeyLabel" text="Стоимость" styleClass="stat-label"/>
+                                <Label fx:id="summaryPriceLabel" text="0 сом" styleClass="stat-value"/>
+                            </VBox>
+                        </HBox>
                     </HBox>
 
                     <Button fx:id="proceedToPaymentBtn"
                             text="Подтвердить печать →"
                             onAction="#onProceedToPaymentClicked"
+                            maxWidth="Infinity"
                             styleClass="btn-success, summary-cta"/>
-                </HBox>
+                </VBox>
             </VBox>
 
             <!-- PAYMENT SCREEN -->

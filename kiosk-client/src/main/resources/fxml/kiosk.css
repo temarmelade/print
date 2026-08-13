@@ -2834,3 +2834,54 @@
 .home-title-block   { -fx-padding: 40 0 0 0; }
 .home-time          { -fx-font-size: 44px; }
 .home-date          { -fx-font-size: 22px; }
+
+/* ---- Экран сводки в портрете ----
+   Размеры блока итогов остались от ландшафта: подпись 12px на 27"
+   превращается в ~4 мм — её физически не прочитать с расстояния,
+   с которого стоят у киоска. */
+
+.summary-card {
+    -fx-padding: 40 44;
+}
+
+.summary-card .h1-text {
+    -fx-font-size: 42px;
+}
+
+.summary-row {
+    -fx-padding: 20 4;
+    -fx-min-height: 78px;
+}
+
+.summary-key   { -fx-font-size: 25px; }
+.summary-value { -fx-font-size: 25px; }
+
+.summary-icon {
+    -fx-icon-size: 30;
+}
+
+.summary-stats-bar {
+    -fx-padding: 26 30;
+}
+
+.stat-item {
+    -fx-padding: 4 0;
+}
+
+.stat-label {
+    -fx-font-size: 21px;      /* было 12px */
+}
+
+.stat-value {
+    -fx-font-size: 34px;      /* было 18px */
+}
+
+.stat-icon {
+    -fx-icon-size: 30;
+}
+
+/* Кнопка стала во всю ширину — высоту даём под палец. */
+.summary-cta {
+    -fx-min-height: 104px;
+    -fx-font-size: 28px;
+}
