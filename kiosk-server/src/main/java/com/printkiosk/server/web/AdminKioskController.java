@@ -1,8 +1,12 @@
 package com.printkiosk.server.web;
 
 import com.printkiosk.server.service.KioskAdminService;
+import com.printkiosk.server.security.AdminPrincipal;
+import com.printkiosk.server.service.KioskCommandService;
 import com.printkiosk.server.service.SupplyForecastService;
 import com.printkiosk.server.service.TelemetryService;
+import com.printkiosk.shared.api.KioskCommandType;
+import com.printkiosk.shared.api.dto.KioskCommandDto;
 import com.printkiosk.shared.api.dto.KioskDto;
 import com.printkiosk.shared.api.dto.SupplyForecastDto;
 import jakarta.validation.Valid;
@@ -10,9 +14,11 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Модуль «Терминалы». Смотреть могут все вошедшие (техник — его основной
@@ -27,6 +33,7 @@ public class AdminKioskController {
     private final TelemetryService telemetry;
     private final KioskAdminService admin;
     private final SupplyForecastService forecasts;
+    private final KioskCommandService commands;
 
     @GetMapping
     public List<KioskDto> list() {
@@ -83,6 +90,41 @@ public class AdminKioskController {
     public ResponseEntity<Void> maintenance(@PathVariable String id,
                                             @RequestParam boolean enabled) {
         telemetry.setMaintenance(id, enabled);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Дистанционные команды ──
+
+    /**
+     * Ставит команду в очередь. Киоск заберёт её на ближайшем heartbeat,
+     * то есть в пределах 30 секунд.
+     *
+     * <p>Доступ у владельца и техника: перезагрузка терминала — обычная
+     * работа выездного инженера, а вот поддержке она не нужна.
+     */
+    @PostMapping("/{id}/commands")
+    @PreAuthorize("hasAnyRole('OWNER','TECHNICIAN')")
+    public KioskCommandDto sendCommand(@PathVariable String id,
+                                       @RequestParam KioskCommandType type,
+                                       @AuthenticationPrincipal AdminPrincipal operator) {
+        // Именно username, а не Principal.getName(): в SecurityContext лежит
+        // объект AdminPrincipal, и getName() вернул бы его toString() целиком
+        // («AdminPrincipal[id=..., username=..., role=...]») — это заведомо
+        // длиннее колонки created_by и роняет вставку.
+        return commands.enqueue(id, type, operator != null ? operator.username() : "unknown");
+    }
+
+    /** История команд точки — кто и когда перезагружал. */
+    @GetMapping("/{id}/commands")
+    public List<KioskCommandDto> commandHistory(@PathVariable String id) {
+        return commands.history(id);
+    }
+
+    /** Отзыв команды, которую киоск ещё не забрал. */
+    @DeleteMapping("/commands/{commandId}")
+    @PreAuthorize("hasAnyRole('OWNER','TECHNICIAN')")
+    public ResponseEntity<Void> cancelCommand(@PathVariable UUID commandId) {
+        commands.cancel(commandId);
         return ResponseEntity.noContent().build();
     }
 

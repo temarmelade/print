@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, lazy, Suspense } from "react";
 import {
   RefreshCw, Plus, Wrench, Droplet, FileStack, KeyRound, Trash2, Copy, Check, Info,
   Map as MapIcon, List, Pencil, TrendingDown,
+  RotateCw, Power, History as HistoryIcon,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.tsx";
 import {
@@ -9,6 +10,9 @@ import {
   setMaintenance, deleteKiosk, lastSeen, fetchForecast, formatDaysLeft,
   HEALTH_TONE, HEALTH_LABEL, SOURCE_HINT,
   type Kiosk, type CreatedKiosk, type SupplySource, type SupplyForecast,
+  sendCommand, cancelCommand, commandHistory,
+  COMMAND_LABEL, COMMAND_STATUS_LABEL,
+  type KioskCommand,
 } from "../lib/kiosksApi.ts";
 import "./pages.css";
 import "./terminals.css";
@@ -23,6 +27,9 @@ const KioskMap = lazy(() =>
 export function TerminalsPage() {
   const { user } = useAuth();
   const isOwner = user?.role === "OWNER";
+  // Перезагрузка — обычная работа выездного инженера, поэтому доступна и
+  // технику. Поддержке она не нужна: у неё нет физического доступа к точке.
+  const canReboot = user?.role === "OWNER" || user?.role === "TECHNICIAN";
 
   const [kiosks, setKiosks] = useState<Kiosk[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +124,7 @@ export function TerminalsPage() {
         <div className="kiosk-grid">
           {kiosks.map((k) => (
             <KioskCard
-              key={k.id} k={k} isOwner={isOwner}
+              key={k.id} k={k} isOwner={isOwner} canReboot={canReboot}
               onRefresh={load} onError={setError}
               onKeyIssued={setIssuedKey}
               onEdit={() => setEditing(k)}
@@ -141,10 +148,11 @@ export function TerminalsPage() {
 /* ── Карточка киоска ── */
 
 function KioskCard({
-  k, isOwner, onRefresh, onError, onKeyIssued, onEdit,
+  k, isOwner, canReboot, onRefresh, onError, onKeyIssued, onEdit,
 }: {
   k: Kiosk;
   isOwner: boolean;
+  canReboot: boolean;
   onRefresh: () => Promise<void>;
   onError: (m: string) => void;
   onKeyIssued: (c: CreatedKiosk) => void;
@@ -153,6 +161,10 @@ function KioskCard({
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [forecast, setForecast] = useState<SupplyForecast | null>(null);
+  /** Какую перезагрузку подтверждаем: null — ничего не спрашиваем. */
+  const [rebootAsk, setRebootAsk] = useState<"RESTART_APP" | "REBOOT_OS" | null>(null);
+  const [commands, setCommands] = useState<KioskCommand[] | null>(null);
+  const pending = commands?.find((c) => c.status === "PENDING") ?? null;
   const tone = HEALTH_TONE[k.health];
 
   // Прогноз грузим отдельно от списка: он тяжелее (читает историю) и не
@@ -170,6 +182,40 @@ function KioskCard({
     try { await fn(); await onRefresh(); }
     catch (e) { onError(e instanceof Error ? e.message : "Операция не удалась"); }
     finally { setBusy(false); }
+  }
+
+  async function loadCommands() {
+    try {
+      setCommands(await commandHistory(k.id));
+    } catch {
+      setCommands([]);
+    }
+  }
+
+  async function fireCommand(type: "RESTART_APP" | "REBOOT_OS") {
+    setBusy(true);
+    try {
+      await sendCommand(k.id, type);
+      setRebootAsk(null);
+      await loadCommands();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Не удалось отправить команду");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function dropPending() {
+    if (!pending) return;
+    setBusy(true);
+    try {
+      await cancelCommand(pending.id);
+      await loadCommands();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Не удалось отменить команду");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -222,6 +268,50 @@ function KioskCard({
         </div>
       )}
 
+      {/* Выбор типа перезагрузки. Мягкая идёт первой и оформлена основной
+          кнопкой: она чинит большинство зависаний и стоит секунды, тогда
+          как полный ребут занимает минуты и рискует не подняться. */}
+      {rebootAsk && (
+        <div className="reboot-panel">
+          <p className="reboot-q">Что перезагружаем?</p>
+          <div className="reboot-opts">
+            <button className="btn btn-primary btn-sm" disabled={busy}
+                    onClick={() => void fireCommand("RESTART_APP")}>
+              <RotateCw size={14} /> Только приложение
+            </button>
+            <button className="btn btn-danger btn-sm" disabled={busy}
+                    onClick={() => void fireCommand("REBOOT_OS")}>
+              <Power size={14} /> Windows целиком
+            </button>
+            <button className="btn btn-ghost btn-sm" disabled={busy}
+                    onClick={() => setRebootAsk(null)}>
+              Отмена
+            </button>
+          </div>
+          <p className="reboot-note">
+            Команда уйдёт на киоск в течение 30 секунд. Если он занят клиентом,
+            перезагрузка будет отклонена — деньги уже приняты, документ ещё нет.
+          </p>
+        </div>
+      )}
+
+      {/* Что происходит с последней командой. */}
+      {commands && commands.length > 0 && (
+        <div className="cmd-status">
+          <HistoryIcon size={13} />
+          <span>
+            {COMMAND_LABEL[commands[0].type]} — {COMMAND_STATUS_LABEL[commands[0].status]}
+            {commands[0].createdBy ? `, ${commands[0].createdBy}` : ""}
+          </span>
+          {pending && (
+            <button className="btn btn-ghost btn-sm" disabled={busy}
+                    onClick={() => void dropPending()}>
+              Отменить
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="kiosk-actions">
         <button className="btn btn-ghost btn-sm" disabled={busy}
                 onClick={() => void guard(() => markPaperRefilled(k.id))}>
@@ -239,6 +329,17 @@ function KioskCard({
           <Wrench size={14} />
           {k.maintenanceMode ? "Снять обслуживание" : "На обслуживание"}
         </button>
+
+        {canReboot && (
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={busy || !!pending}
+            title={k.online ? "Перезагрузить киоск" : "Киоск офлайн — команда протухнет через 10 минут"}
+            onClick={() => void loadCommands().then(() => setRebootAsk("RESTART_APP"))}
+          >
+            <RotateCw size={14} /> Перезагрузить
+          </button>
+        )}
 
         {isOwner && (
           <>

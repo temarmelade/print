@@ -33,6 +33,11 @@ kiosk:
 
   # Телеметрия на сервер (Фаза 2)
   client-version: ${KIOSK_CLIENT_VERSION:dev}
+  commands:
+    # Дистанционные перезагрузки из админки. Выключить на стенде разработки,
+    # чтобы случайная команда не перезагрузила рабочую машину.
+    enabled: true
+
   telemetry:
     enabled: ${TELEMETRY_ENABLED:true}
     interval-ms: 30000                     # heartbeat; сервер ждёт максимум 3 мин

@@ -7,6 +7,7 @@ import com.printkiosk.client.config.KioskClientProperties;
 import com.printkiosk.client.service.scan.ScanFlow;
 import com.printkiosk.client.config.ServerProperties;
 import com.printkiosk.client.service.AdPlaylistService;
+import com.printkiosk.client.service.KioskActivityState;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.concurrent.Task;
@@ -433,6 +434,7 @@ public class MainController {
     private final ScanFlow scanFlow;
     private final KioskServerClient serverClient;
     private final LocalizationService loc;
+    private final KioskActivityState activityState;
 
     private static final String LANG_ACTIVE_CLASS = "lang-btn-active";
 
@@ -478,7 +480,7 @@ public class MainController {
                           KioskClientProperties clientProperties, AdPlaylistService adPlaylistService,
                           ServerProperties serverProperties, ScanFlow scanFlow,
                           KioskServerClient serverClient, LocalizationService loc,
-                          ScanDeliveryFlow scanDeliveryFlow) {
+                          ScanDeliveryFlow scanDeliveryFlow, KioskActivityState activityState) {
         this.pinEntryFlow = pinEntryFlow;
         this.clientProperties = clientProperties;
         this.adPlaylistService = adPlaylistService;
@@ -492,6 +494,7 @@ public class MainController {
         this.printerReadiness = printerReadiness;
         this.loc = loc;
         this.scanDeliveryFlow = scanDeliveryFlow;
+        this.activityState = activityState;
     }
 
 
@@ -1090,6 +1093,11 @@ public class MainController {
 
     private void changeStep(KioskStep step) {
         this.currentStep = step;
+        // Публикуем занятость для дистанционных команд: перезагрузка не
+        // должна прилететь между оплатой и выходом документа.
+        activityState.setBusy(step != KioskStep.HOME
+                && step != KioskStep.OUT_OF_SERVICE
+                && step != KioskStep.ADMIN);
         // Уход с экрана ввода имени = клавиатура больше не нужна. Без этого
         // она осталась бы висеть поверх следующего экрана, если пользователь
         // ушёл, не закрыв её (showingProperty вернёт карточку на место).

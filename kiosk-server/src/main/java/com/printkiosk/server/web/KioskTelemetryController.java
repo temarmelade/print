@@ -1,7 +1,10 @@
 package com.printkiosk.server.web;
 
+import com.printkiosk.server.service.KioskCommandService;
 import com.printkiosk.server.service.TelemetryService;
+import com.printkiosk.shared.api.dto.CommandAckRequest;
 import com.printkiosk.shared.api.dto.TelemetryReport;
+import com.printkiosk.shared.api.dto.TelemetryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,11 +27,29 @@ import org.springframework.web.bind.annotation.RestController;
 public class KioskTelemetryController {
 
     private final TelemetryService telemetry;
+    private final KioskCommandService commands;
 
+    /**
+     * Heartbeat. Ответ — обратный канал до киоска: раньше здесь было пустое
+     * тело, теперь сервер может подложить команду на выполнение.
+     * Отдельного канала связи не понадобилось: киоск и так стучится сюда
+     * раз в 30 секунд, а входящее соединение до него не пробить.
+     */
     @PostMapping("/telemetry")
-    public ResponseEntity<Void> report(@AuthenticationPrincipal String kioskId,
-                                       @RequestBody TelemetryReport report) {
+    public TelemetryResponse report(@AuthenticationPrincipal String kioskId,
+                                    @RequestBody TelemetryReport report) {
         telemetry.ingest(kioskId, report);
+        return commands.pullFor(kioskId);
+    }
+
+    /**
+     * Подтверждение команды. Киоск отвечает ДО того, как перезагрузиться —
+     * после перезагрузки подтверждать уже некому.
+     */
+    @PostMapping("/commands/ack")
+    public ResponseEntity<Void> ack(@AuthenticationPrincipal String kioskId,
+                                    @RequestBody CommandAckRequest req) {
+        commands.ack(kioskId, req.commandId(), req.accepted(), req.message());
         return ResponseEntity.noContent().build();
     }
 }

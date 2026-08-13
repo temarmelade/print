@@ -146,3 +146,55 @@ export function lastSeen(iso: string | null): string {
   if (sec < 86400) return `${Math.floor(sec / 3600)} ч назад`;
   return `${Math.floor(sec / 86400)} дн назад`;
 }
+
+/* ─────────────── Дистанционные команды ─────────────── */
+
+export type KioskCommandType = "RESTART_APP" | "REBOOT_OS";
+export type KioskCommandStatus =
+  | "PENDING" | "SENT" | "DONE" | "FAILED" | "EXPIRED" | "CANCELLED";
+
+export interface KioskCommand {
+  id: string;
+  kioskId: string;
+  type: KioskCommandType;
+  status: KioskCommandStatus;
+  createdBy: string | null;
+  createdAt: string;
+  dispatchedAt: string | null;
+  finishedAt: string | null;
+  resultMessage: string | null;
+}
+
+export const COMMAND_LABEL: Record<KioskCommandType, string> = {
+  RESTART_APP: "Перезапуск приложения",
+  REBOOT_OS: "Перезагрузка Windows",
+};
+
+export const COMMAND_STATUS_LABEL: Record<KioskCommandStatus, string> = {
+  PENDING: "В очереди",
+  SENT: "Отправлена",
+  DONE: "Выполнена",
+  FAILED: "Отклонена",
+  EXPIRED: "Просрочена",
+  CANCELLED: "Отменена",
+};
+
+/** Ставит команду в очередь. Киоск заберёт её в течение ~30 секунд. */
+export function sendCommand(
+  kioskId: string,
+  type: KioskCommandType
+): Promise<KioskCommand> {
+  return api<KioskCommand>(
+    `/admin/kiosks/${encodeURIComponent(kioskId)}/commands?type=${type}`,
+    { method: "POST" }
+  );
+}
+
+export function commandHistory(kioskId: string): Promise<KioskCommand[]> {
+  return api<KioskCommand[]>(`/admin/kiosks/${encodeURIComponent(kioskId)}/commands`);
+}
+
+/** Отзыв команды, которую киоск ещё не забрал. */
+export function cancelCommand(commandId: string): Promise<void> {
+  return api<void>(`/admin/kiosks/commands/${commandId}`, { method: "DELETE" });
+}

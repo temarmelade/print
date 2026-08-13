@@ -9,7 +9,6 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
-import com.printkiosk.shared.api.dto.TelemetryReport;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
@@ -63,10 +62,24 @@ public class KioskServerClient {
     // ════════════════════════════════════════════════════════════════
 
     /** Heartbeat + состояние принтера. Требует X-Kiosk-Key (см. HttpClientConfig). */
-    public void sendTelemetry(TelemetryReport report) {
-        execute(() -> http.post()
+    /**
+     * Отправляет heartbeat и возвращает ответ сервера. В ответе может лежать
+     * команда на выполнение — это единственный обратный канал до киоска,
+     * входящее соединение сюда не пробить из-за NAT.
+     */
+    public TelemetryResponse sendTelemetry(TelemetryReport report) {
+        return execute(() -> http.post()
                 .uri("/api/kiosk/telemetry")
                 .body(report)
+                .retrieve()
+                .body(TelemetryResponse.class));
+    }
+
+    /** Подтверждение команды. Отправляется ДО перезагрузки. */
+    public void ackCommand(CommandAckRequest ack) {
+        execute(() -> http.post()
+                .uri("/api/kiosk/commands/ack")
+                .body(ack)
                 .retrieve()
                 .toBodilessEntity());
     }

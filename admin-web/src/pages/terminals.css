@@ -137,3 +137,47 @@
 
 .forecast-row { font-size: 13px; color: var(--text-muted); }
 .forecast-row b { color: var(--text); font-weight: 600; }
+
+/* ─────────── Дистанционная перезагрузка ─────────── */
+
+.reboot-panel {
+    margin: 12px 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border, #2a3550);
+    border-radius: 10px;
+    background: rgba(255, 176, 32, 0.06);
+}
+
+.reboot-q {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.reboot-opts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.reboot-note {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted, #8a94a6);
+}
+
+.cmd-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: var(--text-muted, #8a94a6);
+}
+
+.cmd-status span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
