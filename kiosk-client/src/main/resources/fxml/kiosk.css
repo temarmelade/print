@@ -2885,3 +2885,87 @@
     -fx-min-height: 104px;
     -fx-font-size: 28px;
 }
+
+/* ---- Вкладки разделов в инструкции ---- */
+
+.help-topic-tabs {
+    -fx-padding: 6 0 10 0;
+}
+
+.help-topic-tab {
+    -fx-background-color: transparent;
+    -fx-border-color: #d9e2f0;
+    -fx-border-width: 2;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-text-fill: #6b7a90;
+    -fx-font-size: 22px;
+    -fx-font-weight: 600;
+    -fx-min-height: 76px;          /* ~28 мм на 27" */
+    -fx-padding: 12 22;
+    -fx-cursor: hand;
+}
+
+.help-topic-tab:hover {
+    -fx-border-color: #1478ff;
+    -fx-text-fill: #1478ff;
+}
+
+/* Выбранная вкладка залита, а не просто обведена: на тёмном фоне киоска
+   разница в цвете рамки читается плохо с расстояния вытянутой руки. */
+.help-topic-tab:selected {
+    -fx-background-color: #1478ff;
+    -fx-border-color: #1478ff;
+    -fx-text-fill: white;
+}
+
+.help-topic-tab:selected:hover {
+    -fx-background-color: #0f66dd;
+}
+
+/* ---- Видеоинструкция ---- */
+
+.help-video-btn {
+    -fx-min-height: 88px;
+    -fx-font-size: 25px;
+    -fx-padding: 16 44;
+}
+
+.help-video-overlay {
+    /* Плотная подложка: ролик смотрят при ярком свете в торговом центре. */
+    -fx-background-color: rgba(4, 14, 33, 0.94);
+    -fx-padding: 40;
+}
+
+.help-video-title {
+    -fx-font-size: 32px;
+    -fx-font-weight: 700;
+    -fx-text-fill: white;
+}
+
+.help-video-box {
+    -fx-background-color: black;
+    -fx-background-radius: 18;
+    -fx-min-width: 760;
+}
+
+.help-video-close {
+    -fx-min-height: 88px;
+    -fx-min-width: 320;
+    -fx-font-size: 25px;
+}
+
+/* ---- Всплывающее уведомление ---- */
+
+.toast {
+    -fx-background-color: rgba(8, 26, 58, 0.95);
+    -fx-background-radius: 16;
+    -fx-text-fill: white;
+    -fx-font-size: 23px;
+    -fx-padding: 22 34;
+    -fx-text-alignment: center;
+    -fx-wrap-text: true;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 24, 0.2, 0, 6);
+    /* Отступ снизу, чтобы уведомление не липло к краю экрана. */
+    -fx-translate-y: -60;
+}

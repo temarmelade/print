@@ -127,11 +127,10 @@
             <!-- HELP SCREEN -->
             <VBox fx:id="helpScreen"
                   styleClass="screen, help-screen"
-                  spacing="18"
+                  spacing="20"
                   visible="false"
                   managed="false">
 
-                <!-- Назад -->
                 <HBox alignment="CENTER_LEFT">
                     <Button fx:id="helpBackBtn"
                             text="← Назад"
@@ -139,160 +138,144 @@
                             styleClass="btn-back"/>
                 </HBox>
 
-
-                <!-- Основная карточка -->
                 <VBox styleClass="content-card, help-card"
-                      spacing="22"
-                      alignment="TOP_CENTER"
-                      maxWidth="760">
+                      spacing="20"
+                      alignment="TOP_LEFT"
+                      maxWidth="980">
 
-
-                    <!-- Заголовок -->
-                    <VBox alignment="CENTER"
-                          spacing="6">
-
+                    <VBox alignment="CENTER" spacing="6">
                         <Label fx:id="helpTitleLabel"
-                               text="Как пользоваться"
+                               text="Как пользоваться киоском"
                                styleClass="h1-text"/>
 
                         <Label fx:id="helpSubtitleLabel"
-                               text="Всего 4 шага"
+                               text="Инструкция в 4 шагах"
                                styleClass="body-text-muted"/>
-
                     </VBox>
 
+                    <!-- Раздел инструкции. ToggleGroup гарантирует, что выбран
+                         ровно один: снять выделение со всех нельзя, иначе экран
+                         остался бы без текста вовсе. -->
+                    <HBox fx:id="helpTopicTabs"
+                          styleClass="help-topic-tabs"
+                          alignment="CENTER"
+                          spacing="10">
 
-                    <!-- ШАГИ -->
-                    <VBox spacing="12"
-                          styleClass="help-steps"
-                          maxWidth="680">
+                        <fx:define>
+                            <ToggleGroup fx:id="helpTopicGroup"/>
+                        </fx:define>
 
+                        <ToggleButton fx:id="helpTabPrintBtn"
+                                      text="Печать"
+                                      selected="true"
+                                      toggleGroup="$helpTopicGroup"
+                                      styleClass="help-topic-tab"
+                                      maxWidth="Infinity"
+                                      HBox.hgrow="ALWAYS"/>
 
-                        <!-- Шаг 1 -->
-                        <HBox spacing="16"
-                              alignment="CENTER_LEFT"
-                              styleClass="help-step">
+                        <ToggleButton fx:id="helpTabCopyBtn"
+                                      text="Копирование"
+                                      toggleGroup="$helpTopicGroup"
+                                      styleClass="help-topic-tab"
+                                      maxWidth="Infinity"
+                                      HBox.hgrow="ALWAYS"/>
 
-                            <Label text="1"
-                                   styleClass="help-step-number"/>
+                        <ToggleButton fx:id="helpTabScanBtn"
+                                      text="Сканирование"
+                                      toggleGroup="$helpTopicGroup"
+                                      styleClass="help-topic-tab"
+                                      maxWidth="Infinity"
+                                      HBox.hgrow="ALWAYS"/>
+                    </HBox>
 
+                    <!-- 4 шага -->
+                    <VBox spacing="14" styleClass="help-steps">
+
+                        <HBox fx:id="helpStep1Row" spacing="16" alignment="TOP_LEFT" styleClass="help-step">
+                            <Label text="1" styleClass="help-step-number"/>
                             <Label fx:id="helpStep1Label"
-                                   text="Загрузите файл через Telegram или веб-портал."
                                    styleClass="help-step-text"
                                    wrapText="true"
-                                   maxWidth="580"/>
-
+                                   maxWidth="820"
+                                   text="Загрузите файл: отправьте документ в Telegram-бот или отсканируйте QR-код на экране для загрузки со смартфона. (USB-флешки не поддерживаются.)"/>
                         </HBox>
 
-
-                        <!-- Шаг 2 -->
-                        <HBox spacing="16"
-                              alignment="CENTER_LEFT"
-                              styleClass="help-step">
-
-                            <Label text="2"
-                                   styleClass="help-step-number"/>
-
+                        <HBox fx:id="helpStep2Row" spacing="16" alignment="TOP_LEFT" styleClass="help-step">
+                            <Label text="2" styleClass="help-step-number"/>
                             <Label fx:id="helpStep2Label"
-                                   text="Выберите страницы и количество копий."
                                    styleClass="help-step-text"
                                    wrapText="true"
-                                   maxWidth="580"/>
-
+                                   maxWidth="820"
+                                   text="Настройте печать: выберите нужные страницы и количество копий."/>
                         </HBox>
 
-
-                        <!-- Шаг 3 -->
-                        <HBox spacing="16"
-                              alignment="CENTER_LEFT"
-                              styleClass="help-step">
-
-                            <Label text="3"
-                                   styleClass="help-step-number"/>
-
+                        <HBox fx:id="helpStep3Row" spacing="16" alignment="TOP_LEFT" styleClass="help-step">
+                            <Label text="3" styleClass="help-step-number"/>
                             <Label fx:id="helpStep3Label"
-                                   text="Оплатите заказ по QR-коду."
                                    styleClass="help-step-text"
                                    wrapText="true"
-                                   maxWidth="580"/>
-
+                                   maxWidth="820"
+                                   text="Оплатите: отсканируйте появившийся QR-код для оплаты заказа любым мобильным банкингом."/>
                         </HBox>
 
-
-                        <!-- Шаг 4 -->
-                        <HBox spacing="16"
-                              alignment="CENTER_LEFT"
-                              styleClass="help-step">
-
-                            <Label text="4"
-                                   styleClass="help-step-number"/>
-
+                        <HBox fx:id="helpStep4Row" spacing="16" alignment="TOP_LEFT" styleClass="help-step">
+                            <Label text="4" styleClass="help-step-number"/>
                             <Label fx:id="helpStep4Label"
-                                   text="Заберите готовые документы."
                                    styleClass="help-step-text"
                                    wrapText="true"
-                                   maxWidth="580"/>
-
+                                   maxWidth="820"
+                                   text="Заберите распечатку: документ будет напечатан автоматически сразу после успешной оплаты."/>
                         </HBox>
-
                     </VBox>
 
+                    <!-- Видеоинструкция для выбранного раздела -->
+                    <HBox alignment="CENTER">
+                        <Button fx:id="helpVideoBtn"
+                                text="▶  Смотреть видео"
+                                onAction="#onHelpVideoClicked"
+                                styleClass="btn-primary, help-video-btn"/>
+                    </HBox>
 
-                    <!-- ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ -->
-                    <VBox spacing="12"
-                          maxWidth="680">
+                    <!-- Форматы и контакты -->
+                    <HBox spacing="20" alignment="TOP_CENTER" styleClass="help-info-row">
 
-
-                        <!-- Форматы -->
-                        <VBox styleClass="small-card, help-info-card"
-                              spacing="6"
-                              alignment="CENTER_LEFT">
-
+                        <VBox fx:id="helpFormatsCard"
+                              styleClass="small-card, help-info-card"
+                              spacing="8"
+                              alignment="TOP_LEFT"
+                              HBox.hgrow="ALWAYS">
                             <Label fx:id="helpFormatsTitleLabel"
                                    text="Поддерживаемые форматы"
                                    styleClass="h3-text"/>
-
                             <Label fx:id="helpFormatsValueLabel"
-                                   text="PDF • JPG • PNG • DOCX"
+                                   text="PDF, JPG, PNG, DOCX"
                                    styleClass="body-text"/>
-
                             <Label fx:id="helpFormatsLimitLabel"
-                                   text="Размер файла — до 20 МБ"
+                                   text="Максимальный размер файла — 20 МБ"
                                    styleClass="body-text-muted"/>
-
                         </VBox>
 
-
-                        <!-- Поддержка -->
                         <VBox styleClass="small-card, help-info-card"
-                              spacing="6"
-                              alignment="CENTER_LEFT">
-
+                              spacing="8"
+                              alignment="TOP_LEFT"
+                              HBox.hgrow="ALWAYS">
                             <Label fx:id="helpSupportTitleLabel"
-                                   text="Нужна помощь?"
+                                   text="Контакты поддержки"
                                    styleClass="h3-text"/>
-
                             <Label fx:id="helpSupportPhoneLabel"
-                                   text="📞+996 XXX XXX XXX"
+                                   text="📞 +996 XXX XXX XXX"
                                    styleClass="body-text"/>
-
                             <Label fx:id="helpSupportTelegramLabel"
-                                   text="✈@printkiosk_support"
+                                   text="✈ @printkiosk_support"
                                    styleClass="body-text"/>
-
                         </VBox>
+                    </HBox>
 
-                    </VBox>
-
-
-                    <!-- Подсказка -->
                     <Label fx:id="helpHintLabel"
-                           text="Нажмите «Назад», чтобы выйти."
+                           text="Чтобы закрыть инструкцию, нажмите «Назад»."
                            styleClass="body-text-muted, help-hint"
                            wrapText="true"/>
-
                 </VBox>
-
             </VBox>
 
             <!-- HOME SCREEN -->
@@ -322,12 +305,14 @@
                         <HBox alignment="CENTER" spacing="8" styleClass="home-language-box">
                             <Label text="🌐" styleClass="home-language-icon"/>
 
+                            <!-- Подсветку расставляет onLanguageChanged при старте;
+                                 зашивать lang-btn-active в разметку не нужно. -->
                             <Button fx:id="langRuBtn"
                                     text="Рус"
                                     onAction="#onSelectRuTop"
-                                    styleClass="home-language-btn, lang-btn-active"/>
+                                    styleClass="home-language-btn"/>
 
-                            <Button fx:id="langKgBtn"
+                            <Button fx:id="langKyBtn"
                                     text="Кыр"
                                     onAction="#onSelectKgTop"
                                     styleClass="home-language-btn"/>
@@ -1692,6 +1677,47 @@
                 </VBox>
             </VBox>
 
+
+            <!-- ВИДЕОИНСТРУКЦИЯ.
+                 Лежит последним в стеке — значит рисуется поверх остальных
+                 экранов. Тёмная подложка перехватывает нажатия, чтобы
+                 человек не попал по кнопкам скрытого под ней экрана. -->
+            <StackPane fx:id="helpVideoOverlay"
+                       styleClass="help-video-overlay"
+                       visible="false"
+                       managed="false">
+
+                <VBox alignment="CENTER" spacing="18" maxWidth="820" maxHeight="900">
+
+                    <Label fx:id="helpVideoTitleLabel"
+                           text="Видеоинструкция"
+                           styleClass="help-video-title"/>
+
+                    <StackPane fx:id="helpVideoBox"
+                               styleClass="help-video-box"
+                               minHeight="460"/>
+
+                    <Button fx:id="helpVideoCloseBtn"
+                            text="Закрыть"
+                            onAction="#onHelpVideoCloseClicked"
+                            styleClass="btn-secondary, help-video-close"/>
+                </VBox>
+            </StackPane>
+
+            <!-- Всплывающее уведомление. Поверх всего, включая видеооверлей;
+                 mouseTransparent — чтобы не перехватывать нажатия, пока висит. -->
+            <StackPane fx:id="toastLayer"
+                       mouseTransparent="true"
+                       pickOnBounds="false"
+                       StackPane.alignment="BOTTOM_CENTER">
+                <Label fx:id="toastLabel"
+                       styleClass="toast"
+                       wrapText="true"
+                       maxWidth="720"
+                       visible="false"
+                       managed="false"
+                       StackPane.alignment="BOTTOM_CENTER"/>
+            </StackPane>
         </StackPane>
     </center>
 </BorderPane>

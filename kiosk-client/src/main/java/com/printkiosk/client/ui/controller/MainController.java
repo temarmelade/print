@@ -7,7 +7,11 @@ import com.printkiosk.client.config.KioskClientProperties;
 import com.printkiosk.client.service.scan.ScanFlow;
 import com.printkiosk.client.config.ServerProperties;
 import com.printkiosk.client.service.AdPlaylistService;
+import com.printkiosk.client.service.HelpVideoLocator;
 import com.printkiosk.client.service.KioskActivityState;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.concurrent.Task;
@@ -44,6 +48,8 @@ import com.printkiosk.client.service.PaymentSessionFlow;
 import com.printkiosk.client.service.ScanDeliveryFlow;
 import com.printkiosk.client.ui.util.QrCodeGenerator;
 import com.printkiosk.shared.api.dto.PaymentSessionDto;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import com.printkiosk.client.service.PrintFlow;
 import com.printkiosk.client.printer.PrinterReadinessService;
@@ -401,6 +407,53 @@ public class MainController {
     @FXML private Label helpSupportTelegramLabel;
     @FXML private Label helpHintLabel;
 
+    // Вкладки разделов инструкции
+    @FXML private ToggleButton helpTabPrintBtn;
+    @FXML private ToggleButton helpTabCopyBtn;
+    @FXML private ToggleButton helpTabScanBtn;
+    @FXML private ToggleGroup  helpTopicGroup;
+    @FXML private HBox helpStep1Row;
+    @FXML private HBox helpStep2Row;
+    @FXML private HBox helpStep3Row;
+    @FXML private HBox helpStep4Row;
+    @FXML private VBox helpFormatsCard;
+    @FXML private Button helpVideoBtn;
+    @FXML private StackPane helpVideoOverlay;
+    @FXML private StackPane helpVideoBox;
+    @FXML private Label helpVideoTitleLabel;
+    @FXML private Button helpVideoCloseBtn;
+
+    @FXML private Label toastLabel;
+    /** Таймер скрытия текущего уведомления. */
+    private javafx.animation.PauseTransition toastTimer;
+
+    /** Плеер видеоинструкции. Живёт только пока открыт оверлей. */
+    private javafx.scene.media.MediaPlayer helpVideoPlayer;
+
+    /**
+     * Выбранный раздел инструкции. Отдельное свойство, а не чтение
+     * ToggleGroup напрямую: тексты биндятся и на язык, и на раздел,
+     * а StringBinding нужен наблюдаемый источник.
+     */
+    private final ObjectProperty<HelpTopic> helpTopic =
+            new SimpleObjectProperty<>(HelpTopic.PRINT);
+
+    /** Разделы инструкции и префиксы их ключей локализации. */
+    private enum HelpTopic {
+        /** У печати ключи исторические (help.step1…), без префикса раздела. */
+        PRINT(""),
+        COPY("copy."),
+        SCAN("scan.");
+
+        private final String prefix;
+        HelpTopic(String prefix) { this.prefix = prefix; }
+
+        String key(String suffix) { return "help." + prefix + suffix; }
+
+        /** Имя ролика: help_print.mp4 / help_copy.mp4 / help_scan.mp4. */
+        String videoName() { return name().toLowerCase(); }
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //  STATE
     // ══════════════════════════════════════════════════════════════════════
@@ -435,6 +488,7 @@ public class MainController {
     private final KioskServerClient serverClient;
     private final LocalizationService loc;
     private final KioskActivityState activityState;
+    private final HelpVideoLocator helpVideoLocator;
 
     private static final String LANG_ACTIVE_CLASS = "lang-btn-active";
 
@@ -480,7 +534,8 @@ public class MainController {
                           KioskClientProperties clientProperties, AdPlaylistService adPlaylistService,
                           ServerProperties serverProperties, ScanFlow scanFlow,
                           KioskServerClient serverClient, LocalizationService loc,
-                          ScanDeliveryFlow scanDeliveryFlow, KioskActivityState activityState) {
+                          ScanDeliveryFlow scanDeliveryFlow, KioskActivityState activityState,
+                          HelpVideoLocator helpVideoLocator) {
         this.pinEntryFlow = pinEntryFlow;
         this.clientProperties = clientProperties;
         this.adPlaylistService = adPlaylistService;
@@ -495,6 +550,7 @@ public class MainController {
         this.loc = loc;
         this.scanDeliveryFlow = scanDeliveryFlow;
         this.activityState = activityState;
+        this.helpVideoLocator = helpVideoLocator;
     }
 
 
@@ -739,11 +795,12 @@ public class MainController {
 
         // ---- HELP ----
         bindText(helpTitleLabel, "help.title");
-        bindText(helpSubtitleLabel, "help.subtitle");
-        bindText(helpStep1Label, "help.step1");
-        bindText(helpStep2Label, "help.step2");
-        bindText(helpStep3Label, "help.step3");
-        bindText(helpStep4Label, "help.step4");
+        bindText(helpTabPrintBtn, "help.tab.print");
+        bindText(helpTabCopyBtn,  "help.tab.copy");
+        bindText(helpTabScanBtn,  "help.tab.scan");
+        bindText(helpVideoBtn, "help.video.btn");
+        bindText(helpVideoCloseBtn, "help.video.close");
+        setupHelpTopics();
         bindText(helpFormatsTitleLabel, "help.formats.title");
         bindText(helpFormatsValueLabel, "help.formats.value");
         bindText(helpFormatsLimitLabel, "help.formats.limit");
@@ -756,6 +813,190 @@ public class MainController {
     }
 
     /** Null-безопасный биндинг текста: пропускает не-инжектированные узлы. */
+    /**
+     * Подписывает подзаголовок и шаги на выбранный раздел инструкции.
+     *
+     * <p>Обычный {@code bindText} тут не годится: он привязан к одному
+     * фиксированному ключу, а нам ключ меняют вкладки. Поэтому строим
+     * биндинг вручную — он пересчитывается и при смене языка, и при
+     * переключении раздела.
+     */
+    private void setupHelpTopics() {
+        if (helpTopicGroup == null) return;
+
+        Map<Toggle, HelpTopic> byToggle = new LinkedHashMap<>();
+        byToggle.put(helpTabPrintBtn, HelpTopic.PRINT);
+        byToggle.put(helpTabCopyBtn,  HelpTopic.COPY);
+        byToggle.put(helpTabScanBtn,  HelpTopic.SCAN);
+
+        helpTopicGroup.selectedToggleProperty().addListener((obs, old, sel) -> {
+            if (sel == null) {
+                // Повторное нажатие на активную вкладку снимает выделение —
+                // возвращаем его, иначе экран останется без инструкции.
+                helpTopicGroup.selectToggle(old);
+                return;
+            }
+            helpTopic.set(byToggle.getOrDefault(sel, HelpTopic.PRINT));
+        });
+
+        helpSubtitleLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> loc.get(helpTopic.get().key("subtitle")),
+                loc.languageProperty(), helpTopic));
+
+        bindHelpStep(helpStep1Label, helpStep1Row, "step1");
+        bindHelpStep(helpStep2Label, helpStep2Row, "step2");
+        bindHelpStep(helpStep3Label, helpStep3Row, "step3");
+        bindHelpStep(helpStep4Label, helpStep4Row, "step4");
+
+        // Форматы файлов относятся только к печати: при копировании и
+        // сканировании пользователь ничего не загружает.
+        if (helpFormatsCard != null) {
+            helpFormatsCard.visibleProperty().bind(
+                    helpTopic.isEqualTo(HelpTopic.PRINT));
+            helpFormatsCard.managedProperty().bind(
+                    helpFormatsCard.visibleProperty());
+        }
+    }
+
+    /**
+     * Привязывает текст шага и прячет строку целиком, если для раздела
+     * шага нет (у копирования их три, а не четыре). Пустое значение в
+     * .properties — это «шага нет», а не «текст забыли».
+     */
+    private void bindHelpStep(Label label, HBox row, String suffix) {
+        if (label == null) return;
+
+        var text = Bindings.createStringBinding(
+                () -> loc.get(helpTopic.get().key(suffix)),
+                loc.languageProperty(), helpTopic);
+
+        label.textProperty().bind(text);
+
+        if (row != null) {
+            row.visibleProperty().bind(text.isNotEmpty());
+            row.managedProperty().bind(row.visibleProperty());
+        }
+    }
+
+
+    // ══════════════════════════════════════════════════════════════════
+    //  Видеоинструкция
+    // ══════════════════════════════════════════════════════════════════
+
+    @FXML
+    public void onHelpVideoClicked() {
+        HelpTopic topic = helpTopic.get();
+
+        var source = helpVideoLocator.find(topic.videoName());
+        if (source.isEmpty()) {
+            // Ролика нет — честно говорим об этом. Молчаливая кнопка
+            // выглядит как поломка киоска.
+            showHelpVideoMissing();
+            return;
+        }
+
+        try {
+            openHelpVideo(source.get());
+        } catch (Throwable t) {
+            // NoClassDefFoundError, отсутствующие кодеки, битый файл —
+            // в любом случае оставляем человека на экране инструкции.
+            log.warn("Не удалось воспроизвести видеоинструкцию: {}", t.toString());
+            showHelpVideoMissing();
+        }
+    }
+
+    private void openHelpVideo(String url) {
+        stopHelpVideo();
+
+        var media = new javafx.scene.media.Media(url);
+        helpVideoPlayer = new javafx.scene.media.MediaPlayer(media);
+
+        var view = new javafx.scene.media.MediaView(helpVideoPlayer);
+        view.setPreserveRatio(true);
+        view.fitWidthProperty().bind(helpVideoBox.widthProperty());
+        view.fitHeightProperty().bind(helpVideoBox.heightProperty());
+
+        helpVideoBox.getChildren().setAll(view);
+
+        // Ошибка декодирования приходит асинхронно, уже после старта,
+        // поэтому обрабатывается отдельно от try/catch выше.
+        helpVideoPlayer.setOnError(() -> {
+            log.warn("Ошибка плеера: {}", helpVideoPlayer.getError() != null
+                    ? helpVideoPlayer.getError().getMessage() : "неизвестно");
+            closeHelpVideo();
+            showHelpVideoMissing();
+        });
+        helpVideoPlayer.setOnEndOfMedia(this::closeHelpVideo);
+
+        helpVideoTitleLabel.setText(loc.get(helpTopic.get().key("video.title")));
+        setVisible(helpVideoOverlay, true);
+        helpVideoPlayer.play();
+    }
+
+    @FXML
+    public void onHelpVideoCloseClicked() {
+        closeHelpVideo();
+    }
+
+    private void closeHelpVideo() {
+        setVisible(helpVideoOverlay, false);
+        stopHelpVideo();
+    }
+
+    /**
+     * Освобождает плеер. Без dispose поток декодера остаётся жить, и за
+     * смену киоска их накапливается столько, сколько раз открывали видео.
+     */
+    private void stopHelpVideo() {
+        if (helpVideoPlayer != null) {
+            try {
+                helpVideoPlayer.stop();
+                helpVideoPlayer.dispose();
+            } catch (Exception ignored) {
+                // плеер мог быть уже освобождён
+            }
+            helpVideoPlayer = null;
+        }
+        if (helpVideoBox != null) helpVideoBox.getChildren().clear();
+    }
+
+    private void showHelpVideoMissing() {
+        showToast(loc.get("help.video.missing"));
+    }
+
+    /**
+     * Короткое уведомление внизу экрана.
+     *
+     * <p>Диалог здесь не годится: он требует нажатия «ОК», а человек у
+     * киоска этого не ждёт — сообщение должно уйти само.
+     */
+    private void showToast(String message) {
+        if (toastLabel == null) return;
+
+        toastLabel.setText(message);
+        setVisible(toastLabel, true);
+        toastLabel.setOpacity(1);
+
+        // Повторный вызов перезапускает отсчёт, иначе предыдущий таймер
+        // спрятал бы свежее сообщение раньше срока.
+        if (toastTimer != null) toastTimer.stop();
+        toastTimer = new javafx.animation.PauseTransition(Duration.seconds(4));
+        toastTimer.setOnFinished(e -> {
+            var fade = new FadeTransition(Duration.millis(300), toastLabel);
+            fade.setFromValue(1);
+            fade.setToValue(0);
+            fade.setOnFinished(x -> setVisible(toastLabel, false));
+            fade.play();
+        });
+        toastTimer.playFromStart();
+    }
+
+    private static void setVisible(javafx.scene.Node node, boolean visible) {
+        if (node == null) return;
+        node.setVisible(visible);
+        node.setManaged(visible);
+    }
+
     private void bindText(Labeled node, String key) {
         if (node != null) {
             node.textProperty().bind(loc.bind(key));
@@ -1092,6 +1333,11 @@ public class MainController {
     }
 
     private void changeStep(KioskStep step) {
+        // Уходя с экрана помощи, глушим ролик: иначе звук продолжит
+        // играть поверх следующего экрана.
+        if (currentStep == KioskStep.HELP && step != KioskStep.HELP) {
+            closeHelpVideo();
+        }
         this.currentStep = step;
         // Публикуем занятость для дистанционных команд: перезагрузка не
         // должна прилететь между оплатой и выходом документа.
@@ -1156,7 +1402,12 @@ public class MainController {
                 showOnly(scanDeliveryScreen);
             }
             case ADMIN            -> showOnly(adminScreen);
-            case HELP             -> showOnly(helpScreen);
+            case HELP             -> {
+                // Предыдущий посетитель мог оставить открытым «Сканирование» —
+                // следующему показываем инструкцию с начала.
+                if (helpTabPrintBtn != null) helpTabPrintBtn.setSelected(true);
+                showOnly(helpScreen);
+            }
             case PRINT_FAILED   -> showOnly(printFailedScreen);
             case OUT_OF_SERVICE -> showOnly(outOfServiceScreen);
         }
