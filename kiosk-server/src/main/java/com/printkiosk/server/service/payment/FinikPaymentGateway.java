@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.printkiosk.server.config.FinikProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -25,6 +26,7 @@ import java.util.*;
 
 @Slf4j
 @Service
+@ConditionalOnProperty(prefix = "bakai", name = "enabled", havingValue = "false", matchIfMissing = true)
 @RequiredArgsConstructor
 public class FinikPaymentGateway implements PaymentGateway {
 

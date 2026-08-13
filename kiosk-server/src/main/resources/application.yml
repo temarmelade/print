@@ -91,6 +91,28 @@ finik:
   merchant-category-code: "0742"
   qr-name: "PrintKiosk"
 
+# ───── Bakai OpenBanking (основной платёжный провайдер) ─────
+# Включённый bakai.enabled делает BakaiPaymentGateway @Primary и отключает
+# Finik. Чтобы откатиться на Finik, достаточно выставить false — пересборка
+# не нужна, оба шлюза остаются в сборке.
+bakai:
+  enabled: ${BAKAI_ENABLED:false}
+  base-url: ${BAKAI_BASE_URL:https://openbanking-api.bakai.kg}
+  login:    ${BAKAI_LOGIN:}
+  password: ${BAKAI_PASSWORD:}
+  # Счёт зачисления и валюта (417 = KGS)
+  account-no:  ${BAKAI_ACCOUNT_NO:}
+  currency-id: ${BAKAI_CURRENCY_ID:417}
+  # Время жизни QR. Должно быть не меньше, чем живёт сессия на киоске.
+  qr-ttl: 15
+  qr-ttl-units: Minutes
+  # Тип кастомного QR для запроса статуса — значение выдаёт банк.
+  qr-type: ${BAKAI_QR_TYPE:}
+  # Вебхуков у Bakai нет: статус опрашивается сами. Интервал — компромисс
+  # между нагрузкой на API банка и ожиданием человека у терминала.
+  poll-interval-ms: 3000
+  poll-timeout-min: 20
+
 telegram:
   bot:
     enabled: ${TELEGRAM_BOT_ENABLED:false}     # локально false, на проде true

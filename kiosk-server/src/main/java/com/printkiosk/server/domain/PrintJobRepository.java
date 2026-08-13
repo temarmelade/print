@@ -188,4 +188,17 @@ public interface PrintJobRepository
     /** Список киосков, встречавшихся в заданиях — для выпадающего фильтра. */
     @Query("SELECT DISTINCT j.kioskId FROM PrintJobEntity j WHERE j.kioskId IS NOT NULL ORDER BY j.kioskId")
     List<String> findDistinctKioskIds();
+
+    /**
+     * Задания, ожидающие подтверждения оплаты. Нужны опросу Bakai:
+     * у банка нет вебхуков, статус приходится спрашивать самим.
+     */
+    @Query("""
+           SELECT j
+             FROM PrintJobEntity j
+            WHERE j.status = com.printkiosk.shared.api.PrintJobStatus.PAYMENT_PENDING
+              AND j.paymentId IS NOT NULL
+              AND j.createdAt > :notOlderThan
+           """)
+    List<PrintJobEntity> findAwaitingPayment(@Param("notOlderThan") Instant notOlderThan);
 }
