@@ -37,7 +37,13 @@ public class BakaiProperties {
      * считает просроченным.
      */
     private int qrTtl = 15;
-    private String qrTtlUnits = "Minutes";
+
+    /**
+     * Единица измерения TTL. В API это ЧИСЛОВОЙ enum QrTtlUnits, а не строка:
+     * 0=Seconds, 1=Minutes, 2=Hours, 3=Days, 4=Months, 5=Years.
+     * Значение по умолчанию — минуты.
+     */
+    private int qrTtlUnits = 1;
 
     /**
      * Тип кастомного QR для запроса статуса. Значение выдаёт банк —

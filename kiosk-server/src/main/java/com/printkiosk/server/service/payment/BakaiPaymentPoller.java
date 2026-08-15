@@ -31,8 +31,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BakaiPaymentPoller {
 
-    private static final String ORDER_ID_PREFIX = "PIN-";
-
     private final BakaiProperties props;
     private final BakaiPaymentGateway gateway;
     private final PrintJobRepository jobs;
@@ -54,7 +52,9 @@ public class BakaiPaymentPoller {
             // неуспешным из-за сетевого сбоя хуже, чем подождать.
             if (state == null || "Processed".equalsIgnoreCase(state)) continue;
 
-            String pin = extractPin(orderId);
+            // Разбор один на оба пути оплаты — иначе форматы разъедутся
+            // при следующей правке orderId.
+            String pin = PaymentService.extractPin(orderId);
             if (pin == null) {
                 log.warn("Не смог разобрать PIN из paymentId={}", orderId);
                 continue;
@@ -78,12 +78,6 @@ public class BakaiPaymentPoller {
     private void publish(String pin, PaymentEvent.Type type) {
         jobs.findLatestActiveByPin(pin, Instant.now()).ifPresent(job ->
                 eventBus.publish(new PaymentEvent(pin, job.getId(), type, Instant.now())));
-    }
-
-    private static String extractPin(String orderId) {
-        if (orderId == null || !orderId.startsWith(ORDER_ID_PREFIX)) return null;
-        String pin = orderId.substring(ORDER_ID_PREFIX.length());
-        return pin.isBlank() ? null : pin;
     }
 
     private static String mask(String pin) {

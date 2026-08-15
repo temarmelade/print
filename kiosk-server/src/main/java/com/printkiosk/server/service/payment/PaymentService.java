@@ -67,7 +67,13 @@ public class PaymentService {
 
         // Берём PIN из снимка в задании: файл мог быть удалён по TTL,
         // job.getFile() уже может быть null (см. миграцию V8).
-        String orderId = ORDER_ID_PREFIX + job.getPin();
+        // PIN переиспользуется: генератор берёт любой код, не занятый
+        // СЕЙЧАС, поэтому вчерашний 1234 сегодня выдадут снова. Для Finik
+        // это неважно — он присылает вебхук на конкретную операцию.
+        // Bakai же спрашивают статус ПО ЭТОМУ ЖЕ идентификатору, и если
+        // он повторится, банк вернёт статус старой оплаты — печать ушла бы
+        // бесплатно. Поэтому добавляем короткий уникальный хвост.
+        String orderId = ORDER_ID_PREFIX + job.getPin() + "-" + shortSuffix(job.getId());
 
         GatewayPaymentResult gwResult;
         try {
@@ -120,7 +126,7 @@ public class PaymentService {
             throw new IllegalArgumentException("Invalid orderId in webhook: " + orderId);
         }
 
-        String pin = orderId.substring(ORDER_ID_PREFIX.length());
+        String pin = extractPin(orderId);
         if (pin.isBlank()) {
             throw new IllegalArgumentException("Empty PIN in orderId: " + orderId);
         }
@@ -141,6 +147,25 @@ public class PaymentService {
         }
 
         log.warn("Unknown Finik webhook status: {}", status);
+    }
+
+    /**
+     * Достаёт PIN из orderId вида {@code PIN-1234-a1b2c3d4}.
+     * Хвост после второго дефиса игнорируется — он только для уникальности.
+     */
+    public static String extractPin(String orderId) {
+        if (orderId == null || !orderId.startsWith(ORDER_ID_PREFIX)) return null;
+        String rest = orderId.substring(ORDER_ID_PREFIX.length());
+        int dash = rest.indexOf('-');
+        return dash > 0 ? rest.substring(0, dash) : rest;
+    }
+
+    /**
+     * Первые 8 символов id задания — достаточно, чтобы orderId не
+     * повторился, и коротко для полей банка с ограничением длины.
+     */
+    private static String shortSuffix(java.util.UUID jobId) {
+        return jobId.toString().substring(0, 8);
     }
 
     /** Извлекаем orderId из {@code data.orderId} или {@code fields.orderId}. */

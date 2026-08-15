@@ -105,7 +105,8 @@ bakai:
   currency-id: ${BAKAI_CURRENCY_ID:417}
   # Время жизни QR. Должно быть не меньше, чем живёт сессия на киоске.
   qr-ttl: 15
-  qr-ttl-units: Minutes
+  # Числовой enum: 0=Seconds, 1=Minutes, 2=Hours, 3=Days, 4=Months, 5=Years
+  qr-ttl-units: 1
   # Тип кастомного QR для запроса статуса — значение выдаёт банк.
   qr-type: ${BAKAI_QR_TYPE:}
   # Вебхуков у Bakai нет: статус опрашивается сами. Интервал — компромисс

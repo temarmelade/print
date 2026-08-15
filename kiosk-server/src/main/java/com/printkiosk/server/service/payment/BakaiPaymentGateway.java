@@ -68,6 +68,7 @@ public class BakaiPaymentGateway implements PaymentGateway {
             body.put("amount", amountSom);
             body.put("operationID", orderId);
             body.put("comment", "Оплата печати " + orderId);
+            // qrTtlUnits — числовой enum (1 = Minutes), не строка.
             body.put("qrTtl", props.getQrTtl());
             body.put("qrTtlUnits", props.getQrTtlUnits());
 
