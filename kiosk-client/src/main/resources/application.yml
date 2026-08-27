@@ -10,7 +10,12 @@ kiosk:
     # достучаться по сети. Меняй на реальный IP/домен сервера.
     public-base-url: ${KIOSK_PUBLIC_URL:http://192.168.1.120:8080}
     kiosk-id: ${KIOSK_ID:vostok-5}
-    api-key: ${KIOSK_API_KEY:3KyobEm-kRROXDNCUP3I4cyFwRuLarUgGu1R37KRp2o}             # выдаётся при регистрации киоска в админке
+    # Ключ выдаётся при регистрации киоска в админке и задаётся ТОЛЬКО
+    # в application-local.yml или через KIOSK_API_KEY. Значения по
+    # умолчанию здесь быть не должно: файл лежит в публичном репозитории,
+    # и прежний ключ отсюда следует считать скомпрометированным —
+    # перевыпустите его кнопкой «Обновить ключ» в разделе «Терминалы».
+    api-key: ${KIOSK_API_KEY:}
     connect-timeout: PT5S
     read-timeout: PT10S
     upload-timeout: PT60S

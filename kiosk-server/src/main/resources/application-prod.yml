@@ -1,0 +1,61 @@
+# ─────────────────────────────────────────────────────────────────
+#  Боевой профиль. Активируется SPRING_PROFILES_ACTIVE=prod.
+#
+#  Здесь у секретов НЕТ значений по умолчанию: если переменная не
+#  задана, Spring не поднимется. Это осознанно — молчаливый старт со
+#  значением из публичного репозитория опаснее, чем упавший контейнер.
+# ─────────────────────────────────────────────────────────────────
+
+spring:
+  jpa:
+    properties:
+      # SQL в лог на проде — это гигабайты и просадка скорости.
+      hibernate.format_sql: false
+
+server:
+  # За Nginx приложение видит адрес прокси, а не клиента. Без этой
+  # настройки в логах и лимитах будет один и тот же 172.x, а ссылки,
+  # которые строит сервер, окажутся http:// вместо https://.
+  forward-headers-strategy: framework
+  error:
+    # Текст исключения клиенту на проде не отдаём: он раскрывает
+    # внутреннее устройство и иногда содержимое запроса.
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+logging:
+  level:
+    root: WARN
+    com.printkiosk.server: INFO
+    org.hibernate.SQL: WARN
+  file:
+    name: /var/log/kiosk/kiosk-server.log
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Только health. metrics и info отдавали наружу лишнее —
+        # эндпоинты actuator открыты без авторизации.
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+kiosk:
+  storage:
+    # /tmp очищается при перезагрузке — на проде нужен постоянный том.
+    path: ${KIOSK_STORAGE_PATH:/var/lib/kiosk/uploads}
+    public-base-url: ${KIOSK_PUBLIC_BASE_URL}
+
+admin:
+  jwt:
+    secret: ${ADMIN_JWT_SECRET}
+    ttl: ${ADMIN_JWT_TTL:PT12H}
+  seed:
+    username: ${ADMIN_OWNER_USERNAME:owner}
+    password: ${ADMIN_OWNER_PASSWORD}
+    name:     ${ADMIN_OWNER_NAME:Владелец}
+  cors:
+    allowed-origins: ${ADMIN_CORS_ORIGINS}

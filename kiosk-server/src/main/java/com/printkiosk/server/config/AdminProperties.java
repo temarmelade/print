@@ -20,10 +20,21 @@ public class AdminProperties {
     private Seed seed = new Seed();
     private Cors cors = new Cors();
 
+    /**
+     * Значение, которое лежало в открытом репозитории. Прод-профиль
+     * отказывается стартовать с ним: подписать себе токен владельца
+     * мог бы любой, кто видел исходники.
+     */
+    public static final String INSECURE_DEFAULT_SECRET =
+            "change-me-in-prod-please-32chars-minimum-secret";
+
+    /** Пароль стартового владельца из репозитория — на проде запрещён. */
+    public static final String INSECURE_DEFAULT_PASSWORD = "owner12345";
+
     @Getter @Setter
     public static class Jwt {
         /** Секрет подписи HS256. МИНИМУМ 32 символа. На проде задать через ADMIN_JWT_SECRET. */
-        private String secret = "change-me-in-prod-please-32chars-minimum-secret";
+        private String secret = INSECURE_DEFAULT_SECRET;
         /** Срок жизни токена доступа. */
         private Duration ttl = Duration.ofHours(12);
     }

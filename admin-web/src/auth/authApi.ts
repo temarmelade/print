@@ -1,18 +1,32 @@
 import { api, setToken } from "../lib/apiClient.ts";
-import type { Role, User } from "../types.ts";
+import type { User } from "../types.ts";
 
 export interface LoginResult {
   token: string;
   user: User;
 }
 
-const USE_MOCK = (import.meta.env.VITE_USE_MOCK_AUTH ?? "true") === "true";
+/**
+ * Демо-вход без сервера. ВЫКЛЮЧЕН ПО УМОЛЧАНИЮ.
+ *
+ * <p>Раньше здесь стояло `?? "true"`, то есть сборка без явного флага
+ * поднималась с тремя демо-аккаунтами и полными правами владельца.
+ * Пароли лежат в публичном репозитории, так что для боевой админки это
+ * означало вход для любого желающего.
+ *
+ * <p>Дополнительно заглушка вырезается в production-сборке: даже если
+ * кто-то соберёт прод с VITE_USE_MOCK_AUTH=true, войти не выйдет.
+ */
+const MOCK_REQUESTED = import.meta.env.VITE_USE_MOCK_AUTH === "true";
+const USE_MOCK = MOCK_REQUESTED && import.meta.env.DEV;
 
-/* ─────────────────────────────────────────────────────────────
-   Заглушка на время, пока не поднят серверный вход. Даёт три
-   демо-аккаунта, чтобы прокликать все роли уже сейчас. Убирается
-   переключателем VITE_USE_MOCK_AUTH=false — код ниже не трогаем.
-   ───────────────────────────────────────────────────────────── */
+if (MOCK_REQUESTED && !import.meta.env.DEV) {
+  console.error(
+    "VITE_USE_MOCK_AUTH=true игнорируется в production-сборке. " +
+    "Вход выполняется через сервер."
+  );
+}
+
 const MOCK_ACCOUNTS: Record<string, { password: string; user: User }> = {
   owner:   { password: "owner123",   user: { id: "u-owner",   name: "Азамат (владелец)", username: "owner",   role: "OWNER" } },
   tech:    { password: "tech123",    user: { id: "u-tech",    name: "Тимур (техник)",    username: "tech",    role: "TECHNICIAN" } },
@@ -30,7 +44,7 @@ async function mockLogin(username: string, password: string): Promise<LoginResul
 
 function mockMe(): User {
   const token = localStorage.getItem("pk_admin_token") ?? "";
-  const role = token.split(".")[1] as Role | undefined;
+  const role = token.split(".")[1];
   const acc = Object.values(MOCK_ACCOUNTS).find((a) => a.user.role === role);
   if (!acc) throw new Error("no session");
   return acc.user;

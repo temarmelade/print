@@ -1,0 +1,104 @@
+# ─────────────────────────────────────────────────────────────────
+#  Боевой стенд: Postgres + сервер + Nginx (TLS и раздача админки).
+#
+#      cp .env.prod.example .env.prod   # и заполнить
+#      docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kiosk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-kiosk}
+      POSTGRES_USER: ${DB_USER:-kiosk}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD обязателен}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./backups:/backups
+    # Порт наружу НЕ пробрасываем: база доступна только соседним
+    # контейнерам. Открытый 5432 в интернет — приглашение к перебору.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-kiosk} -d ${DB_NAME:-kiosk}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [kiosk-net]
+
+  server:
+    build:
+      context: .
+      dockerfile: kiosk-server/Dockerfile
+    container_name: kiosk-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy   # иначе Flyway стартует раньше базы
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      KIOSK_DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-kiosk}
+      KIOSK_DB_USER: ${DB_USER:-kiosk}
+      KIOSK_DB_PASSWORD: ${DB_PASSWORD}
+      KIOSK_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?нужен для ссылок в QR}
+      KIOSK_STORAGE_PATH: /var/lib/kiosk/uploads
+
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?минимум 32 случайных символа}
+      ADMIN_OWNER_USERNAME: ${ADMIN_OWNER_USERNAME:-owner}
+      ADMIN_OWNER_PASSWORD: ${ADMIN_OWNER_PASSWORD:?пароль первого владельца}
+      ADMIN_CORS_ORIGINS: ${PUBLIC_BASE_URL}
+
+      BAKAI_ENABLED: ${BAKAI_ENABLED:-false}
+      BAKAI_LOGIN: ${BAKAI_LOGIN:-}
+      BAKAI_PASSWORD: ${BAKAI_PASSWORD:-}
+      BAKAI_ACCOUNT_NO: ${BAKAI_ACCOUNT_NO:-}
+      BAKAI_QR_TYPE: ${BAKAI_QR_TYPE:-}
+
+      TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-false}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-PrintKioskBot}
+      TELEGRAM_ALERTS_TOKEN: ${TELEGRAM_ALERTS_TOKEN:-}
+    volumes:
+      - uploads:/var/lib/kiosk/uploads
+      - logs:/var/log/kiosk
+    networks: [kiosk-net]
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: kiosk-nginx
+    restart: unless-stopped
+    depends_on: [server]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/kiosk.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/nginx/proxy_params_kiosk:/etc/nginx/proxy_params_kiosk:ro
+      - ./admin-web/dist:/usr/share/nginx/html:ro
+      - certbot-conf:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+    networks: [kiosk-net]
+
+  # Разовое получение и продление сертификата.
+  certbot:
+    image: certbot/certbot:latest
+    container_name: kiosk-certbot
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    # Проверка дважды в сутки — рекомендация Let's Encrypt: продление
+    # срабатывает только когда до конца срока меньше 30 дней.
+    entrypoint: >
+      sh -c "trap exit TERM;
+             while :; do certbot renew --webroot -w /var/www/certbot --quiet;
+             sleep 12h & wait $${!}; done"
+
+volumes:
+  pg-data:
+  uploads:
+  logs:
+  certbot-conf:
+  certbot-www:
+
+networks:
+  kiosk-net:

@@ -41,3 +41,7 @@ build/
 application-local.yml
 
 *.pem
+# Боевые секреты
+.env.prod
+deploy/backups/
+admin-web/.env.production.local
