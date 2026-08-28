@@ -19,6 +19,7 @@ import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
@@ -1124,7 +1125,7 @@ public class MainController {
         scanVideoBox.setClip(mask);
 
         try {
-            var url = getClass().getResource("/videos/scan_loop.gif");
+            var url = getClass().getResource("/videos/scan_loop.mp4");
             if (url != null) {
                 var media  = new javafx.scene.media.Media(url.toExternalForm());
                 scanVideoPlayer = new javafx.scene.media.MediaPlayer(media);
@@ -1418,67 +1419,9 @@ public class MainController {
     // ══════════════════════════════════════════════════════════════════════
 
     // ---- HOME ----
-    /**
-     * Печать и копирование упираются в принтер, поэтому его состояние
-     * проверяется СРАЗУ на главном экране, а не перед оплатой.
-     * Раньше человек проходил весь путь — загрузку, настройки, сводку —
-     * и только на кнопке оплаты узнавал, что печатать нечем.
-     */
-    @FXML public void onPrintOperationSelected() {
-        if (!requirePrinter()) return;
-        changeStep(KioskStep.UPLOAD);
-    }
-
-    @FXML public void onCopyOperationSelected() {
-        if (!requirePrinter()) return;
-        scanMode = ScanMode.COPY;
-        changeStep(KioskStep.SCAN_INSTRUCTION);
-    }
-
-    /** Сканирование печати не требует — работает и со сломанным принтером. */
-    @FXML public void onScanOperationSelected() {
-        scanMode = ScanMode.SCAN;
-        changeStep(KioskStep.SCAN_INSTRUCTION);
-    }
-
-    /**
-     * Проверяет принтер и, если он не готов, показывает предупреждение
-     * с конкретной причиной.
-     *
-     * @return true — можно продолжать
-     */
-    private boolean requirePrinter() {
-        var status = printerReadiness.status();
-        if (status.isReady()) return true;
-
-        log.warn("Операция заблокирована: принтер не готов ({})", status);
-        showPrinterWarning(status);
-        return false;
-    }
-
-    /**
-     * Предупреждение о неисправном принтере.
-     *
-     * <p>Диалог, а не всплывающее уведомление: человек нажал кнопку и ждёт
-     * перехода на следующий экран. Сообщение, которое само исчезнет через
-     * несколько секунд, легко пропустить и решить, что киоск завис.
-     *
-     * <p>Сканирование при этом остаётся доступным, поэтому предлагаем его
-     * как выход, а не просто закрываем диалог.
-     */
-    private void showPrinterWarning(PrinterReadinessService.Status status) {
-        showConfirmOverlay(
-                loc.get("printer.error.title"),
-                loc.get(status.messageKey()),
-                loc.get("printer.error.scan"),
-                loc.get("printer.error.close"),
-                () -> {
-                    // Сканер проверяет себя сам в начале своего флоу,
-                    // поэтому здесь его состояние не запрашиваем.
-                    scanMode = ScanMode.SCAN;
-                    changeStep(KioskStep.SCAN_INSTRUCTION);
-                });
-    }
+    @FXML public void onPrintOperationSelected()  { changeStep(KioskStep.UPLOAD); }
+    @FXML public void onCopyOperationSelected()   { scanMode = ScanMode.COPY; changeStep(KioskStep.SCAN_INSTRUCTION); }
+    @FXML public void onScanOperationSelected()   { scanMode = ScanMode.SCAN; changeStep(KioskStep.SCAN_INSTRUCTION); }
     @FXML public void onHelpClicked()             { changeStep(KioskStep.HELP); }
     @FXML public void onHelpBackClicked()         { changeStep(KioskStep.HOME); }
 
@@ -1673,14 +1616,9 @@ public class MainController {
             return;
         }
 
-        // Подстраховка: принтер мог сломаться, пока человек настраивал печать.
-        // Показываем причину, а не глухой экран «не работает»: заказ уже
-        // собран, и его не хочется терять из-за застрявшего листа, который
-        // техник вытащит за минуту.
-        var printerStatus = printerReadiness.status();
-        if (!printerStatus.isReady()) {
-            log.warn("Оплата заблокирована: принтер не готов ({})", printerStatus);
-            showPrinterWarning(printerStatus);
+        if (!printerReadiness.isReady()) {
+            log.warn("Printer not ready — blocking payment");
+            showOutOfService();
             return;
         }
 
@@ -2107,8 +2045,10 @@ public class MainController {
         // Веб-доставка платная: сначала оплата (10 сом/страница), затем QR
         // получения. Ссылка получения ведёт на прямое скачивание файла по
         // PIN; адрес публичный (сетевой), чтобы телефон открыл ссылку.
-        pendingDeliveryLink = pin ->
-                serverProperties.getPublicBaseUrl() + "/api/files/" + pin + "/download";
+        // Ссылку с одноразовым токеном выдаёт сервер при загрузке скана.
+        // Склеивать её из PIN больше нельзя: PIN — четыре цифры, и такая
+        // ссылка подбиралась перебором.
+        pendingDeliveryLink = pin -> scanDeliveryFlow.downloadUrl();
         scanDeliveryFlow.preparePayment("WEB");
     }
 
@@ -2153,6 +2093,13 @@ public class MainController {
                     return;
                 }
                 String link = pendingDeliveryLink.apply(scanDeliveryFlow.pin());
+                if (link == null || link.isBlank()) {
+                    // Оплата прошла, а ссылки нет — показывать пустой QR
+                    // хуже, чем честно сказать об ошибке.
+                    log.error("Оплата подтверждена, но ссылка получения пуста");
+                    showToast(loc.get("scan.delivery.link.failed"));
+                    return;
+                }
                 // Описание всего экрана меняется на «Заберите свой документ».
                 // Лейбл привязан к локализации — сначала снимаем привязку,
                 // иначе JavaFX бросит «A bound value cannot be set».

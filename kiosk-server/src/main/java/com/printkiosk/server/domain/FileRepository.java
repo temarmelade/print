@@ -80,4 +80,17 @@ public interface FileRepository extends JpaRepository<FileEntity, UUID> {
                     @Param("kioskId")   String  kioskId,
                     @Param("now")       Instant now,
                     @Param("holdUntil") Instant holdUntil);
+
+    /**
+     * Активный файл по токену скачивания. Условия те же, что у поиска
+     * по коду: не истёк и не израсходован.
+     */
+    @Query("""
+           SELECT f FROM FileEntity f
+            WHERE f.downloadToken = :token
+              AND f.expiresAt > :now
+              AND f.consumedAt IS NULL
+           """)
+    Optional<FileEntity> findActiveByDownloadToken(@Param("token") String token,
+                                                   @Param("now") Instant now);
 }

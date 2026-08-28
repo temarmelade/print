@@ -58,9 +58,15 @@ public class PaymentStreamClient {
                            Consumer<PaymentEventDto> onEvent,
                            Consumer<Throwable> onError) {
         String url = properties.getBaseUrl() + "/api/payments/" + pin + "/stream";
+        // SSE идёт мимо общего RestClient, поэтому заголовки из
+        // HttpClientConfig сюда не попадают — ключ киоска добавляем вручную.
+        // Без него поток оплаты упирается в 401, и киоск никогда не узнает
+        // о подтверждении платежа.
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Accept", "text/event-stream")
+                .header("X-Kiosk-Id", properties.getKioskId())
+                .header("X-Kiosk-Key", properties.getApiKey())
                 .GET()
                 .build();
 

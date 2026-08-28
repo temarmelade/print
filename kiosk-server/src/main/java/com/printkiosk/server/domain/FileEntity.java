@@ -24,6 +24,14 @@ public class FileEntity {
     @Column(name = "stored_filename", nullable = false, unique = true, length = 80)
     private String storedFilename;
 
+    /**
+     * Секрет для скачивания с телефона. Кладётся в QR-ссылку вместо PIN:
+     * PIN — четыре цифры и перебирается за минуты, а этот токен — нет.
+     * Nullable ради файлов, созданных до миграции V17.
+     */
+    @Column(name = "download_token", length = 64)
+    private String downloadToken;
+
     @Column(name = "original_filename", nullable = false)
     private String originalFilename;
 

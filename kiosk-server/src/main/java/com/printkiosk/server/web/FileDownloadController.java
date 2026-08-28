@@ -33,11 +33,20 @@ public class FileDownloadController {
     private final FileService fileService;
     private final FileStorageService storage;
 
-    @GetMapping("/{pin}/download")
+    /**
+     * Скачивание с телефона по одноразовому токену из QR-ссылки.
+     *
+     * <p>Маршрут открыт без авторизации — его открывает обычный браузер
+     * посетителя. Раньше в пути стоял PIN, и весь «секрет» сводился к
+     * четырём цифрам: 10 000 комбинаций перебирались за минуты, а на том
+     * конце лежат чужие паспорта и договоры. Токен на 32 байта убирает
+     * эту возможность полностью.
+     */
+    @GetMapping("/d/{token}")
     public ResponseEntity<Resource> download(
-            @PathVariable @Pattern(regexp = "\\d{4}") String pin) {
+            @PathVariable @Pattern(regexp = "[A-Za-z0-9_-]{20,64}") String token) {
 
-        FileEntity file = fileService.getForDownload(pin);
+        FileEntity file = fileService.getForDownloadByToken(token);
         Resource body = new FileSystemResource(storage.resolve(file.getStoredFilename()));
         if (!body.exists()) {
             return ResponseEntity.notFound().build();

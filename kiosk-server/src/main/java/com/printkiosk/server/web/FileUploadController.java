@@ -28,11 +28,8 @@ public class FileUploadController {
             @RequestParam(value = "telegramUserId", required = false) Long telegramUserId
     ) throws IOException {
 
-        var result = fileService.upload(file, source, telegramUserId);
-        return ResponseEntity.ok(new UploadResponse(
-                result.pin(),
-                result.expiresAt(),
-                result.ttlSeconds()
-        ));
+        // Сервис уже вернул готовый UploadResponse — пересобирать его
+        // здесь значило бы терять поля при каждом расширении DTO.
+        return ResponseEntity.ok(fileService.upload(file, source, telegramUserId));
     }
 }

@@ -45,6 +45,8 @@ import java.util.UUID;
 @Slf4j
 public class FileService {
 
+    private static final java.security.SecureRandom TOKEN_RNG = new java.security.SecureRandom();
+
     /** Сколько раз пытаемся пересгенерировать PIN при гонке UNIQUE-индекса. */
     private static final int MAX_PIN_RETRIES = 3;
 
@@ -207,9 +209,12 @@ public class FileService {
         Instant now = Instant.now();
         String  pin = pinGenerator.pickUnusedPin();
 
+        String downloadToken = newDownloadToken();
+
         FileEntity entity = FileEntity.builder()
                 .id(id)
                 .code(pin)
+                .downloadToken(downloadToken)
                 .storedFilename(storedName)
                 .originalFilename(originalName)
                 .contentType(mime)
@@ -230,7 +235,8 @@ public class FileService {
         log.info("Uploaded file id={} pin={} source={} size={}B",
                 id, pin, source, size);
 
-        return new UploadResponse(pin, entity.getExpiresAt(), ttl.getSeconds());
+        return new UploadResponse(pin, entity.getExpiresAt(), ttl.getSeconds(),
+                buildDownloadUrl(downloadToken));
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -245,6 +251,13 @@ public class FileService {
     @Transactional(readOnly = true)
     public FileEntity getForDownload(String pin) {
         return repository.findActiveByCode(pin, Instant.now())
+                .orElseThrow(PinNotFoundException::new);
+    }
+
+    /** Файл по одноразовому токену из QR-ссылки — путь скачивания с телефона. */
+    @Transactional(readOnly = true)
+    public FileEntity getForDownloadByToken(String token) {
+        return repository.findActiveByDownloadToken(token, Instant.now())
                 .orElseThrow(PinNotFoundException::new);
     }
 
@@ -319,6 +332,28 @@ public class FileService {
     // ════════════════════════════════════════════════════════════════
     //  Внутренние утилиты
     // ════════════════════════════════════════════════════════════════
+
+    /**
+     * Секрет для ссылки скачивания: 32 байта из SecureRandom в
+     * URL-безопасном виде. Перебор такого токена невозможен, в отличие
+     * от четырёхзначного PIN, который раньше стоял прямо в ссылке.
+     */
+    private static String newDownloadToken() {
+        byte[] bytes = new byte[32];
+        TOKEN_RNG.nextBytes(bytes);
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    /**
+     * Ссылка для телефона. Собирается здесь, а не на киоске: сервер —
+     * единственное место, которое знает токен, и он не должен попадать
+     * в клиентский код в виде склейки из PIN.
+     */
+    private String buildDownloadUrl(String token) {
+        String base = properties.getStorage().getPublicBaseUrl();
+        if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        return base + "/api/files/d/" + token;
+    }
 
     private String buildPublicUrl(String storedFilename) {
         String base = properties.getStorage().getPublicBaseUrl();

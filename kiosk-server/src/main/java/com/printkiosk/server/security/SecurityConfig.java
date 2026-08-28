@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,14 +20,28 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * Безопасность админ-панели. Ключевой принцип: закрываем ТОЛЬКО админские
- * роуты, всё остальное (киоск, телефон, вебхуки оплаты) остаётся открытым,
- * как и было — иначе сломается работа терминалов.
+ * Безопасность API.
  *
- *   /api/admin/auth/login   — открыт (вход)
- *   /api/ads/admin/**       — только OWNER (управление рекламой)
- *   /api/admin/**           — любой вошедший (роли уточняются @PreAuthorize)
- *   всё прочее              — открыто
+ * <p>Принцип: открыт только тот маршрут, который открывает браузер
+ * постороннего человека. Всё, что вызывает киоск, требует X-Kiosk-Key.
+ * Раньше открытым было всё, кроме админки и телеметрии, — то есть любой
+ * желающий мог пометить чужое задание выполненным или создать платёж.
+ *
+ * <pre>
+ *   ОТКРЫТО (телефон/браузер посетителя):
+ *     /api/admin/auth/login       вход в админку
+ *     /api/files/upload           веб-портал загрузки
+ *     /api/files/d/**             скачивание по одноразовому токену
+ *     /api/payments/webhook/**    колбэк платёжного провайдера
+ *
+ *   ТОЛЬКО КИОСК (X-Kiosk-Key):
+ *     /api/kiosk/**, /api/files/**, /api/jobs/**,
+ *     /api/payments/**, /api/scan-delivery/**, /api/ads/playlist
+ *
+ *   АДМИНКА (JWT):
+ *     /api/ads/admin/**  — OWNER
+ *     /api/admin/**      — любой вошедший, роли уточняет @PreAuthorize
+ * </pre>
  *
  * Stateless (JWT), поэтому CSRF отключён, сессии не создаются.
  */
@@ -53,13 +68,32 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsSource(props)))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // ── Открытые маршруты ──
                         .requestMatchers("/api/admin/auth/login").permitAll()
+                        // Веб-портал загрузки: открывает посетитель с телефона,
+                        // ключа киоска у него нет и быть не может.
+                        .requestMatchers(HttpMethod.POST, "/api/files/upload").permitAll()
+                        // Скачивание по одноразовому токену (32 байта в ссылке).
+                        .requestMatchers(HttpMethod.GET, "/api/files/d/**").permitAll()
+                        // Колбэк платёжного провайдера: приходит извне,
+                        // подлинность проверяется подписью в самом обработчике.
+                        .requestMatchers("/api/payments/webhook/**").permitAll()
+
+                        // ── Админка ──
                         .requestMatchers("/api/ads/admin/**").hasRole("OWNER")
                         .requestMatchers("/api/admin/**").authenticated()
-                        // Телеметрия: только аутентифицированный киоск (X-Kiosk-Key).
-                        // Остальные роуты киоска намеренно оставлены открытыми, чтобы
-                        // уже работающие терминалы не отвалились при обновлении.
+
+                        // ── Всё остальное API — только киоск ──
                         .requestMatchers("/api/kiosk/**").hasRole("KIOSK")
+                        .requestMatchers("/api/files/**").hasRole("KIOSK")
+                        .requestMatchers("/api/jobs/**").hasRole("KIOSK")
+                        .requestMatchers("/api/payments/**").hasRole("KIOSK")
+                        .requestMatchers("/api/scan-delivery/**").hasRole("KIOSK")
+                        .requestMatchers("/api/ads/playlist").hasRole("KIOSK")
+
+                        // Статика (страница загрузки, файлы для печати) и
+                        // всё вне /api остаются открытыми.
+                        .requestMatchers("/api/**").denyAll()
                         .anyRequest().permitAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint(authEntryPoint)

@@ -49,6 +49,12 @@ public class ScanDeliveryFlow {
 
     // Состояние текущей сессии доставки.
     private String  pin;
+    /**
+     * Ссылка скачивания с одноразовым токеном — её выдаёт сервер при
+     * загрузке скана. Раньше киоск склеивал адрес из PIN, то есть весь
+     * секрет ссылки сводился к четырём цифрам.
+     */
+    private String  downloadUrl;
     private String  paymentUrl;
     private int     priceSom;
     private boolean paid;
@@ -64,6 +70,9 @@ public class ScanDeliveryFlow {
 
     /** PIN загруженного скана — по нему UI строит ссылку получения после оплаты. */
     public String pin() { return pin; }
+
+    /** Ссылка для QR-кода получения. null, если скан ещё не загружен. */
+    public String downloadUrl() { return downloadUrl; }
 
     // ════════════════════════════════════════════════════════════════
     //  Public
@@ -107,6 +116,7 @@ public class ScanDeliveryFlow {
                 java.io.File pdf = scanFlow.buildPdf();
                 UploadResponse uploaded = server.uploadFile(pdf, UploadSource.SCAN);
                 pin = uploaded.pin();
+                downloadUrl = uploaded.downloadUrl();
                 return server.createScanDeliveryPayment(pin, channel);
             }
         };
