@@ -212,6 +212,21 @@ public class KioskServerClient {
                 .body(new ParameterizedTypeReference<List<AdCreativeDto>>() {}));
     }
 
+    /**
+     * Скачивает файл рекламного ролика.
+     *
+     * <p>Отдельный метод нужен потому, что JavaFX ({@code Media},
+     * {@code Image}) качает по URL сам и наших заголовков не отправляет.
+     * Эндпоинт закрыт ключом киоска, поэтому файл сначала забираем этим
+     * клиентом, а плееру отдаём уже локальный путь.
+     */
+    public byte[] downloadAdMedia(java.util.UUID id) {
+        return execute(() -> http.get()
+                .uri("/api/ads/media/{id}", id)
+                .retrieve()
+                .body(byte[].class));
+    }
+
     // ════════════════════════════════════════════════════════════════
     //  Upload (скан/ксерокопия → серверный файл + PIN)
     // ════════════════════════════════════════════════════════════════

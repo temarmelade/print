@@ -6,6 +6,7 @@ import com.printkiosk.client.ui.state.Language;
 import com.printkiosk.client.config.KioskClientProperties;
 import com.printkiosk.client.service.scan.ScanFlow;
 import com.printkiosk.client.config.ServerProperties;
+import com.printkiosk.client.service.AdMediaCache;
 import com.printkiosk.client.service.AdPlaylistService;
 import com.printkiosk.client.service.HelpVideoLocator;
 import com.printkiosk.client.service.KioskActivityState;
@@ -19,7 +20,6 @@ import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
@@ -491,6 +491,7 @@ public class MainController {
     private final LocalizationService loc;
     private final KioskActivityState activityState;
     private final HelpVideoLocator helpVideoLocator;
+    private final AdMediaCache adMediaCache;
 
     /** Путь к файлу логотипа на диске киоска. */
     @org.springframework.beans.factory.annotation.Value(
@@ -542,7 +543,7 @@ public class MainController {
                           ServerProperties serverProperties, ScanFlow scanFlow,
                           KioskServerClient serverClient, LocalizationService loc,
                           ScanDeliveryFlow scanDeliveryFlow, KioskActivityState activityState,
-                          HelpVideoLocator helpVideoLocator) {
+                          HelpVideoLocator helpVideoLocator, AdMediaCache adMediaCache) {
         this.pinEntryFlow = pinEntryFlow;
         this.clientProperties = clientProperties;
         this.adPlaylistService = adPlaylistService;
@@ -558,6 +559,7 @@ public class MainController {
         this.scanDeliveryFlow = scanDeliveryFlow;
         this.activityState = activityState;
         this.helpVideoLocator = helpVideoLocator;
+        this.adMediaCache = adMediaCache;
     }
 
 
@@ -1133,7 +1135,7 @@ public class MainController {
         scanVideoBox.setClip(mask);
 
         try {
-            var url = getClass().getResource("/videos/scan_loop.mp4");
+            var url = getClass().getResource("/videos/scan_loop.gif");
             if (url != null) {
                 var media  = new javafx.scene.media.Media(url.toExternalForm());
                 scanVideoPlayer = new javafx.scene.media.MediaPlayer(media);
@@ -1244,7 +1246,7 @@ public class MainController {
      * подключает слежение за бездействием, когда появится Scene.
      */
     private void setupIdleScreensaver() {
-        screensaver = new IdleScreensaver(serverProperties);
+        screensaver = new IdleScreensaver(adMediaCache);
         rootStack.getChildren().add(screensaver);   // верхний слой поверх экранов
 
         idleWatcher = new IdleWatcher(

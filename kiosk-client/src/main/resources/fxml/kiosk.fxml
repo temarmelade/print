@@ -343,7 +343,7 @@
                            onMouseClicked="#onLogoClicked">
                     <ImageView fx:id="homeLogoImage"
                                preserveRatio="true"
-                               fitHeight="180"
+                               fitHeight="270"
                                pickOnBounds="true"/>
                 </StackPane>
 

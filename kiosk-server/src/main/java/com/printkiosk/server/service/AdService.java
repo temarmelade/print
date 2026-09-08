@@ -32,6 +32,7 @@ public class AdService {
     private final FileStorageService storage;
     private final KioskServerProperties properties;
     private final com.printkiosk.server.domain.KioskRepository kioskRepository;
+    private final GifToVideoConverter gifConverter;
 
     private static final Map<String, String> ALLOWED_TYPES = Map.of(
             "image/jpeg", "jpg",
@@ -89,12 +90,18 @@ public class AdService {
                 : AdMediaType.IMAGE;
 
         Integer effectiveDuration = null;
-        if (mediaType == AdMediaType.IMAGE) {
+        // GIF анимированный, длительность у него своя — требовать её от
+        // оператора незачем. Если конвертация не сработает, показ пойдёт
+        // по значению ниже.
+        if (mediaType == AdMediaType.IMAGE && !"image/gif".equals(contentType)) {
             if (durationSec == null || durationSec <= 0) {
                 throw new FileValidationException(
                         "Для картинки нужно указать длительность показа (сек)");
             }
             effectiveDuration = durationSec;
+        } else if ("image/gif".equals(contentType)) {
+            // Запасной вариант: ffmpeg недоступен, GIF останется картинкой.
+            effectiveDuration = (durationSec != null && durationSec > 0) ? durationSec : 10;
         }
 
         UUID id = UuidCreator.getTimeOrderedEpoch();
@@ -106,6 +113,30 @@ public class AdService {
             throw new RuntimeException("Не удалось сохранить файл рекламы", e);
         }
 
+        long storedSize = file.getSize();
+
+        // GIF перегоняем в H.264. Формат сам по себе почти без сжатия, а его
+        // декодер в JavaFX работает на потоке отрисовки — отсюда рывки на
+        // мини-ПК. Конвертация одноразовая, здесь, а не на каждом киоске.
+        if ("image/gif".equals(contentType)) {
+            var converted = gifConverter.convert(storage.resolve(storedName));
+            if (converted.isPresent()) {
+                String mp4Name = "ad_" + id + ".mp4";
+                storage.deleteQuietly(storedName);
+                storedName = mp4Name;
+                // Тип меняется на VIDEO: киоск проиграет ролик плеером,
+                // а длительность возьмёт из самого файла.
+                mediaType = AdMediaType.VIDEO;
+                contentType = "video/mp4";
+                effectiveDuration = null;
+                try {
+                    storedSize = java.nio.file.Files.size(converted.get());
+                } catch (IOException ignored) {
+                    // размер некритичен, останется исходный
+                }
+            }
+        }
+
         AdCreative entity = AdCreative.builder()
                 .id(id)
                 .title(title != null && !title.isBlank() ? title : file.getOriginalFilename())
@@ -114,7 +145,7 @@ public class AdService {
                 .storedFilename(storedName)
                 .originalFilename(file.getOriginalFilename())
                 .contentType(contentType)
-                .fileSize(file.getSize())
+                .fileSize(storedSize)
                 .durationSec(effectiveDuration)
                 .sortOrder(sortOrder != null ? sortOrder : 0)
                 .enabled(true)

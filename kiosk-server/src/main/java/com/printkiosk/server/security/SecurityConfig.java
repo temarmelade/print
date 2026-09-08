@@ -97,7 +97,7 @@ public class SecurityConfig {
                         // Доступ есть и у киоска (проигрывание), и у админки
                         // (превью в разделе «Реклама»).
                         .requestMatchers("/api/ads/media/**")
-                        .hasAnyRole("KIOSK", "OWNER", "TECHNICIAN", "SUPPORT")
+                            .hasAnyRole("KIOSK", "OWNER", "TECHNICIAN", "SUPPORT")
 
                         // Статика (страница загрузки, файлы для печати) и
                         // всё вне /api остаются открытыми.

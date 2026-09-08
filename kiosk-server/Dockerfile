@@ -32,8 +32,10 @@ WORKDIR /app
 # Не root: пробой в приложении не должен давать права на весь контейнер.
 # curl нужен для HEALTHCHECK: в jre-jammy его нет, и проверка молча
 # падала бы, оставляя контейнер навсегда в статусе unhealthy.
+# ffmpeg перегоняет загруженные GIF в H.264: GIF почти не сжат, а его
+# декодер в JavaFX работает на потоке отрисовки и даёт рывки на киоске.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
+ && apt-get install -y --no-install-recommends curl ffmpeg \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd -r kiosk && useradd -r -g kiosk kiosk \
  && mkdir -p /var/lib/kiosk/uploads /var/log/kiosk \

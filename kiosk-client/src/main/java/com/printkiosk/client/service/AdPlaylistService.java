@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class AdPlaylistService {
 
     private final KioskServerClient server;
+    private final AdMediaCache mediaCache;
 
     private final AtomicReference<List<AdCreativeDto>> cache =
             new AtomicReference<>(List.of());
@@ -54,6 +55,10 @@ public class AdPlaylistService {
             List<AdCreativeDto> fresh = server.adPlaylist(AdSlot.HOME);
             cache.set(fresh != null ? fresh : List.of());
             log.debug("Ad playlist refreshed: {} item(s)", cache.get().size());
+
+            // Скачиваем файлы здесь, в фоновом потоке: заставка запускается
+            // из UI-потока и ждать сеть там нельзя.
+            mediaCache.sync(cache.get());
         } catch (Exception e) {
             log.warn("Ad playlist refresh failed, keeping cached version: {}",
                     e.getMessage());

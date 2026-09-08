@@ -1,6 +1,5 @@
 package com.printkiosk.client.ui;
 
-import com.printkiosk.client.config.ServerProperties;
 import com.printkiosk.shared.api.AdMediaType;
 import com.printkiosk.shared.api.dto.AdCreativeDto;
 import javafx.animation.PauseTransition;
@@ -19,8 +18,6 @@ import java.util.List;
 @Slf4j
 public class IdleScreensaver extends StackPane {
 
-    private final String baseUrl;
-
     private final ImageView imageView = new ImageView();
     private final MediaView mediaView = new MediaView();
 
@@ -32,12 +29,22 @@ public class IdleScreensaver extends StackPane {
 
     private static final int DEFAULT_IMAGE_SECONDS = 8;
 
-    public IdleScreensaver(ServerProperties serverProperties) {
-        this.baseUrl = serverProperties.getBaseUrl();
+    private final com.printkiosk.client.service.AdMediaCache mediaCache;
+
+    public IdleScreensaver(com.printkiosk.client.service.AdMediaCache mediaCache) {
+        this.mediaCache = mediaCache;
 
         getStyleClass().add("idle-screensaver");
         imageView.setPreserveRatio(true);
-        imageView.setSmooth(true);
+        // smooth=false осознанно. У анимированных GIF фильтрация применяется
+        // К КАЖДОМУ кадру при растягивании на весь экран, и на слабом мини-ПК
+        // это главный источник рывков. Для статичных картинок разница в
+        // качестве на такой диагонали незаметна.
+        imageView.setSmooth(false);
+        // Кешируем отрисованный узел: анимация GIF всё равно обновляет
+        // содержимое, но масштабирование пересчитывается реже.
+        imageView.setCache(true);
+        imageView.setCacheHint(javafx.scene.CacheHint.SPEED);
         mediaView.setPreserveRatio(true);
 
         imageView.fitWidthProperty().bind(widthProperty());
@@ -77,7 +84,16 @@ public class IdleScreensaver extends StackPane {
         if (playlist.isEmpty()) return;
 
         AdCreativeDto ad = playlist.get(index);
-        String url = resolveUrl(ad.mediaUrl());
+
+        // Только локальный файл. Сетевой адрес плееру не отдаём: JavaFX
+        // качает сам, без заголовка X-Kiosk-Key, и получает 403 —
+        // именно так на экране появлялся чёрный фон.
+        String url = mediaCache.localUri(ad);
+        if (url == null) {
+            log.warn("Ролик {} ещё не закеширован — пропускаем", ad.id());
+            next();
+            return;
+        }
 
         if (ad.mediaType() == AdMediaType.VIDEO) {
             playVideo(url);
@@ -90,7 +106,9 @@ public class IdleScreensaver extends StackPane {
         imageView.setVisible(true);
         mediaView.setVisible(false);
 
-        imageView.setImage(new Image(url, true));
+        // false = грузим синхронно: файл лежит на диске, ждать нечего,
+        // а при фоновой загрузке слайд мог смениться раньше отрисовки.
+        imageView.setImage(new Image(url, false));
 
         int seconds = (ad.durationSec() != null && ad.durationSec() > 0)
                 ? ad.durationSec()
@@ -140,12 +158,4 @@ public class IdleScreensaver extends StackPane {
         }
     }
 
-    private String resolveUrl(String mediaUrl) {
-        if (mediaUrl == null) return "";
-        if (mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://")) {
-            return mediaUrl;
-        }
-        String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-        return base + (mediaUrl.startsWith("/") ? mediaUrl : "/" + mediaUrl);
-    }
 }
