@@ -343,7 +343,7 @@
                            onMouseClicked="#onLogoClicked">
                     <ImageView fx:id="homeLogoImage"
                                preserveRatio="true"
-                               fitHeight="270"
+                               fitHeight="340"
                                pickOnBounds="true"/>
                 </StackPane>
 
@@ -363,7 +363,7 @@
                      Иконка слева, текст справа, шеврон-подсказка у правого края.
                      Каждая карточка ~330 дизайн-px в высоту = ~123 мм на 27" —
                      промахнуться пальцем невозможно. -->
-                <VBox alignment="CENTER" spacing="30" styleClass="home-cards-column" VBox.vgrow="ALWAYS">
+                <VBox alignment="CENTER" spacing="22" styleClass="home-cards-column" VBox.vgrow="ALWAYS">
 
                     <!-- Печать -->
                     <HBox alignment="CENTER_LEFT"

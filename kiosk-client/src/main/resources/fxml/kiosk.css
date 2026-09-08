@@ -2779,14 +2779,17 @@
 /* ---- Главный экран: карточки столбцом ---- */
 
 .home-cards-column {
-    -fx-padding: 30 0 0 0;
+    -fx-padding: 10 0 0 0;
     -fx-fill-width: true;
 }
 
 /* Широкая горизонтальная карточка вместо вертикальной колонки. */
 .home-cards-column .home-action-card {
-    -fx-min-height: 330px;         /* ~123 мм */
-    -fx-padding: 30 36 30 40;
+    /* 268 px ≈ 100 мм — палец попадает с запасом, а третья карточка
+       перестаёт упираться в нижний край. Раньше стояло 330, и вместе
+       с логотипом содержимое не влезало в канву 1600. */
+    -fx-min-height: 268px;
+    -fx-padding: 22 32 22 36;
     -fx-background-radius: 30;
     -fx-border-radius: 30;
     /* Акцент переезжает с нижней грани на левую — у горизонтальной
@@ -2831,7 +2834,7 @@
 
 .home-main-title    { -fx-font-size: 58px; }
 .home-main-subtitle { -fx-font-size: 32px; }
-.home-title-block   { -fx-padding: 40 0 0 0; }
+.home-title-block   { -fx-padding: 4 0 0 0; }
 .home-time          { -fx-font-size: 44px; }
 .home-date          { -fx-font-size: 22px; }
 
@@ -2973,7 +2976,7 @@
 /* ---- Логотип на главном экране ---- */
 
 .home-logo-box {
-    -fx-padding: 20 0 0 0;
+    -fx-padding: 4 0 0 0;
     -fx-alignment: center;
     /* Курсор-рука намекает, что по логотипу можно нажать
        (там же живёт вход в служебное меню). */
