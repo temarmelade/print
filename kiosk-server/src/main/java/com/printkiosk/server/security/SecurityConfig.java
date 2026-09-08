@@ -90,6 +90,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/payments/**").hasRole("KIOSK")
                         .requestMatchers("/api/scan-delivery/**").hasRole("KIOSK")
                         .requestMatchers("/api/ads/playlist").hasRole("KIOSK")
+                        // Сами файлы роликов. Отдельная строка обязательна:
+                        // без неё /api/ads/media/** попадал под denyAll ниже,
+                        // плейлист приходил, а картинки и видео — нет, и
+                        // заставка показывала чёрный фон.
+                        // Доступ есть и у киоска (проигрывание), и у админки
+                        // (превью в разделе «Реклама»).
+                        .requestMatchers("/api/ads/media/**")
+                        .hasAnyRole("KIOSK", "OWNER", "TECHNICIAN", "SUPPORT")
 
                         // Статика (страница загрузки, файлы для печати) и
                         // всё вне /api остаются открытыми.

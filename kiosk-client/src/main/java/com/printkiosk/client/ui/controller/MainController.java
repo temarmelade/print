@@ -119,6 +119,8 @@ public class MainController {
     // ══════════════════════════════════════════════════════════════════════
 
     @FXML private Label homeWelcomeLabel;
+    @FXML private StackPane homeLogoBox;
+    @FXML private ImageView homeLogoImage;
     @FXML private Label homeSubtitleLabel;
     @FXML private Label printCardTitle;
     @FXML private Label printCardDesc;
@@ -490,6 +492,11 @@ public class MainController {
     private final KioskActivityState activityState;
     private final HelpVideoLocator helpVideoLocator;
 
+    /** Путь к файлу логотипа на диске киоска. */
+    @org.springframework.beans.factory.annotation.Value(
+            "${kiosk.branding.logo-path:C:/PrintKiosk/config/logo.png}")
+    private String logoPath;
+
     private static final String LANG_ACTIVE_CLASS = "lang-btn-active";
 
     /** Формат времени часов на HOME — от языка не зависит. */
@@ -562,6 +569,7 @@ public class MainController {
     public void initialize() {
         log.info("MainController initialized");
         initLocalization();
+        loadHomeLogo();
         pinEntryFlow.setListener(buildPinEntryListener());
         previewFlow.setListener(buildPreviewListener());
         settingsFlow.setListener(buildSettingsListener());
@@ -2174,6 +2182,59 @@ public class MainController {
 
     // ---- ADMIN ----
     @FXML public void onLogoClicked()             { log.info("TODO: logo click counter / admin"); }
+
+    /**
+     * Подставляет логотип на главный экран.
+     *
+     * <p>Ищем в двух местах, в таком порядке:
+     * <ol>
+     *   <li>файл на диске киоска — чтобы на точке логотип меняли заменой
+     *       картинки, без пересборки;</li>
+     *   <li>ресурс {@code /images/logo.png} внутри jar — чтобы при
+     *       разработке достаточно было положить файл в resources, без
+     *       всякой папки C:\PrintKiosk.</li>
+     * </ol>
+     *
+     * <p>Нет ни там, ни там — блок остаётся скрытым вместе с managed,
+     * и заголовок занимает его место. Пустая рамка на главном экране
+     * выглядела бы как поломка.
+     */
+    private void loadHomeLogo() {
+        if (homeLogoBox == null || homeLogoImage == null) return;
+
+        try {
+            String source = null;
+
+            java.io.File file = new java.io.File(logoPath);
+            if (file.isFile() && file.length() > 0) {
+                source = file.toURI().toString();
+            } else {
+                var bundled = getClass().getResource("/images/logo.png");
+                if (bundled != null) source = bundled.toExternalForm();
+            }
+
+            if (source == null) {
+                log.info("Логотип не найден (ни {}, ни /images/logo.png) — блок скрыт", logoPath);
+                return;
+            }
+
+            var image = new Image(source, 0, 0, true, true);
+            if (image.isError()) {
+                log.warn("Логотип не читается: {}", source);
+                return;
+            }
+
+            homeLogoImage.setImage(image);
+            homeLogoBox.setVisible(true);
+            homeLogoBox.setManaged(true);
+            log.info("Логотип загружен: {} ({}x{})",
+                    source, (int) image.getWidth(), (int) image.getHeight());
+
+        } catch (Exception e) {
+            // Битый файл не должен мешать киоску работать.
+            log.warn("Не удалось загрузить логотип: {}", e.toString());
+        }
+    }
     @FXML public void onAdminRefreshClicked()     { log.info("TODO: refresh admin stats"); }
     @FXML public void onAdminBackClicked()        { changeStep(KioskStep.HOME); }
     @FXML public void onAdminTestPrintClicked()   { log.info("TODO: test print"); }

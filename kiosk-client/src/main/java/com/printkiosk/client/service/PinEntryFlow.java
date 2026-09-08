@@ -57,6 +57,13 @@ public class PinEntryFlow {
 
         buffer.append(digit);
         notifyBufferChanged();
+
+        // Четвёртая цифра сама запускает проверку: набирать код и потом
+        // искать кнопку «Далее» — лишний шаг, который люди у терминала
+        // регулярно пропускают. Кнопка остаётся как запасной путь.
+        if (buffer.length() == PIN_LENGTH) {
+            submit();
+        }
     }
 
     public void pressBackspace() {
@@ -69,6 +76,10 @@ public class PinEntryFlow {
     /**
      * Отправить накопленный PIN на сервер. Если PIN неполный,
      * слушатель получит {@link Listener#onShortPin()} и больше ничего.
+     *
+     * <p>Вызывается автоматически по четвёртой цифре и вручную с кнопки.
+     * Повторный вызов во время запроса безопасен — его отсекает
+     * {@code requestInFlight}.
      */
     public void submit() {
         if (requestInFlight) return;

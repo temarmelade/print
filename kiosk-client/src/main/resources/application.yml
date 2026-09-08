@@ -15,10 +15,17 @@ kiosk:
     # умолчанию здесь быть не должно: файл лежит в публичном репозитории,
     # и прежний ключ отсюда следует считать скомпрометированным —
     # перевыпустите его кнопкой «Обновить ключ» в разделе «Терминалы».
-    api-key: ${KIOSK_API_KEY:}
+    api-key: ${KIOSK_API_KEY:9_MUAtl2qkD987eCGs7n_oBW2KLSsngZl-N1ktl3wd8}
     connect-timeout: PT5S
     read-timeout: PT10S
     upload-timeout: PT60S
+  branding:
+    # Логотип на главном экране. Сначала ищется этот файл на диске
+    # (так его меняют на точке без пересборки), затем — ресурс
+    # /images/logo.png внутри jar. Нет ни того, ни другого — блок
+    # логотипа просто не показывается.
+    logo-path: ${KIOSK_LOGO_PATH:C:/PrintKiosk/config/logo.png}
+
   upload:
     telegram-bot-url: ${KIOSK_TELEGRAM_BOT_URL:https://t.me/AlaTooPrintKioskBot}
 

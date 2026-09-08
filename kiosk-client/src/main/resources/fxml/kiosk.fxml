@@ -330,6 +330,23 @@
                     </HBox>
                 </HBox>
 
+                <!-- Логотип.
+                     Файл кладётся в C:\PrintKiosk\config\logo.png и
+                     подставляется контроллером на старте — заменить его
+                     можно без пересборки. Если файла нет, блок скрывается
+                     целиком (visible + managed), и заголовок поднимается
+                     на его место, не оставляя дыры. -->
+                <StackPane fx:id="homeLogoBox"
+                           styleClass="home-logo-box"
+                           visible="false"
+                           managed="false"
+                           onMouseClicked="#onLogoClicked">
+                    <ImageView fx:id="homeLogoImage"
+                               preserveRatio="true"
+                               fitHeight="180"
+                               pickOnBounds="true"/>
+                </StackPane>
+
                 <!-- Заголовок -->
                 <VBox alignment="CENTER" spacing="8" styleClass="home-title-block">
                     <Label fx:id="homeWelcomeLabel"
