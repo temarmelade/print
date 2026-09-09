@@ -1438,9 +1438,13 @@
                                 styleClass="btn-bypass"/>
                     </VBox>
 
+                    <!-- Маскот прижат к левому краю карточки. translateX
+                         сдвигает его вправо от края, поэтому уменьшение
+                         значения двигает картинку ВЛЕВО. -->
                     <ImageView fitWidth="320" preserveRatio="true"
                                StackPane.alignment="CENTER_LEFT"
-                               translateX="70">
+                               translateX="-50"
+                               translateY="70">
                         <Image url="@/images/homemade_for_pay.png"/>
                     </ImageView>
 

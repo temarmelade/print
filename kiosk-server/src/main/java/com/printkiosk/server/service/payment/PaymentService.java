@@ -53,11 +53,15 @@ public class PaymentService {
         // Idempotency
         if (job.getPaymentId() != null) {
             log.info("Payment session already exists for job={}, returning existing", jobId);
+            // Картинку не храним в БД: при повторном запросе киоск
+            // нарисует QR из ссылки. Это редкий путь — сессия уже создана
+            // и человек, скорее всего, просто вернулся на экран.
             return new PaymentSessionDto(
                     job.getId(),
                     job.getPaymentId(),
                     job.getPaymentUrl(),
-                    job.getPriceSom());
+                    job.getPriceSom(),
+                    null);
         }
 
         if (job.getStatus() != PrintJobStatus.READY) {
@@ -99,7 +103,8 @@ public class PaymentService {
                 job.getId(),
                 gwResult.paymentId(),
                 gwResult.paymentUrl(),
-                job.getPriceSom());
+                job.getPriceSom(),
+                gwResult.qrImageBase64());
     }
 
     // ════════════════════════════════════════════════════════════════

@@ -20,6 +20,7 @@ import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
@@ -980,6 +981,34 @@ public class MainController {
      * <p>Диалог здесь не годится: он требует нажатия «ОК», а человек у
      * киоска этого не ждёт — сообщение должно уйти само.
      */
+    /**
+     * Разбирает QR-картинку от банка из base64.
+     *
+     * <p>Значение приходит либо чистым base64, либо data-URL
+     * ({@code data:image/png;base64,...}) — второе встречается, когда
+     * банк отдаёт строку для прямой вставки в HTML.
+     *
+     * @return изображение или null, если картинки нет либо она битая
+     */
+    private Image decodeBankQr(String base64) {
+        if (base64 == null || base64.isBlank()) return null;
+        try {
+            String payload = base64.contains(",")
+                    ? base64.substring(base64.indexOf(',') + 1)
+                    : base64;
+            byte[] bytes = java.util.Base64.getDecoder().decode(payload.trim());
+            var image = new Image(new java.io.ByteArrayInputStream(bytes));
+            if (image.isError()) {
+                log.warn("QR от банка не читается — нарисуем свой");
+                return null;
+            }
+            return image;
+        } catch (Exception e) {
+            log.warn("Не удалось разобрать QR от банка: {}", e.toString());
+            return null;
+        }
+    }
+
     private void showToast(String message) {
         if (toastLabel == null) return;
 
@@ -2509,10 +2538,16 @@ public class MainController {
                         loc.get("price.som", String.valueOf(session.priceSom())));
                 paymentInstructionLabel.setText(loc.get("payment.instruction"));
 
-                // Генерируем QR из paymentUrl. Payload оплаты приходит от
-                // платёжного шлюза и от языка киоска НЕ зависит — не трогаем.
+                // Если банк прислал готовую картинку — показываем ЕЁ.
+                // Свой QR из ссылки рисуем только как запасной вариант:
+                // банковское приложение ждёт платёжный payload в своём
+                // формате, и перекодированный URL оно может не распознать.
                 try {
-                    Image qrImage = QrCodeGenerator.generate(session.paymentUrl(), 280);
+                    Image qrImage = decodeBankQr(session.qrImageBase64());
+                    if (qrImage == null) {
+                        log.info("Банк не прислал QR — рисуем из ссылки");
+                        qrImage = QrCodeGenerator.generate(session.paymentUrl(), 280);
+                    }
                     qrCodeImageView.setImage(qrImage);
                 } catch (Exception e) {
                     log.error("Failed to generate QR code", e);

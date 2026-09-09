@@ -46,6 +46,18 @@ public class BakaiPaymentPoller {
 
         for (PrintJobEntity job : pending) {
             String orderId = job.getPaymentId();
+
+            // Опрашиваем ТОЛЬКО платежи, созданные Bakai. У них paymentId —
+            // это наш orderId вида PIN-1234-a1b2c3d4, а у Finik там UUID
+            // от банка. Без этой проверки после переключения шлюза опрос
+            // спрашивал у Bakai про чужие платежи: в лучшем случае мусор
+            // в логах, в худшем — совпадение идентификатора и ложное
+            // подтверждение оплаты.
+            if (PaymentService.extractPin(orderId) == null) {
+                log.debug("Платёж {} создан другим шлюзом — пропускаем", orderId);
+                continue;
+            }
+
             String state = gateway.fetchState(orderId);
 
             // null = связи не было. Не трогаем задание: объявить платёж
