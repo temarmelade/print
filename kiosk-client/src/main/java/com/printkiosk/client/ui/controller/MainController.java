@@ -20,7 +20,6 @@ import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
@@ -427,6 +426,8 @@ public class MainController {
     @FXML private Button helpVideoCloseBtn;
 
     @FXML private Label toastLabel;
+    @FXML private Label idleTimerLabel;
+    @FXML private HBox  idleTimerBox;
     /** Таймер скрытия текущего уведомления. */
     private javafx.animation.PauseTransition toastTimer;
 
@@ -535,7 +536,16 @@ public class MainController {
     private IdleScreensaver screensaver;
     private IdleWatcher idleWatcher;
     /** Сколько киоск должен простаивать до показа заставки. */
+    /** Обычный тайм-аут бездействия: минута на любом рабочем экране. */
     private static final java.time.Duration IDLE_TIMEOUT = java.time.Duration.ofSeconds(60);
+
+    /**
+     * Тайм-аут на экранах оплаты. Минуты категорически мало: человек
+     * достаёт телефон, ищет приложение банка, сканирует код, подтверждает
+     * платёж. Сброс посреди этого означает потерянный заказ и, возможно,
+     * списанные деньги без печати.
+     */
+    private static final java.time.Duration PAYMENT_IDLE_TIMEOUT = java.time.Duration.ofMinutes(5);
 
     public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,
                           PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow,
@@ -1164,7 +1174,7 @@ public class MainController {
         scanVideoBox.setClip(mask);
 
         try {
-            var url = getClass().getResource("/videos/scan_loop.gif");
+            var url = getClass().getResource("/videos/scan_loop.mp4");
             if (url != null) {
                 var media  = new javafx.scene.media.Media(url.toExternalForm());
                 scanVideoPlayer = new javafx.scene.media.MediaPlayer(media);
@@ -1283,6 +1293,8 @@ public class MainController {
                 this::showScreensaver,
                 this::hideScreensaver);
 
+        bindIdleTimerLabel();
+
         // Scene появляется не сразу — цепляемся, когда станет доступна.
         if (rootStack.getScene() != null) {
             idleWatcher.attach(rootStack.getScene());
@@ -1291,6 +1303,51 @@ public class MainController {
                 if (newScene != null) idleWatcher.attach(newScene);
             });
         }
+    }
+
+    /**
+     * Показывает остаток времени до сброса сессии.
+     *
+     * <p>Видна на всех рабочих экранах. На главном не показывается: там
+     * сбрасывать нечего, а по тому же таймеру запускается реклама.
+     *
+     * <p>На последних секундах меняет цвет — так человек понимает, что
+     * киоск сейчас вернётся на начало, и успевает коснуться экрана.
+     */
+    private void bindIdleTimerLabel() {
+        if (idleTimerLabel == null || idleWatcher == null) return;
+
+        idleWatcher.remainingSecondsProperty().addListener((obs, old, value) ->
+                renderIdleTimer(value.intValue()));
+        renderIdleTimer(idleWatcher.remainingSecondsProperty().get());
+    }
+
+    private void renderIdleTimer(int left) {
+        if (idleTimerBox == null || idleTimerLabel == null || idleWatcher == null) return;
+
+        boolean show = left > 0
+                && currentStep != KioskStep.HOME
+                && currentStep != KioskStep.OUT_OF_SERVICE
+                && !idleWatcher.isScreensaverActive();
+
+        idleTimerBox.setVisible(show);
+        idleTimerBox.setManaged(show);
+        if (!show) return;
+
+        // Только цифры: иконка часов уже говорит, что это отсчёт, а
+        // фраза про завершение сессии на рабочем экране лишняя.
+        idleTimerLabel.setText(formatMmSs(left));
+        idleTimerBox.pseudoClassStateChanged(IDLE_URGENT, left <= IDLE_URGENT_FROM_SEC);
+    }
+
+    /** С этой отметки счётчик становится тревожным по цвету. */
+    private static final int IDLE_URGENT_FROM_SEC = 15;
+
+    private static final javafx.css.PseudoClass IDLE_URGENT =
+            javafx.css.PseudoClass.getPseudoClass("urgent");
+
+    private static String formatMmSs(int totalSeconds) {
+        return String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60);
     }
 
     /** Показать заставку с актуальным плейлистом (если он непустой). */
@@ -1378,6 +1435,21 @@ public class MainController {
             closeHelpVideo();
         }
         this.currentStep = step;
+
+        // Экран оплаты живёт дольше: человек уходит в телефон, и минуты
+        // на банковское приложение не хватает.
+        if (idleWatcher != null) {
+            boolean paying = step == KioskStep.PAYMENT
+                    || step == KioskStep.SCAN_DELIVERY;
+            idleWatcher.setTimeout(paying ? PAYMENT_IDLE_TIMEOUT : IDLE_TIMEOUT);
+        }
+        if (idleTimerLabel != null) {
+            // На главном и «не работает» счётчик не нужен. На остальных
+            // экранах не трогаем: значение обновит слушатель на ближайшем
+            // тике, а лишнее скрытие давало бы заметное мигание.
+            renderIdleTimer(idleWatcher != null
+                    ? idleWatcher.remainingSecondsProperty().get() : 0);
+        }
         // Публикуем занятость для дистанционных команд: перезагрузка не
         // должна прилететь между оплатой и выходом документа.
         activityState.setBusy(step != KioskStep.HOME

@@ -1443,7 +1443,7 @@
                          значения двигает картинку ВЛЕВО. -->
                     <ImageView fitWidth="320" preserveRatio="true"
                                StackPane.alignment="CENTER_LEFT"
-                               translateX="-50"
+                               translateX="-40"
                                translateY="70">
                         <Image url="@/images/homemade_for_pay.png"/>
                     </ImageView>
@@ -1725,20 +1725,43 @@
                 </VBox>
             </StackPane>
 
+            <!-- Обратный отсчёт до сброса сессии.
+                 Сверху по центру: место в потоке взгляда, но без подложки,
+                 поэтому элемент не выглядит наклейкой поверх интерфейса.
+                 mouseTransparent — чтобы не перехватывать нажатия по тому,
+                 что под ним. -->
+            <!-- Без обёртки: вложенный StackPane растягивался по центру
+                 родителя, и TOP_CENTER на его ребёнке уже ничего не решал —
+                 таймер оказывался посреди экрана. Кладём HBox прямо в
+                 rootStack, где выравнивание применяется как ожидается. -->
+            <HBox fx:id="idleTimerBox"
+                  styleClass="idle-timer"
+                  alignment="CENTER"
+                  spacing="12"
+                  maxWidth="-Infinity"
+                  maxHeight="-Infinity"
+                  mouseTransparent="true"
+                  pickOnBounds="false"
+                  visible="false"
+                  managed="false"
+                  StackPane.alignment="TOP_CENTER">
+                <FontIcon iconLiteral="far-clock" iconSize="30" styleClass="idle-timer-icon"/>
+                <Label fx:id="idleTimerLabel"/>
+            </HBox>
+
             <!-- Всплывающее уведомление. Поверх всего, включая видеооверлей;
                  mouseTransparent — чтобы не перехватывать нажатия, пока висит. -->
-            <StackPane fx:id="toastLayer"
-                       mouseTransparent="true"
-                       pickOnBounds="false"
-                       StackPane.alignment="BOTTOM_CENTER">
-                <Label fx:id="toastLabel"
-                       styleClass="toast"
-                       wrapText="true"
-                       maxWidth="720"
-                       visible="false"
-                       managed="false"
-                       StackPane.alignment="BOTTOM_CENTER"/>
-            </StackPane>
+            <!-- Тоже без обёртки: вложенный StackPane растягивался на весь
+                 родитель, и уведомление всплывало посреди экрана вместо низа. -->
+            <Label fx:id="toastLabel"
+                   styleClass="toast"
+                   wrapText="true"
+                   maxWidth="720"
+                   mouseTransparent="true"
+                   pickOnBounds="false"
+                   visible="false"
+                   managed="false"
+                   StackPane.alignment="BOTTOM_CENTER"/>
         </StackPane>
     </center>
 </BorderPane>
