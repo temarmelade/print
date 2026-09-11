@@ -1174,7 +1174,7 @@ public class MainController {
         scanVideoBox.setClip(mask);
 
         try {
-            var url = getClass().getResource("/videos/scan_loop.mp4");
+            var url = getClass().getResource("/videos/scan_loop.gif");
             if (url != null) {
                 var media  = new javafx.scene.media.Media(url.toExternalForm());
                 scanVideoPlayer = new javafx.scene.media.MediaPlayer(media);

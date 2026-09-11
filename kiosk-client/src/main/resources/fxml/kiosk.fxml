@@ -756,48 +756,50 @@
                     </VBox>
                 </StackPane>
 
-                <!-- Нижний статус-бар: сканер / режим / формат -->
-                <HBox styleClass="scan-status-bar" alignment="CENTER" spacing="140">
+                <!-- Нижний статус-бар: сканер / режим / формат.
+                     В портрете три блока в ряд не помещались: при ширине
+                     канвы 900 им требовалось около 1130 px, и подписи
+                     обрезались многоточием. Теперь иконка сверху, текст под
+                     ней по центру — колонка получается вдвое уже, и каждый
+                     блок тянется на равную треть. -->
+                <HBox styleClass="scan-status-bar" alignment="CENTER" spacing="0">
 
-                    <HBox alignment="CENTER_LEFT" spacing="14" styleClass="scan-status-item">
-                        <ImageView fitWidth="68" fitHeight="68" preserveRatio="true">
+                    <VBox alignment="CENTER" spacing="6" styleClass="scan-status-item"
+                          HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                        <ImageView fitWidth="56" fitHeight="56" preserveRatio="true">
                             <Image url="@/images/scan/status_scanner_icon.png"/>
                         </ImageView>
-                        <VBox spacing="2">
-                            <HBox spacing="8" alignment="CENTER_LEFT">
-                                <!-- Модель — из конфигурации железа, не переводится -->
-                                <Label text="Canon MF233w" styleClass="scan-status-title"/>
-                                <Label text="✓" styleClass="scan-status-check"/>
-                            </HBox>
-                            <Label fx:id="scanStatusConnectedLabel"
-                                   text="Сканер подключен"
-                                   styleClass="scan-status-sub"/>
-                        </VBox>
-                    </HBox>
+                        <HBox spacing="6" alignment="CENTER">
+                            <!-- Модель — из конфигурации железа, не переводится -->
+                            <Label text="Canon MF233w" styleClass="scan-status-title"/>
+                            <Label text="✓" styleClass="scan-status-check"/>
+                        </HBox>
+                        <Label fx:id="scanStatusConnectedLabel"
+                               text="Сканер подключен"
+                               styleClass="scan-status-sub"/>
+                    </VBox>
 
-                    <HBox alignment="CENTER_LEFT" spacing="14" styleClass="scan-status-item">
-                        <ImageView fitWidth="68" fitHeight="68" preserveRatio="true">
+                    <VBox alignment="CENTER" spacing="6" styleClass="scan-status-item"
+                          HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                        <ImageView fitWidth="56" fitHeight="56" preserveRatio="true">
                             <Image url="@/images/scan/status_color_icon.png"/>
                         </ImageView>
-                        <VBox spacing="2">
-                            <Label fx:id="scanStatusColorLabel"
-                                   text="Цветной режим"
-                                   styleClass="scan-status-title"/>
-                            <Label text="300 DPI" styleClass="scan-status-sub"/>
-                        </VBox>
-                    </HBox>
+                        <Label fx:id="scanStatusColorLabel"
+                               text="Цветной режим"
+                               styleClass="scan-status-title"/>
+                        <Label text="300 DPI" styleClass="scan-status-sub"/>
+                    </VBox>
 
-                    <HBox alignment="CENTER_LEFT" spacing="14" styleClass="scan-status-item">
-                        <ImageView fitWidth="68" fitHeight="68" preserveRatio="true">
+                    <VBox alignment="CENTER" spacing="6" styleClass="scan-status-item"
+                          HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                        <ImageView fitWidth="56" fitHeight="56" preserveRatio="true">
                             <Image url="@/images/scan/status_format_icon.png"/>
                         </ImageView>
-                        <VBox spacing="2">
-                            <Label fx:id="scanStatusFormatLabel"
-                                   text="Формат"
-                                   styleClass="scan-status-title"/>
-                            <Label text="A4" styleClass="scan-status-sub"/>
-                        </VBox>
-                    </HBox>
+                        <Label fx:id="scanStatusFormatLabel"
+                               text="Формат"
+                               styleClass="scan-status-title"/>
+                        <Label text="A4" styleClass="scan-status-sub"/>
+                    </VBox>
                 </HBox>
             </VBox>
 
@@ -1443,8 +1445,8 @@
                          значения двигает картинку ВЛЕВО. -->
                     <ImageView fitWidth="320" preserveRatio="true"
                                StackPane.alignment="CENTER_LEFT"
-                               translateX="-40"
-                               translateY="70">
+                               translateX="-10"
+                               translateY="40">
                         <Image url="@/images/homemade_for_pay.png"/>
                     </ImageView>
 

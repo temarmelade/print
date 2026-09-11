@@ -3016,3 +3016,30 @@
 .idle-timer:urgent .idle-timer-icon {
     -fx-icon-color: #d63d3d;
 }
+
+/* ---- Статус-бар сканирования в портрете ----
+   Иконка над текстом, три равные колонки. Прежняя горизонтальная
+   раскладка требовала ~1130 px при ширине канвы 900, из-за чего
+   подписи схлопывались в многоточие. */
+
+.scan-status-bar {
+    -fx-padding: 22 20 26 20;
+}
+
+.scan-status-item {
+    -fx-padding: 0 6;
+}
+
+.scan-status-title {
+    -fx-font-size: 20px;
+    -fx-text-alignment: center;
+}
+
+.scan-status-sub {
+    -fx-font-size: 17px;
+    -fx-text-alignment: center;
+}
+
+.scan-status-check {
+    -fx-font-size: 19px;
+}
