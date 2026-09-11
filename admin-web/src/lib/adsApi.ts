@@ -1,4 +1,4 @@
-import { api, apiUpload } from "./apiClient.ts";
+import { api, apiUpload, getToken, BASE } from "./apiClient.ts";
 
 export type AdSlot = "HOME" | "BANNER";
 export type AdMediaType = "IMAGE" | "VIDEO";
@@ -88,6 +88,27 @@ export function setAdTargets(id: string, kioskIds: string[]): Promise<AdCreative
 export function targetLabel(ad: AdCreative, names: Record<string, string>): string {
   if (ad.kioskIds.length === 0) return "Вся сеть";
   return ad.kioskIds.map((id) => names[id] ?? id).join(", ");
+}
+
+/**
+ * Загружает медиафайл рекламы и отдаёт временный blob-URL.
+ *
+ * <p>Нужен потому, что теги <img> и <video> не отправляют заголовок
+ * Authorization: браузер запрашивает файл сам, без JWT, и получает 401 —
+ * превью остаются пустыми. Поэтому качаем файл через apiClient, который
+ * заголовок ставит, и подсовываем разметке ссылку на уже полученные
+ * данные.
+ *
+ * <p>Вызывающий код обязан освободить URL через URL.revokeObjectURL,
+ * иначе blob-ы копятся в памяти вкладки до её закрытия.
+ */
+export async function fetchAdMedia(id: string): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`${BASE}/ads/media/${id}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`Не удалось загрузить превью: ${res.status}`);
+  return URL.createObjectURL(await res.blob());
 }
 
 export function setAdEnabled(id: string, enabled: boolean): Promise<AdCreative> {

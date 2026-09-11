@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import {
   listAds, uploadAd, deleteAd, setAdEnabled, updateAd, setAdTargets,
+  fetchAdMedia,
   formatSize, ACCEPT_MIME, SLOT_LABEL, SLOT_HINT,
   type AdCreative, type AdSlot,
 } from "../lib/adsApi.ts";
@@ -349,6 +350,35 @@ function AdCard({
   const [editing, setEditing] = useState(false);
   const [editingTargets, setEditingTargets] = useState(false);
   const [draftTargets, setDraftTargets] = useState<string[]>(ad.kioskIds);
+
+  /**
+   * Ссылка на скачанный файл превью. Пусто, пока грузится или если
+   * загрузить не удалось — тогда показываем заглушку вместо битой
+   * картинки с именем файла вместо изображения.
+   */
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    let cancelled = false;
+
+    fetchAdMedia(ad.id)
+      .then((url) => {
+        if (cancelled) {
+          URL.revokeObjectURL(url);   // карточка исчезла, пока грузили
+          return;
+        }
+        objectUrl = url;
+        setPreviewUrl(url);
+      })
+      .catch(() => { /* заглушка ниже покажет, что превью нет */ });
+
+    return () => {
+      cancelled = true;
+      // Без revoke blob-ы остаются в памяти вкладки до её закрытия.
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [ad.id]);
   const [title, setTitle] = useState(ad.title);
   const [duration, setDuration] = useState(String(ad.durationSec ?? ""));
 
@@ -388,12 +418,16 @@ function AdCard({
   return (
     <div className={"card ad-card" + (ad.enabled ? "" : " off")}>
       <div className="ad-preview">
-        {isVideo ? (
-          <video src={ad.mediaUrl} muted loop playsInline
+        {!previewUrl ? (
+          <div className="ad-preview-empty">
+            {isVideo ? <Film size={22} /> : <ImageIcon size={22} />}
+          </div>
+        ) : isVideo ? (
+          <video src={previewUrl} muted loop playsInline
                  onMouseEnter={(e) => void e.currentTarget.play()}
                  onMouseLeave={(e) => e.currentTarget.pause()} />
         ) : (
-          <img src={ad.mediaUrl} alt={ad.title} loading="lazy" />
+          <img src={previewUrl} alt={ad.title} />
         )}
         <span className="ad-type mono">
           {isVideo ? <Film size={12} /> : <ImageIcon size={12} />}

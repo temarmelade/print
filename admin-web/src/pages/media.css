@@ -259,3 +259,16 @@
 }
 
 .ad-targets-edit .ad-edit-actions { margin-top: 10px; }
+
+/* Заглушка, пока превью грузится или если файл не отдался.
+   Раньше здесь оставалась битая картинка с именем файла поверх
+   карточки — выглядело как сломанная админка. */
+.ad-preview-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--text-muted, #8a94a6);
+    opacity: 0.4;
+}

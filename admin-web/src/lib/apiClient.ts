@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+export const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const TOKEN_KEY = "pk_admin_token";
 
 export function getToken(): string | null {
