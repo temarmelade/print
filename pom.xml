@@ -41,12 +41,11 @@
     </dependencyManagement>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
+        <!-- spring-boot-maven-plugin намеренно НЕ в <plugins>: отсюда он
+             применился бы и к kiosk-shared, а это библиотека без главного
+             класса — упаковка такого модуля падает. Плагин подключают
+             только приложения: kiosk-server и kiosk-client. Здесь лишь
+             фиксируется версия. -->
         <pluginManagement>
             <plugins>
                 <plugin>

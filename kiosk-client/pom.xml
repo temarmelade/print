@@ -137,6 +137,17 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <!-- Без явной цели repackage плагин не делает jar
+                     исполняемым: родитель здесь обычный pom, а не
+                     spring-boot-starter-parent, где она привязана сама.
+                     Симптом отсутствия — «no main manifest attribute». -->
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
                     <mainClass>com.printkiosk.client.KioskClientApplication</mainClass>
                 </configuration>
