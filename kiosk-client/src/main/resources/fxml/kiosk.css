@@ -3043,3 +3043,35 @@
 .scan-status-check {
     -fx-font-size: 19px;
 }
+
+/* ---- Экран завершения в портрете ----
+   Раскладка стала одноколоночной, места по ширине теперь хватает,
+   поэтому подписи можно вернуть к читаемым размерам. Раньше они были
+   рассчитаны на узкую левую колонку ландшафтного варианта. */
+
+.completed-column {
+    -fx-fill-width: true;
+}
+
+.completed-title {
+    -fx-font-size: 44px;
+}
+
+.completed-desc {
+    -fx-font-size: 24px;
+    -fx-line-spacing: 4px;
+}
+
+.completed-btn {
+    -fx-min-height: 100px;
+    -fx-font-size: 28px;
+}
+
+/* Блок автовозврата: 13px на 27" — это около 5 мм, прочитать нельзя. */
+.auto-return-label {
+    -fx-font-size: 19px;
+}
+
+.auto-return-value {
+    -fx-font-size: 25px;
+}

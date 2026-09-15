@@ -1576,84 +1576,20 @@
             <VBox fx:id="completedScreen" styleClass="screen, completed-screen" spacing="0"
                   visible="false" managed="false">
 
-                <!-- Внутренний splitter 45/55. VBox остаётся корнем для setScreenVisible(...) -->
-                <HBox VBox.vgrow="ALWAYS" spacing="24" alignment="CENTER"
-                      styleClass="completed-split">
-                    <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+                <!-- Одна колонка вместо разделения 45/55.
+                     В ландшафте левая карточка была 450 px, правая 550,
+                     плюс отступы — около 1090 px. В канву 900 это не
+                     влезало, левую колонку сжимало до ~165 px, и все
+                     подписи схлопывались в многоточие: «Печать ...»,
+                     «Н...», «На г...». -->
+                <VBox alignment="TOP_CENTER" spacing="20" VBox.vgrow="ALWAYS"
+                      styleClass="completed-column">
+                    <padding><Insets top="24" right="30" bottom="24" left="30"/></padding>
 
-                    <!-- ===================== LEFT CARD (~45%) ===================== -->
-                    <VBox styleClass="content-card, completed-card-left"
-                          HBox.hgrow="ALWAYS"
-                          alignment="TOP_CENTER" spacing="22"
-                          prefWidth="450" maxWidth="Infinity">
-                        <padding><Insets top="48" right="48" bottom="40" left="48"/></padding>
-
-                        <!-- Success icon circle -->
-                        <StackPane styleClass="success-circle">
-                            <FontIcon iconLiteral="fas-check" iconSize="56" styleClass="success-check"/>
-                        </StackPane>
-
-                        <!-- Title -->
-                        <Label fx:id="completedMessageLabel"
-                               text="Печать завершена!"
-                               styleClass="completed-title"/>
-
-                        <!-- Description -->
-                        <Label fx:id="completedSubMessageLabel"
-                               text="Ваш документ готов. Пожалуйста, заберите документы из лотка принтера."
-                               styleClass="completed-desc"
-                               alignment="CENTER"
-                               wrapText="true"
-                               textAlignment="CENTER"
-                               maxWidth="440"/>
-
-                        <!-- Action buttons (вертикальный стек, как на референсе) -->
-                        <VBox spacing="12" alignment="CENTER" styleClass="completed-actions"
-                              maxWidth="360">
-                            <Button fx:id="printAnotherBtn"
-                                    text="Напечатать ещё"
-                                    onAction="#onPrintAnotherClicked"
-                                    styleClass="btn-primary, completed-btn"
-                                    maxWidth="Infinity"
-                                    contentDisplay="LEFT" graphicTextGap="10">
-                                <graphic><FontIcon iconLiteral="fas-print" iconSize="18"/></graphic>
-                            </Button>
-                            <Button fx:id="completedHomeBtn"
-                                    text="На главный экран"
-                                    onAction="#onCompletedHomeClicked"
-                                    styleClass="btn-outline, completed-btn"
-                                    maxWidth="Infinity"
-                                    contentDisplay="LEFT" graphicTextGap="10">
-                                <graphic><FontIcon iconLiteral="fas-home" iconSize="18"/></graphic>
-                            </Button>
-                        </VBox>
-
-                        <!-- Auto-return card -->
-                        <HBox styleClass="auto-return-card" alignment="CENTER_LEFT"
-                              spacing="16" maxWidth="360">
-                            <padding><Insets top="14" right="18" bottom="14" left="18"/></padding>
-                            <FontIcon iconLiteral="far-clock" iconSize="26" styleClass="auto-return-icon"/>
-                            <VBox HBox.hgrow="ALWAYS" spacing="2">
-                                <Label text="Возврат на главный экран через:" styleClass="auto-return-label"/>
-                                <Label fx:id="autoReturnCounterLabel"
-                                       text="20 секунд"
-                                       styleClass="auto-return-value"/>
-                            </VBox>
-                            <StackPane styleClass="countdown-circle">
-                                <ProgressIndicator fx:id="autoReturnProgress"
-                                                   prefWidth="48" prefHeight="48"
-                                                   progress="1.0"
-                                                   styleClass="countdown-progress"/>
-                            </StackPane>
-                        </HBox>
-                    </VBox>
-
-                    <!-- ===================== RIGHT CARD (~55%) ===================== -->
+                    <!-- Маскот сверху: он поздравляет, поэтому встречает первым -->
                     <StackPane styleClass="content-card, completed-card-right"
-                               HBox.hgrow="ALWAYS"
-                               prefWidth="550" maxWidth="Infinity"
-                               alignment="CENTER">
-                        <ImageView fitWidth="560" fitHeight="560"
+                               maxWidth="Infinity" alignment="CENTER">
+                        <ImageView fitWidth="420" fitHeight="380"
                                    preserveRatio="true" pickOnBounds="true"
                                    smooth="true">
                             <image>
@@ -1662,7 +1598,66 @@
                         </ImageView>
                     </StackPane>
 
-                </HBox>
+                    <VBox styleClass="content-card, completed-card-left"
+                          alignment="TOP_CENTER" spacing="18"
+                          maxWidth="Infinity" VBox.vgrow="ALWAYS">
+                        <padding><Insets top="30" right="40" bottom="30" left="40"/></padding>
+
+                        <StackPane styleClass="success-circle">
+                            <FontIcon iconLiteral="fas-check" iconSize="56" styleClass="success-check"/>
+                        </StackPane>
+
+                        <Label fx:id="completedMessageLabel"
+                               text="Печать завершена!"
+                               styleClass="completed-title"/>
+
+                        <Label fx:id="completedSubMessageLabel"
+                               text="Ваш документ готов. Пожалуйста, заберите документы из лотка принтера."
+                               styleClass="completed-desc"
+                               alignment="CENTER"
+                               wrapText="true"
+                               textAlignment="CENTER"
+                               maxWidth="700"/>
+
+                        <VBox spacing="14" alignment="CENTER" styleClass="completed-actions"
+                              maxWidth="640">
+                            <Button fx:id="printAnotherBtn"
+                                    text="Напечатать ещё"
+                                    onAction="#onPrintAnotherClicked"
+                                    styleClass="btn-primary, completed-btn"
+                                    maxWidth="Infinity"
+                                    contentDisplay="LEFT" graphicTextGap="12">
+                                <graphic><FontIcon iconLiteral="fas-print" iconSize="22"/></graphic>
+                            </Button>
+                            <Button fx:id="completedHomeBtn"
+                                    text="На главный экран"
+                                    onAction="#onCompletedHomeClicked"
+                                    styleClass="btn-outline, completed-btn"
+                                    maxWidth="Infinity"
+                                    contentDisplay="LEFT" graphicTextGap="12">
+                                <graphic><FontIcon iconLiteral="fas-home" iconSize="22"/></graphic>
+                            </Button>
+                        </VBox>
+
+                        <HBox styleClass="auto-return-card" alignment="CENTER_LEFT"
+                              spacing="16" maxWidth="640">
+                            <padding><Insets top="14" right="20" bottom="14" left="20"/></padding>
+                            <FontIcon iconLiteral="far-clock" iconSize="28" styleClass="auto-return-icon"/>
+                            <VBox HBox.hgrow="ALWAYS" spacing="2">
+                                <Label text="Возврат на главный экран через:" styleClass="auto-return-label"/>
+                                <Label fx:id="autoReturnCounterLabel"
+                                       text="20 секунд"
+                                       styleClass="auto-return-value"/>
+                            </VBox>
+                            <StackPane styleClass="countdown-circle">
+                                <ProgressIndicator fx:id="autoReturnProgress"
+                                                   prefWidth="52" prefHeight="52"
+                                                   progress="1.0"
+                                                   styleClass="countdown-progress"/>
+                            </StackPane>
+                        </HBox>
+                    </VBox>
+                </VBox>
             </VBox>
 
             <VBox fx:id="outOfServiceScreen"
