@@ -26,6 +26,20 @@ public class PrinterReadinessService {
     private final PrinterProbe probe;
 
     /**
+     * Блокировать ли печать при неготовом принтере.
+     *
+     * <p>false — состояние по-прежнему опрашивается и пишется в лог и
+     * телеметрию, но экраны печати и оплаты не блокируются. Нужно, чтобы
+     * проверять оплату и весь сценарий на машине без принтера.
+     *
+     * <p>На боевом киоске обязан быть true: иначе человек заплатит за
+     * печать, которая физически не выйдет.
+     */
+    @org.springframework.beans.factory.annotation.Value(
+            "${kiosk.printer.readiness.enforce:true}")
+    private boolean enforce;
+
+    /**
      * Последнее известное состояние. Обновляется ТОЛЬКО фоновой задачей.
      *
      * <p>Опрос принтера — это шесть обходов поддерева SNMP по 2 секунды
@@ -70,8 +84,21 @@ public class PrinterReadinessService {
     /**
      * Последнее известное состояние. Не блокирует и не ходит в сеть —
      * безопасно вызывать из потока JavaFX.
+     *
+     * <p>При {@code enforce=false} всегда сообщает о готовности: реальное
+     * состояние остаётся в логе и телеметрии, но сценарий не блокируется.
      */
     public Status status() {
+        if (!enforce && cached != Status.READY) {
+            log.debug("Принтер не готов ({}), но проверка отключена "
+                    + "(kiosk.printer.readiness.enforce=false)", cached);
+            return Status.READY;
+        }
+        return cached;
+    }
+
+    /** Настоящее состояние, без учёта {@code enforce}. Для телеметрии. */
+    public Status realStatus() {
         return cached;
     }
 
@@ -80,7 +107,7 @@ public class PrinterReadinessService {
      * показать главный экран, не конкурируя за старте с загрузкой UI.
      */
     @Scheduled(initialDelayString = "${kiosk.printer.readiness.initial-delay-ms:3000}",
-               fixedDelayString  = "${kiosk.printer.readiness.interval-ms:15000}")
+            fixedDelayString  = "${kiosk.printer.readiness.interval-ms:15000}")
     public void refresh() {
         try {
             Status fresh = evaluate();

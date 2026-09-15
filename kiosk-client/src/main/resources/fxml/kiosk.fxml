@@ -1445,8 +1445,8 @@
                          значения двигает картинку ВЛЕВО. -->
                     <ImageView fitWidth="320" preserveRatio="true"
                                StackPane.alignment="CENTER_LEFT"
-                               translateX="-10"
-                               translateY="40">
+                               translateX="-40"
+                               translateY="70">
                         <Image url="@/images/homemade_for_pay.png"/>
                     </ImageView>
 

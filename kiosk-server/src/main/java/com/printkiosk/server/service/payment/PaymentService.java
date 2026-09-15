@@ -155,6 +155,39 @@ public class PaymentService {
     }
 
     /**
+     * Обрабатывает уведомление об оплате от Bakai.
+     *
+     * <p>Отдельный метод, а не переиспользование финиковского: у банков
+     * разные названия полей и разные значения статусов, и попытка свести
+     * их в один разбор быстро превращается в кашу из условий.
+     *
+     * @param orderId наш operationID вида {@code PIN-1234-a1b2c3d4}
+     * @param success true — оплата прошла
+     */
+    @Transactional
+    public void handleBakaiCallback(String orderId, boolean success) {
+        String pin = extractPin(orderId);
+        if (pin == null || pin.isBlank()) {
+            throw new IllegalArgumentException("Не удалось разобрать orderId: " + orderId);
+        }
+
+        log.info("Уведомление Bakai: pin={} успех={}", maskPin(pin), success);
+
+        if (success) {
+            // applyPaidByPin идемпотентен: повторное уведомление (а банки
+            // ретраят при отсутствии ответа) не создаст вторую оплату.
+            if (jobService.applyPaidByPin(pin)) {
+                publishEventByPin(pin, PaymentEvent.Type.PAID);
+            } else {
+                log.info("Оплата по pin={} уже была учтена — повторное уведомление", maskPin(pin));
+            }
+        } else {
+            jobService.failByPin(pin);
+            publishEventByPin(pin, PaymentEvent.Type.FAILED);
+        }
+    }
+
+    /**
      * Достаёт PIN из orderId вида {@code PIN-1234-a1b2c3d4}.
      * Хвост после второго дефиса игнорируется — он только для уникальности.
      */

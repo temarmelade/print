@@ -17,17 +17,22 @@ import java.util.List;
 /**
  * Опрашивает Bakai о статусе неоплаченных заданий.
  *
- * <p>Существует только потому, что у Bakai нет вебхуков: в спецификации
- * OpenBanking API нет ни одного эндпоинта обратного вызова, статус можно
- * узнать исключительно запросом {@code GetStateCustomQr}. У Finik было
- * наоборот — банк сам стучался к нам.
+ * <p>ПО УМОЛЧАНИЮ ВЫКЛЮЧЕН. Оказалось, что уведомления у Bakai есть:
+ * адрес указывается в поле «получать уведомления» при создании внешнего
+ * сервиса, и банк сам сообщает об оплате — см. {@code BakaiWebhookController}.
+ * Колбэк надёжнее и быстрее опроса, поэтому основной путь — он.
+ *
+ * <p>Опрос оставлен как запасной вариант на случай, если уведомление
+ * потеряется: включается ключом {@code bakai.poll.enabled=true}. Учтите,
+ * что метод {@code GetStateCustomQr} предназначен для кастомных QR и для
+ * обычного {@code GenerateQR} банк его не рекомендует.
  *
  * <p>Для киоска разницы нет: подтверждение публикуется в тот же
  * {@link PaymentEventBus}, откуда уходит на терминал по SSE.
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "bakai", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "bakai.poll", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class BakaiPaymentPoller {
 
@@ -37,9 +42,23 @@ public class BakaiPaymentPoller {
     private final PrintJobService jobService;
     private final PaymentEventBus eventBus;
 
+    /** Чтобы не повторять одно и то же предупреждение каждые 3 секунды. */
+    private boolean qrTypeWarned = false;
+
     @Scheduled(fixedDelayString = "${bakai.poll-interval-ms:3000}")
     @Transactional
     public void poll() {
+        // Без qrType банк отклоняет запрос статуса с 400. Опрашивать
+        // бессмысленно: получим отказ на каждое задание в каждом цикле и
+        // завалим лог, не приблизившись к подтверждению оплаты.
+        if (props.getQrType() == null || props.getQrType().isBlank()) {
+            if (!qrTypeWarned) {
+                log.error("BAKAI_QR_TYPE не задан — подтверждение оплаты работать НЕ БУДЕТ. "
+                        + "Значение выдаёт банк; QR при этом создаётся нормально.");
+                qrTypeWarned = true;
+            }
+            return;
+        }
         Instant notOlderThan = Instant.now().minusSeconds(props.getPollTimeoutMin() * 60);
         List<PrintJobEntity> pending = jobs.findAwaitingPayment(notOlderThan);
         if (pending.isEmpty()) return;
