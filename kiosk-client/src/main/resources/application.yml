@@ -31,7 +31,7 @@ kiosk:
 
   scanner:
     # false = реальный сканер (WIA). true/не задано = мок для разработки.
-    mock: ${SCANNER_MOCK:false}
+    mock: ${SCANNER_MOCK:true}
     device-name: ${SCANNER_DEVICE:Canon MF230 ser_A8E291D1B261}      # точное имя из WIA; пусто = первый сканер
     dpi: ${SCANNER_DPI:200}
 

@@ -157,33 +157,55 @@ public class PaymentService {
     /**
      * Обрабатывает уведомление об оплате от Bakai.
      *
-     * <p>Отдельный метод, а не переиспользование финиковского: у банков
-     * разные названия полей и разные значения статусов, и попытка свести
-     * их в один разбор быстро превращается в кашу из условий.
+     * <p>У уведомления нет подписи, поэтому доверять одному факту запроса
+     * нельзя: адрес колбэка может узнать посторонний. Защита строится на
+     * том, что подделать нужно сразу три вещи — существующий operationID,
+     * его статус и точную сумму задания.
      *
-     * @param orderId наш operationID вида {@code PIN-1234-a1b2c3d4}
-     * @param success true — оплата прошла
+     * @param orderId       наш operationID вида {@code PIN-1234-a1b2c3d4}
+     * @param success       банк сообщил об успешной оплате
+     * @param amount        сумма из уведомления, сверяется со стоимостью
+     * @param bankReference идентификатор операции в банке, для разбора
      */
     @Transactional
-    public void handleBakaiCallback(String orderId, boolean success) {
+    public void handleBakaiCallback(String orderId, boolean success,
+                                    java.math.BigDecimal amount, String bankReference) {
         String pin = extractPin(orderId);
         if (pin == null || pin.isBlank()) {
             throw new IllegalArgumentException("Не удалось разобрать orderId: " + orderId);
         }
 
-        log.info("Уведомление Bakai: pin={} успех={}", maskPin(pin), success);
+        var job = jobs.findByPaymentId(orderId).orElse(null);
+        if (job == null) {
+            // Чужой или устаревший идентификатор. Печатать по нему нечего.
+            log.warn("Уведомление Bakai по неизвестному платежу {} — игнорируем", orderId);
+            return;
+        }
 
-        if (success) {
-            // applyPaidByPin идемпотентен: повторное уведомление (а банки
-            // ретраят при отсутствии ответа) не создаст вторую оплату.
-            if (jobService.applyPaidByPin(pin)) {
-                publishEventByPin(pin, PaymentEvent.Type.PAID);
-            } else {
-                log.info("Оплата по pin={} уже была учтена — повторное уведомление", maskPin(pin));
-            }
-        } else {
+        log.info("Уведомление Bakai: pin={} успех={} сумма={} операция={}",
+                maskPin(pin), success, amount, bankReference);
+
+        if (!success) {
             jobService.failByPin(pin);
             publishEventByPin(pin, PaymentEvent.Type.FAILED);
+            return;
+        }
+
+        // Сумма должна покрывать стоимость. Недоплата не должна открывать
+        // печать: иначе оплата 1 сома вместо 50 даст тот же результат.
+        if (amount == null || amount.intValue() < job.getPriceSom()) {
+            log.error("Оплата не покрывает стоимость: пришло {}, нужно {} (pin={}). "
+                    + "Печать НЕ разблокирована, требуется ручной разбор.",
+                    amount, job.getPriceSom(), maskPin(pin));
+            return;
+        }
+
+        // applyPaidByPin идемпотентен: повторное уведомление (банки ретраят,
+        // если не получили ответ) не создаст вторую оплату.
+        if (jobService.applyPaidByPin(pin)) {
+            publishEventByPin(pin, PaymentEvent.Type.PAID);
+        } else {
+            log.info("Оплата по pin={} уже учтена — повторное уведомление", maskPin(pin));
         }
     }
 
