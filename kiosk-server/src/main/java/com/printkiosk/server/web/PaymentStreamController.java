@@ -1,6 +1,5 @@
 package com.printkiosk.server.web;
 
-import com.printkiosk.server.service.payment.PaymentEvent;
 import com.printkiosk.server.service.payment.PaymentEventBus;
 import com.printkiosk.shared.api.dto.PaymentEventDto;
 import jakarta.validation.constraints.Pattern;
@@ -36,6 +35,36 @@ public class PaymentStreamController {
     /** Таймаут SSE-соединения. Браузеры всё равно держат до 30s, мы ставим больше. */
     private static final Duration STREAM_TIMEOUT = Duration.ofMinutes(6);
 
+    /**
+     * Период «пустых» пакетов, удерживающих соединение.
+     *
+     * <p>Между подключением и самой оплатой поток молчит: человек в это
+     * время достаёт телефон и работает в приложении банка. Прокси считают
+     * такое соединение зависшим и закрывают: у Nginx порог между чтениями
+     * 60 секунд по умолчанию, у Cloudflare Proxy Read Timeout — 125.
+     *
+     * <p>20 секунд дают троекратный запас до самого строгого из них и
+     * почти ничего не стоят: комментарий SSE весит байты.
+     *
+     * <p>Важно: это ускорение, а не гарантия. Источник истины — статус на
+     * сервере, полученный из webhook банка; киоск независимо опрашивает
+     * его каждые 3 секунды (см. PaymentSessionFlow). Оборванный поток не
+     * должен означать потерянный платёж.
+     */
+    private static final Duration KEEPALIVE = Duration.ofSeconds(20);
+
+    /**
+     * Один поток на все соединения: их единицы (по числу киосков,
+     * ожидающих оплату прямо сейчас), и отдельный планировщик на каждое
+     * был бы расточительством.
+     */
+    private static final java.util.concurrent.ScheduledExecutorService KEEPALIVE_POOL =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "sse-keepalive");
+                t.setDaemon(true);   // не мешать остановке приложения
+                return t;
+            });
+
     private final PaymentEventBus eventBus;
 
     @GetMapping(value = "/{pin}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -56,15 +85,32 @@ public class PaymentStreamController {
             }
         });
 
-        emitter.onCompletion(unsubscribe);
+        // Периодический комментарий SSE (строка, начинающаяся с ":").
+        // Клиент его игнорирует, но для прокси это трафик — соединение
+        // не считается простаивающим.
+        var keepalive = KEEPALIVE_POOL.scheduleAtFixedRate(() -> {
+            try {
+                emitter.send(SseEmitter.event().comment("keepalive"));
+            } catch (Exception e) {
+                // Клиент отключился — прекращаем слать и закрываем поток.
+                emitter.completeWithError(e);
+            }
+        }, KEEPALIVE.toSeconds(), KEEPALIVE.toSeconds(), java.util.concurrent.TimeUnit.SECONDS);
+
+        Runnable cleanup = () -> {
+            keepalive.cancel(true);
+            unsubscribe.run();
+        };
+
+        emitter.onCompletion(cleanup);
         emitter.onTimeout(() -> {
             log.debug("SSE timeout for pin={}", maskPin(pin));
-            unsubscribe.run();
+            cleanup.run();
             emitter.complete();
         });
         emitter.onError(e -> {
             log.debug("SSE error for pin={}: {}", maskPin(pin), e.getMessage());
-            unsubscribe.run();
+            cleanup.run();
         });
 
         // Сразу шлём ping, чтобы клиент знал что соединение установлено.

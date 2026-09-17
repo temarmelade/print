@@ -213,6 +213,20 @@ public class KioskServerClient {
     }
 
     /**
+     * Статус оплаты по PIN.
+     *
+     * <p>Опрашивается независимо от SSE. Поток событий — только быстрый
+     * канал уведомления; источник истины здесь, на сервере, куда пришёл
+     * webhook от банка.
+     */
+    public PaymentStatusDto paymentStatus(String pin) {
+        return execute(() -> http.get()
+                .uri("/api/payments/{pin}/status", pin)
+                .retrieve()
+                .body(PaymentStatusDto.class));
+    }
+
+    /**
      * Скачивает файл рекламного ролика.
      *
      * <p>Отдельный метод нужен потому, что JavaFX ({@code Media},
