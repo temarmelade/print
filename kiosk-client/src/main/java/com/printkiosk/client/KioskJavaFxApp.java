@@ -100,12 +100,36 @@ public class KioskJavaFxApp extends Application {
 
         // Пересчёт масштаба на каждое изменение размеров сцены: покрывает и
         // старт, и переход в полный экран, и смену разрешения на лету.
+        //
+        // Масштаб считается ПО ВЫСОТЕ, а ширина канвы растягивается под
+        // экран. Раньше бралcя минимум из двух коэффициентов, и на панели
+        // с пропорциями шире 9:16 по краям оставались чёрные полосы в
+        // полтора-два сантиметра. Содержимое от растягивания не страдает:
+        // экраны — центрированные колонки с ограничением по ширине, лишнее
+        // место просто уходит в поля.
         Runnable fit = () -> {
-            double s = Math.min(scene.getWidth() / DESIGN_W, scene.getHeight() / DESIGN_H);
-            if (s > 0 && Double.isFinite(s)) {
-                scale.setX(s);
-                scale.setY(s);
+            double sw = scene.getWidth();
+            double sh = scene.getHeight();
+            if (sw <= 0 || sh <= 0) return;
+
+            double s = sh / DESIGN_H;
+            double canvasWidth = sw / s;
+
+            // Экран уже, чем 9:16 (редкость, но бывает): тогда масштабируем
+            // по ширине, иначе содержимое вылезет за края.
+            if (canvasWidth < DESIGN_W) {
+                s = sw / DESIGN_W;
+                canvasWidth = DESIGN_W;
             }
+
+            if (!Double.isFinite(s) || s <= 0) return;
+
+            rootRegion.setMinSize(canvasWidth, DESIGN_H);
+            rootRegion.setPrefSize(canvasWidth, DESIGN_H);
+            rootRegion.setMaxSize(canvasWidth, DESIGN_H);
+
+            scale.setX(s);
+            scale.setY(s);
         };
         scene.widthProperty().addListener((o, a, b) -> fit.run());
         scene.heightProperty().addListener((o, a, b) -> fit.run());

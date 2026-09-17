@@ -495,6 +495,14 @@ public class MainController {
     private final HelpVideoLocator helpVideoLocator;
     private final AdMediaCache adMediaCache;
 
+    /**
+     * Показывать готовый QR от банка вместо собственного.
+     * По умолчанию false — свой код вписан в оформление экрана.
+     */
+    @org.springframework.beans.factory.annotation.Value(
+            "${kiosk.payment.use-bank-qr:false}")
+    private boolean useBankQr;
+
     /** Путь к файлу логотипа на диске киоска. */
     @org.springframework.beans.factory.annotation.Value(
             "${kiosk.branding.logo-path:C:/PrintKiosk/config/logo.png}")
@@ -1174,7 +1182,7 @@ public class MainController {
         scanVideoBox.setClip(mask);
 
         try {
-            var url = getClass().getResource("/videos/scan_loop.gif");
+            var url = getClass().getResource("/videos/scan_loop.mp4");
             if (url != null) {
                 var media  = new javafx.scene.media.Media(url.toExternalForm());
                 scanVideoPlayer = new javafx.scene.media.MediaPlayer(media);
@@ -1353,14 +1361,22 @@ public class MainController {
     /** Показать заставку с актуальным плейлистом (если он непустой). */
     private void showScreensaver() {
         var playlist = adPlaylistService.currentPlaylist();
-        log.info("Idle timeout reached. Ad playlist size = {}", playlist.size());
+        log.info("Тайм-аут бездействия. Роликов в плейлисте: {}", playlist.size());
+
+        // Сессию завершаем В ЛЮБОМ случае, независимо от рекламы. Раньше
+        // при пустом плейлисте метод просто перезапускал отсчёт, и киоск
+        // навсегда оставался на экране копирования или сканирования с
+        // чужими настройками — таймер отсчитывал, но никуда не уводил.
+        resetAllAndGoHome();
+
         if (playlist.isEmpty()) {
-            // Нечего показывать — выходим из режима заставки и считаем заново.
-            log.info("Screensaver not shown: playlist is empty (нет загруженной рекламы для слота HOME)");
+            // Рекламы нет — просто стоим на главном экране.
+            log.info("Заставка не показана: нет роликов для слота HOME");
             idleWatcher.cancelIdle();
             return;
         }
-        log.info("Showing screensaver with {} item(s)", playlist.size());
+
+        log.info("Показываем заставку, роликов: {}", playlist.size());
         screensaver.start(playlist);
         screensaver.toFront();
     }
@@ -2610,14 +2626,20 @@ public class MainController {
                         loc.get("price.som", String.valueOf(session.priceSom())));
                 paymentInstructionLabel.setText(loc.get("payment.instruction"));
 
-                // Если банк прислал готовую картинку — показываем ЕЁ.
-                // Свой QR из ссылки рисуем только как запасной вариант:
-                // банковское приложение ждёт платёжный payload в своём
-                // формате, и перекодированный URL оно может не распознать.
+                // Рисуем свой QR из платёжной ссылки: картинка банка идёт
+                // со своей рамкой и оформлением и выбивается из интерфейса.
+                // Содержимое кода при этом то же самое — ссылка, которую
+                // банк положил бы в собственный QR.
+                //
+                // Если сканирование где-то не заладится, возвращаемся к
+                // банковской картинке: достаточно поставить
+                // kiosk.payment.use-bank-qr=true, пересборка не нужна.
                 try {
-                    Image qrImage = decodeBankQr(session.qrImageBase64());
+                    Image qrImage = null;
+                    if (useBankQr) {
+                        qrImage = decodeBankQr(session.qrImageBase64());
+                    }
                     if (qrImage == null) {
-                        log.info("Банк не прислал QR — рисуем из ссылки");
                         qrImage = QrCodeGenerator.generate(session.paymentUrl(), 280);
                     }
                     qrCodeImageView.setImage(qrImage);
