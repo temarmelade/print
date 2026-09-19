@@ -69,37 +69,30 @@ services:
     container_name: kiosk-nginx
     restart: unless-stopped
     depends_on: [server]
-    ports:
-      - "80:80"
-      - "443:443"
+    # Портов наружу НЕТ. Доступ только у cloudflared внутри docker-сети:
+    # на сервере не остаётся ни одного открытого входящего порта, и
+    # обойти защиту Cloudflare, ударив напрямую в origin, невозможно.
     volumes:
       - ./deploy/nginx/kiosk.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/nginx/proxy_params_kiosk:/etc/nginx/proxy_params_kiosk:ro
       - ./admin-web/dist:/usr/share/nginx/html:ro
-      - certbot-conf:/etc/letsencrypt:ro
-      - certbot-www:/var/www/certbot:ro
     networks: [kiosk-net]
 
-  # Разовое получение и продление сертификата.
-  certbot:
-    image: certbot/certbot:latest
-    container_name: kiosk-certbot
-    volumes:
-      - certbot-conf:/etc/letsencrypt
-      - certbot-www:/var/www/certbot
-    # Проверка дважды в сутки — рекомендация Let's Encrypt: продление
-    # срабатывает только когда до конца срока меньше 30 дней.
-    entrypoint: >
-      sh -c "trap exit TERM;
-             while :; do certbot renew --webroot -w /var/www/certbot --quiet;
-             sleep 12h & wait $${!}; done"
+  # Туннель до Cloudflare. Соединение исходящее, поэтому публичный IP
+  # и проброс портов не нужны. Токен берётся из панели Zero Trust при
+  # создании туннеля.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: kiosk-tunnel
+    restart: unless-stopped
+    depends_on: [nginx]
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?токен туннеля обязателен}
+    networks: [kiosk-net]
 
 volumes:
   pg-data:
   uploads:
   logs:
-  certbot-conf:
-  certbot-www:
 
 networks:
   kiosk-net:

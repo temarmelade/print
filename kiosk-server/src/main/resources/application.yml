@@ -27,8 +27,11 @@ spring:
       enabled: true
       # Лимит рассчитан на видеорекламу (грузит только админ). Файлы печати
       # дополнительно ограничиваются бизнес-валидацией, а не только этим лимитом.
-      max-file-size: 100MB
-      max-request-size: 105MB
+      # 90 МБ, а не 100: Cloudflare Free обрывает тело запроса на 100 МБ,
+      # и файл впритык не дошёл бы до приложения вовсе. Лучше внятная
+      # ошибка от нас, чем обрыв соединения без объяснений.
+      max-file-size: 90MB
+      max-request-size: 95MB
       file-size-threshold: 1MB
 
 server:
@@ -96,7 +99,7 @@ finik:
 # Finik. Чтобы откатиться на Finik, достаточно выставить false — пересборка
 # не нужна, оба шлюза остаются в сборке.
 bakai:
-  enabled: ${BAKAI_ENABLED:true}
+  enabled: ${BAKAI_ENABLED:false}
   base-url: ${BAKAI_BASE_URL:https://openbanking-api.bakai.kg}
   login:    ${BAKAI_LOGIN:}
   password: ${BAKAI_PASSWORD:}

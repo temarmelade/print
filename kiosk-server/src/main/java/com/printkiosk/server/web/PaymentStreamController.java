@@ -1,5 +1,6 @@
 package com.printkiosk.server.web;
 
+import com.printkiosk.server.service.payment.PaymentEvent;
 import com.printkiosk.server.service.payment.PaymentEventBus;
 import com.printkiosk.shared.api.dto.PaymentEventDto;
 import jakarta.validation.constraints.Pattern;
@@ -40,16 +41,12 @@ public class PaymentStreamController {
      *
      * <p>Между подключением и самой оплатой поток молчит: человек в это
      * время достаёт телефон и работает в приложении банка. Прокси считают
-     * такое соединение зависшим и закрывают: у Nginx порог между чтениями
-     * 60 секунд по умолчанию, у Cloudflare Proxy Read Timeout — 125.
+     * такое соединение зависшим и закрывают его — у Cloudflare порог 100
+     * секунд. Оборванный поток означает, что киоск не узнает об оплате,
+     * хотя деньги уже списаны.
      *
-     * <p>20 секунд дают троекратный запас до самого строгого из них и
-     * почти ничего не стоят: комментарий SSE весит байты.
-     *
-     * <p>Важно: это ускорение, а не гарантия. Источник истины — статус на
-     * сервере, полученный из webhook банка; киоск независимо опрашивает
-     * его каждые 3 секунды (см. PaymentSessionFlow). Оборванный поток не
-     * должен означать потерянный платёж.
+     * <p>20 секунд дают троекратный запас до самого строгого известного
+     * порога и почти ничего не стоят: комментарий SSE весит байты.
      */
     private static final Duration KEEPALIVE = Duration.ofSeconds(20);
 
