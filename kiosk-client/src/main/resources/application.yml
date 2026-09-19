@@ -40,6 +40,14 @@ kiosk:
     mock: ${SCANNER_MOCK:false}
     device-name: ${SCANNER_DEVICE:Canon MF230 ser_A8E291D1B261}      # точное имя из WIA; пусто = первый сканер
     dpi: ${SCANNER_DPI:200}
+    readiness:
+      # Фоновая проверка доступности. Опрос идёт через PowerShell и WIA
+      # и занимает секунды — в потоке JavaFX он подвешивал бы интерфейс.
+      initial-delay-ms: 5000
+      interval-ms: 20000
+      # Блокировать ли сканирование и копирование при недоступном сканере.
+      # false — только для отладки интерфейса без железа.
+      enforce: ${SCANNER_ENFORCE:true}
 
   printer:
     name: "Canon MF232w"                   # переопредели в application-local.yml на своё

@@ -20,6 +20,7 @@ import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
@@ -485,6 +486,7 @@ public class MainController {
     private final PinEntryFlow pinEntryFlow;
     private final PrintFlow printFlow;
     private final PrinterReadinessService printerReadiness;
+    private final com.printkiosk.client.scanner.ScannerReadinessService scannerReadiness;
     private final KioskClientProperties clientProperties;
     private final AdPlaylistService adPlaylistService;
     private final ServerProperties serverProperties;
@@ -558,6 +560,7 @@ public class MainController {
     public MainController(PinEntryFlow pinEntryFlow, PreviewFlow previewFlow,
                           PrintSettingsFlow settingsFlow, PaymentSessionFlow paymentFlow,
                           PrintFlow printFlow, PrinterReadinessService printerReadiness,
+                          com.printkiosk.client.scanner.ScannerReadinessService scannerReadiness,
                           KioskClientProperties clientProperties, AdPlaylistService adPlaylistService,
                           ServerProperties serverProperties, ScanFlow scanFlow,
                           KioskServerClient serverClient, LocalizationService loc,
@@ -574,6 +577,7 @@ public class MainController {
         this.paymentFlow = paymentFlow;
         this.printFlow = printFlow;
         this.printerReadiness = printerReadiness;
+        this.scannerReadiness = scannerReadiness;
         this.loc = loc;
         this.scanDeliveryFlow = scanDeliveryFlow;
         this.activityState = activityState;
@@ -1574,16 +1578,48 @@ public class MainController {
         changeStep(KioskStep.UPLOAD);
     }
 
+    /** Копирование требует ОБА устройства: прочитать лист и напечатать копию. */
     @FXML public void onCopyOperationSelected() {
         if (!requirePrinter()) return;
+        if (!requireScanner()) return;
         scanMode = ScanMode.COPY;
         changeStep(KioskStep.SCAN_INSTRUCTION);
     }
 
     /** Сканирование печати не требует — работает и со сломанным принтером. */
     @FXML public void onScanOperationSelected() {
+        if (!requireScanner()) return;
         scanMode = ScanMode.SCAN;
         changeStep(KioskStep.SCAN_INSTRUCTION);
+    }
+
+    /** @return true — можно продолжать; иначе показано предупреждение */
+    private boolean requireScanner() {
+        if (scannerReadiness.isAvailable()) return true;
+        log.warn("Операция заблокирована: сканер недоступен");
+        showScannerWarning();
+        return false;
+    }
+
+    /**
+     * Предупреждение о недоступном сканере.
+     *
+     * <p>Печать сканера не требует, поэтому предлагаем её как выход — но
+     * только если принтер исправен. Предлагать нерабочую альтернативу
+     * хуже, чем не предлагать ничего: человек нажмёт и упрётся во второе
+     * сообщение подряд.
+     */
+    private void showScannerWarning() {
+        boolean printerWorks = printerReadiness.status().isReady();
+
+        showConfirmOverlay(
+                loc.get("scanner.error.title"),
+                loc.get("scanner.error.not_connected"),
+                printerWorks ? loc.get("scanner.error.print") : loc.get("scanner.error.ok"),
+                loc.get("scanner.error.close"),
+                () -> {
+                    if (printerWorks) changeStep(KioskStep.UPLOAD);
+                });
     }
 
     /** @return true — можно продолжать; иначе показано предупреждение */
@@ -1818,14 +1854,20 @@ public class MainController {
      * выход, а не просто закрываем диалог.
      */
     private void showPrinterWarning(PrinterReadinessService.Status status) {
+        // Сканирование предлагаем, только если сканер исправен: иначе
+        // человек нажмёт и упрётся во второе сообщение подряд.
+        boolean scannerWorks = scannerReadiness.isAvailable();
+
         showConfirmOverlay(
                 loc.get("printer.error.title"),
                 loc.get(status.messageKey()),
-                loc.get("printer.error.scan"),
+                scannerWorks ? loc.get("printer.error.scan") : loc.get("printer.error.ok"),
                 loc.get("printer.error.close"),
                 () -> {
-                    scanMode = ScanMode.SCAN;
-                    changeStep(KioskStep.SCAN_INSTRUCTION);
+                    if (scannerWorks) {
+                        scanMode = ScanMode.SCAN;
+                        changeStep(KioskStep.SCAN_INSTRUCTION);
+                    }
                 });
     }
 
