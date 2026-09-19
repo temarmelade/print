@@ -188,8 +188,10 @@
                                       HBox.hgrow="ALWAYS"/>
                     </HBox>
 
-                    <!-- 4 шага -->
-                    <VBox spacing="14" styleClass="help-steps">
+                    <!-- Шаги. Высота зафиксирована: у копирования их три,
+                         а у печати и сканирования четыре, и без минимума
+                         карточка скакала по высоте при переключении вкладок. -->
+                    <VBox fx:id="helpStepsBox" spacing="14" styleClass="help-steps">
 
                         <HBox fx:id="helpStep1Row" spacing="16" alignment="TOP_LEFT" styleClass="help-step">
                             <Label text="1" styleClass="help-step-number"/>

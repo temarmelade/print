@@ -20,7 +20,6 @@ import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
@@ -420,6 +419,7 @@ public class MainController {
     @FXML private HBox helpStep3Row;
     @FXML private HBox helpStep4Row;
     @FXML private VBox helpFormatsCard;
+    @FXML private VBox helpStepsBox;
     @FXML private Button helpVideoBtn;
     @FXML private StackPane helpVideoOverlay;
     @FXML private StackPane helpVideoBox;
@@ -869,8 +869,25 @@ public class MainController {
                 helpTopicGroup.selectToggle(old);
                 return;
             }
-            helpTopic.set(byToggle.getOrDefault(sel, HelpTopic.PRINT));
+            HelpTopic next = byToggle.getOrDefault(sel, HelpTopic.PRINT);
+            if (next == helpTopic.get()) return;
+
+            // Короткое затухание вместо мгновенной подмены: тексты разной
+            // длины и разное число шагов меняют раскладку, и без перехода
+            // это выглядит как рывок экрана.
+            fadeSwap(() -> helpTopic.set(next));
         });
+
+        // Резервируем высоту под четыре шага. У копирования их три, и без
+        // фиксации карточка подпрыгивала при каждом переключении.
+        if (helpStepsBox != null) {
+            helpStepsBox.heightProperty().addListener((obs, old, value) -> {
+                double current = value.doubleValue();
+                if (current > helpStepsBox.getMinHeight()) {
+                    helpStepsBox.setMinHeight(current);
+                }
+            });
+        }
 
         helpSubtitleLabel.textProperty().bind(Bindings.createStringBinding(
                 () -> loc.get(helpTopic.get().key("subtitle")),
@@ -884,10 +901,11 @@ public class MainController {
         // Форматы файлов относятся только к печати: при копировании и
         // сканировании пользователь ничего не загружает.
         if (helpFormatsCard != null) {
+            // visible без managed: карточка скрывается, но место за собой
+            // сохраняет. Иначе соседний блок контактов прыгал бы вверх
+            // при каждом переходе на копирование или сканирование.
             helpFormatsCard.visibleProperty().bind(
                     helpTopic.isEqualTo(HelpTopic.PRINT));
-            helpFormatsCard.managedProperty().bind(
-                    helpFormatsCard.visibleProperty());
         }
     }
 
@@ -896,6 +914,32 @@ public class MainController {
      * шага нет (у копирования их три, а не четыре). Пустое значение в
      * .properties — это «шага нет», а не «текст забыли».
      */
+    /**
+     * Меняет содержимое под короткое затухание.
+     *
+     * <p>150 мс в каждую сторону: достаточно, чтобы глаз не заметил
+     * скачка раскладки, и достаточно мало, чтобы переключение вкладок
+     * не казалось медленным.
+     */
+    private void fadeSwap(Runnable change) {
+        if (helpStepsBox == null) {
+            change.run();
+            return;
+        }
+
+        var out = new FadeTransition(Duration.millis(150), helpStepsBox);
+        out.setFromValue(1);
+        out.setToValue(0);
+        out.setOnFinished(e -> {
+            change.run();
+            var in = new FadeTransition(Duration.millis(150), helpStepsBox);
+            in.setFromValue(0);
+            in.setToValue(1);
+            in.play();
+        });
+        out.play();
+    }
+
     private void bindHelpStep(Label label, HBox row, String suffix) {
         if (label == null) return;
 
