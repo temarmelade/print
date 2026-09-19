@@ -76,6 +76,9 @@ services:
       - ./deploy/nginx/kiosk.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/nginx/proxy_params_kiosk:/etc/nginx/proxy_params_kiosk:ro
       - ./admin-web/dist:/usr/share/nginx/html:ro
+      # Тот же том, что у сервера: Nginx отдаёт документы для печати
+      # напрямую, минуя приложение.
+      - uploads:/var/lib/kiosk/uploads:ro
     networks: [kiosk-net]
 
   # Туннель до Cloudflare. Соединение исходящее, поэтому публичный IP
