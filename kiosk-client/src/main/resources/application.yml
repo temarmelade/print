@@ -37,7 +37,7 @@ kiosk:
 
   scanner:
     # false = реальный сканер (WIA). true/не задано = мок для разработки.
-    mock: ${SCANNER_MOCK:true}
+    mock: ${SCANNER_MOCK:false}
     device-name: ${SCANNER_DEVICE:Canon MF230 ser_A8E291D1B261}      # точное имя из WIA; пусто = первый сканер
     dpi: ${SCANNER_DPI:200}
 
@@ -57,7 +57,7 @@ kiosk:
       # Блокировать ли печать и оплату при неготовом принтере.
       # false — только для отладки на машине без принтера: на боевом
       # киоске человек заплатит за печать, которая не выйдет.
-      enforce: ${PRINTER_ENFORCE:false}
+      enforce: ${PRINTER_ENFORCE:true}
 
   # Телеметрия на сервер (Фаза 2)
   client-version: ${KIOSK_CLIENT_VERSION:dev}

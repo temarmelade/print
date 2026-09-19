@@ -1401,17 +1401,34 @@ public class MainController {
      * анимации/таймеры/проверки.
      */
     private void showOnly(VBox screen) {
+        // Перечислять нужно ВСЕ экраны: метод прячет те, что в списке, и
+        // показывает переданный. Отсутствующий здесь экран не включался
+        // вовсе — предыдущий скрывался, новый не появлялся, и человек
+        // видел пустой фон. Так пропадали outOfServiceScreen и
+        // printFailedScreen, то есть ровно те, что сообщают о поломке.
         VBox[] all = {
                 homeScreen, uploadScreen, fileInfoScreen, settingsScreen,
                 summaryScreen, paymentScreen, printingScreen, completedScreen,
                 scanInstructionScreen, scanProgressScreen, scanPreviewScreen,
-                scanDeliveryScreen, adminScreen, helpScreen
+                scanDeliveryScreen, adminScreen, helpScreen,
+                printFailedScreen, outOfServiceScreen
         };
+        boolean found = false;
         for (VBox s : all) {
             if (s == null) continue;
             boolean visible = (s == screen);
+            if (visible) found = true;
             s.setVisible(visible);
             s.setManaged(visible);
+        }
+
+        // Страховка от повторения той же ошибки: новый экран, забытый в
+        // списке выше, включится сам, а в лог уйдёт предупреждение.
+        if (!found && screen != null) {
+            log.warn("Экран {} отсутствует в списке showOnly — показываем принудительно",
+                    screen.getId());
+            screen.setVisible(true);
+            screen.setManaged(true);
         }
     }
 
@@ -1546,9 +1563,37 @@ public class MainController {
     // ══════════════════════════════════════════════════════════════════════
 
     // ---- HOME ----
-    @FXML public void onPrintOperationSelected()  { changeStep(KioskStep.UPLOAD); }
-    @FXML public void onCopyOperationSelected()   { scanMode = ScanMode.COPY; changeStep(KioskStep.SCAN_INSTRUCTION); }
-    @FXML public void onScanOperationSelected()   { scanMode = ScanMode.SCAN; changeStep(KioskStep.SCAN_INSTRUCTION); }
+    /**
+     * Печать и копирование упираются в принтер, поэтому его состояние
+     * проверяется сразу на главном экране. Иначе человек проходит весь
+     * путь — загрузку, настройки, сводку — и только на кнопке оплаты
+     * узнаёт, что печатать нечем.
+     */
+    @FXML public void onPrintOperationSelected() {
+        if (!requirePrinter()) return;
+        changeStep(KioskStep.UPLOAD);
+    }
+
+    @FXML public void onCopyOperationSelected() {
+        if (!requirePrinter()) return;
+        scanMode = ScanMode.COPY;
+        changeStep(KioskStep.SCAN_INSTRUCTION);
+    }
+
+    /** Сканирование печати не требует — работает и со сломанным принтером. */
+    @FXML public void onScanOperationSelected() {
+        scanMode = ScanMode.SCAN;
+        changeStep(KioskStep.SCAN_INSTRUCTION);
+    }
+
+    /** @return true — можно продолжать; иначе показано предупреждение */
+    private boolean requirePrinter() {
+        var status = printerReadiness.status();
+        if (status.isReady()) return true;
+        log.warn("Операция заблокирована: принтер не готов ({})", status);
+        showPrinterWarning(status);
+        return false;
+    }
     @FXML public void onHelpClicked()             { changeStep(KioskStep.HELP); }
     @FXML public void onHelpBackClicked()         { changeStep(KioskStep.HOME); }
 
@@ -1743,9 +1788,14 @@ public class MainController {
             return;
         }
 
-        if (!printerReadiness.isReady()) {
-            log.warn("Printer not ready — blocking payment");
-            showOutOfService();
+        // Подстраховка: принтер мог сломаться, пока человек настраивал
+        // печать. Показываем ПРИЧИНУ, а не глухой экран «не работает»:
+        // заказ уже собран, и терять его из-за застрявшего листа, который
+        // техник вытащит за минуту, незачем.
+        var printerStatus = printerReadiness.status();
+        if (!printerStatus.isReady()) {
+            log.warn("Оплата заблокирована: принтер не готов ({})", printerStatus);
+            showPrinterWarning(printerStatus);
             return;
         }
 
@@ -1755,6 +1805,28 @@ public class MainController {
 
     private void showOutOfService() {
         changeStep(KioskStep.OUT_OF_SERVICE);
+    }
+
+    /**
+     * Предупреждение о неисправном принтере с конкретной причиной.
+     *
+     * <p>Диалог, а не всплывающее уведомление: человек нажал кнопку и
+     * ждёт перехода к оплате. Сообщение, которое само исчезнет через
+     * несколько секунд, легко пропустить и решить, что киоск завис.
+     *
+     * <p>Сканирование принтера не требует, поэтому предлагаем его как
+     * выход, а не просто закрываем диалог.
+     */
+    private void showPrinterWarning(PrinterReadinessService.Status status) {
+        showConfirmOverlay(
+                loc.get("printer.error.title"),
+                loc.get(status.messageKey()),
+                loc.get("printer.error.scan"),
+                loc.get("printer.error.close"),
+                () -> {
+                    scanMode = ScanMode.SCAN;
+                    changeStep(KioskStep.SCAN_INSTRUCTION);
+                });
     }
 
     // ---- PAYMENT ----

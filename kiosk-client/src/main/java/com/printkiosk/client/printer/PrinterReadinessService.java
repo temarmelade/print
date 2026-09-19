@@ -107,7 +107,7 @@ public class PrinterReadinessService {
      * показать главный экран, не конкурируя за старте с загрузкой UI.
      */
     @Scheduled(initialDelayString = "${kiosk.printer.readiness.initial-delay-ms:3000}",
-            fixedDelayString  = "${kiosk.printer.readiness.interval-ms:15000}")
+               fixedDelayString  = "${kiosk.printer.readiness.interval-ms:15000}")
     public void refresh() {
         try {
             Status fresh = evaluate();
