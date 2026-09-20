@@ -27,6 +27,7 @@ public class PrintManager {
     private final KioskClientProperties properties;
     private final FastPathPrinter     fastPath;
     private final FallbackPdfPrinter  fallback;
+    private final PrintCompletionWatcher completionWatcher;
 
     public CompletableFuture<PrinterResult> printAsync(Path file,
                                                        String mimeType,
@@ -76,13 +77,42 @@ public class PrintManager {
             }
         }
 
-        return switch (mimeType.toLowerCase()) {
+        // Счётчик страниц принтера ДО отправки: по его приросту поймём,
+        // что листы действительно вышли (см. PrintCompletionWatcher).
+        Integer counterBefore = completionWatcher.snapshot();
+        int expectedPages = expectedPages(bytes, mimeType, settings);
+
+        CompletableFuture<PrinterResult> printing = switch (mimeType.toLowerCase()) {
             case "application/pdf"  -> printPdf(printer, bytes, settings);
             case "image/jpeg"       -> printImage(printer, bytes, DocFlavor.BYTE_ARRAY.JPEG, settings);
             case "image/png"        -> printImage(printer, bytes, DocFlavor.BYTE_ARRAY.PNG, settings);
             default -> CompletableFuture.completedFuture(
                     PrinterResult.failed("Неподдерживаемый тип файла: " + mimeType));
         };
+
+        // Оба пути сообщают об успехе, когда Windows принял задание в очередь,
+        // а бумага выходит позже. Экран «Печать» держим до выхода листов.
+        return printing.thenCompose(r -> r.success()
+                ? completionWatcher.awaitPrinted(counterBefore, expectedPages).thenApply(v -> r)
+                : CompletableFuture.completedFuture(r));
+    }
+
+    /**
+     * Сколько страниц должен выдать принтер: страницы документа × копии.
+     * 0 — не удалось посчитать, тогда выхода листов не ждём.
+     */
+    private static int expectedPages(byte[] bytes, String mimeType, PrintSettings settings) {
+        int pages = 1;   // изображение — одна страница
+        if ("application/pdf".equalsIgnoreCase(mimeType)) {
+            try (org.apache.pdfbox.pdmodel.PDDocument doc =
+                         org.apache.pdfbox.Loader.loadPDF(bytes)) {
+                pages = doc.getNumberOfPages();
+            } catch (IOException e) {
+                return 0;
+            }
+        }
+        int copies = (settings != null) ? Math.max(1, settings.copies()) : 1;
+        return pages * copies;
     }
 
     /**

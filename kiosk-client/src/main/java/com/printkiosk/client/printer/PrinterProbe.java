@@ -199,6 +199,29 @@ public class PrinterProbe {
     }
 
     /**
+     * Только счётчик напечатанных страниц — лёгкий запрос, которым
+     * {@link PrintCompletionWatcher} следит, вышли ли листы из принтера.
+     * Обходим одно поддерево вместо шести, с коротким таймаутом.
+     *
+     * @return значение счётчика; null — SNMP выключен или принтер не ответил
+     */
+    public Integer readPageCounter() {
+        if (!snmpEnabled()) return null;
+        var p = properties.getPrinter();
+        try (TransportMapping<?> transport = new DefaultUdpTransportMapping()) {
+            Snmp snmp = new Snmp(transport);
+            transport.listen();
+            CommunityTarget<Address> target = target(p);
+            target.setTimeout(1_000);
+            // Как и в полном опросе — максимум: первая запись бывает служебной.
+            return maxInt(walk(snmp, target, BASE_PAGE_COUNTER));
+        } catch (Exception e) {
+            log.debug("SNMP: счётчик страниц не прочитан: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Ноль без флага «нет бумаги» недостоверен: у MF232w нет датчика уровня,
      * и он отдаёт 0 при полной кассете. Считаем это «неизвестно» — иначе киоск
      * решит, что бумага кончилась, и перестанет принимать оплату.
