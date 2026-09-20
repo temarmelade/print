@@ -2,6 +2,7 @@ package com.printkiosk.server.service;
 
 import com.github.f4b6a3.uuid.UuidCreator;
 import com.printkiosk.server.config.KioskServerProperties;
+import com.printkiosk.server.config.PublicUrlResolver;
 import com.printkiosk.server.domain.FileEntity;
 import com.printkiosk.server.domain.FileRepository;
 import com.printkiosk.server.exception.FileValidationException;
@@ -57,6 +58,7 @@ public class FileService {
     private final KioskServerProperties    properties;
     private final PageCountService  pageCountService;
     private final DocumentConversionService converter;
+    private final PublicUrlResolver         publicUrls;
     // ════════════════════════════════════════════════════════════════
     //  UPLOAD
     // ════════════════════════════════════════════════════════════════
@@ -350,9 +352,9 @@ public class FileService {
      * в клиентский код в виде склейки из PIN.
      */
     private String buildDownloadUrl(String token) {
-        String base = properties.getStorage().getPublicBaseUrl();
-        if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-        return base + "/api/files/d/" + token;
+        // Ссылку открывает телефон, поэтому адрес — «телефонный»: при
+        // локальном запуске это IP машины в сети, а не localhost.
+        return publicUrls.phoneBaseUrl() + "/api/files/d/" + token;
     }
 
     private String buildPublicUrl(String storedFilename) {

@@ -71,6 +71,20 @@
             font-size: 15px;
             margin: 0 0 22px;
         }
+        .terminal {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #EFF6FF;
+            border: 1px solid #DBEAFE;
+            border-radius: 14px;
+            padding: 10px 14px;
+            margin: -8px 0 18px;
+            font-size: 14px;
+        }
+        .terminal .t-icon { font-size: 20px; line-height: 1; }
+        .terminal .t-label { color: var(--muted); font-size: 12px; }
+        .terminal .t-name { font-weight: 700; color: var(--blue-dark); }
         .dropzone {
             display: block;
             border: 2px dashed #C7D2FE;
@@ -173,6 +187,14 @@
     <h1 class="logo">🖨️ Print <span>Kiosk</span></h1>
     <p class="subtitle" id="subtitle"></p>
 
+    <div class="terminal hidden" id="terminalBox">
+        <div class="t-icon">🖨️</div>
+        <div>
+            <div class="t-label" id="terminalLabel"></div>
+            <div class="t-name" id="terminalName"></div>
+        </div>
+    </div>
+
     <input type="file" id="fileInput" class="hidden"
            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,image/*">
     <div class="dropzone" id="dropzone">
@@ -184,7 +206,6 @@
     <div class="filename" id="filename"></div>
 
     <button class="btn btn-primary" id="submitBtn" disabled></button>
-    <div id="debugLine" style="margin-top:12px;font-size:12px;color:#EF4444;word-break:break-all;text-align:center;"></div>
 </div>
 
 <!-- ЭКРАН РЕЗУЛЬТАТА -->
@@ -214,6 +235,8 @@
             noFile:    "Файл пока не выбран",
             okTitle:   "Файл загружен",
             okDesc:    "Введите этот код на экране терминала",
+            okDescAt:  name => `Введите этот код на экране терминала «${name}»`,
+            terminal:  "Терминал",
             pages:     n => `Страниц в документе: ${n}`,
             expiry:    m => `Код действует ${m} мин`,
             again:     "Загрузить ещё файл",
@@ -222,7 +245,9 @@
                 FILE_INVALID:   "Файл пуст, повреждён или в неподдерживаемом формате.",
                 FILE_TOO_LARGE: "Файл слишком большой. Максимум — 20 МБ.",
                 PIN_SPACE_BUSY: "Сейчас слишком много активных кодов. Попробуйте через минуту.",
-                NETWORK:        "Нет связи с терминалом. Проверьте интернет и повторите.",
+                NETWORK:        "Нет связи с сервером. Проверьте интернет и повторите.",
+                UNAVAILABLE:    "Сервис временно недоступен. Попробуйте через минуту.",
+                TOO_MANY:       "Слишком много попыток. Подождите минуту и повторите.",
                 UNKNOWN:        "Что-то пошло не так. Попробуйте ещё раз."
             }
         },
@@ -235,6 +260,8 @@
             noFile:    "Файл тандала элек",
             okTitle:   "Файл жүктөлдү",
             okDesc:    "Бул кодду терминалдын экранына киргизиңиз",
+            okDescAt:  name => `Бул кодду «${name}» терминалынын экранына киргизиңиз`,
+            terminal:  "Терминал",
             pages:     n => `Документтеги барактар: ${n}`,
             expiry:    m => `Код ${m} мүнөт жарактуу`,
             again:     "Дагы файл жүктөө",
@@ -243,7 +270,9 @@
                 FILE_INVALID:   "Файл бош, бузулган же колдоого алынбаган форматта.",
                 FILE_TOO_LARGE: "Файл өтө чоң. Максимум — 20 МБ.",
                 PIN_SPACE_BUSY: "Учурда активдүү коддор өтө көп. Бир мүнөттөн кийин аракет кылыңыз.",
-                NETWORK:        "Терминал менен байланыш жок. Интернетти текшерип, кайталаңыз.",
+                NETWORK:        "Сервер менен байланыш жок. Интернетти текшерип, кайталаңыз.",
+                UNAVAILABLE:    "Кызмат убактылуу жеткиликсиз. Бир мүнөттөн кийин аракет кылыңыз.",
+                TOO_MANY:       "Аракеттер өтө көп. Бир мүнөт күтүп, кайталаңыз.",
                 UNKNOWN:        "Бир нерсе туура эмес болду. Кайра аракет кылыңыз."
             }
         },
@@ -256,6 +285,8 @@
             noFile:    "No file selected yet",
             okTitle:   "File uploaded",
             okDesc:    "Enter this code on the terminal screen",
+            okDescAt:  name => `Enter this code on the screen of terminal “${name}”`,
+            terminal:  "Terminal",
             pages:     n => `Pages in document: ${n}`,
             expiry:    m => `Code is valid for ${m} min`,
             again:     "Upload another file",
@@ -264,7 +295,9 @@
                 FILE_INVALID:   "The file is empty, damaged or in an unsupported format.",
                 FILE_TOO_LARGE: "The file is too large. Maximum is 20 MB.",
                 PIN_SPACE_BUSY: "Too many active codes right now. Try again in a minute.",
-                NETWORK:        "No connection to the terminal. Check your internet and retry.",
+                NETWORK:        "No connection to the server. Check your internet and retry.",
+                UNAVAILABLE:    "The service is temporarily unavailable. Try again in a minute.",
+                TOO_MANY:       "Too many attempts. Wait a minute and try again.",
                 UNKNOWN:        "Something went wrong. Please try again."
             }
         }
@@ -274,6 +307,16 @@
     const params = new URLSearchParams(location.search);
     let lang = ["ru","ky","en"].includes(params.get("lang")) ? params.get("lang") : "ru";
     let selectedFile = null;
+
+    // Терминал, чей QR открыл страницу: ...?k=<kioskId>. Необязателен —
+    // без него страница работает как раньше, просто без названия терминала.
+    const rawKiosk = (params.get("k") || "").trim();
+    const kioskId = /^[A-Za-z0-9._-]{1,64}$/.test(rawKiosk) ? rawKiosk : "";
+    let terminal = null;                  // { name, location } от сервера
+
+    // Совпадает с kiosk.file.max-size-bytes на сервере. Проверяем заранее,
+    // чтобы не гонять 50 МБ по мобильному интернету ради отказа.
+    const MAX_SIZE_BYTES = 20 * 1024 * 1024;
 
     const el = id => document.getElementById(id);
     const fileInput = el("fileInput");
@@ -289,6 +332,7 @@
         el("submitBtn").textContent = selectedFile ? t.submit : t.submit;
         el("filename").textContent  = selectedFile ? selectedFile.name : t.noFile;
         el("againBtn").textContent  = t.again;
+        renderTerminal();
         document.querySelectorAll("#langbar button").forEach(b =>
             b.classList.toggle("active", b.dataset.lang === lang));
     }
@@ -322,8 +366,6 @@
         selectedFile = file;
         el("filename").textContent = file.name;
         submitBtn.disabled = false;
-        const dbg = el("debugLine");
-        if (dbg) dbg.textContent = "Выбран: " + file.name + " · " + file.type + " · " + file.size + " Б";
         applyLang();
     }
 
@@ -332,6 +374,10 @@
 
     async function uploadFile() {
         if (!selectedFile) return;
+        if (selectedFile.size > MAX_SIZE_BYTES) {
+            showError("FILE_TOO_LARGE");
+            return;
+        }
         const t = I18N[lang];
         submitBtn.disabled = true;
         submitBtn.innerHTML = `<span class="spinner"></span> ${t.uploading}`;
@@ -340,7 +386,9 @@
         form.append("file", selectedFile);
 
         try {
-            const res = await fetch("/api/files/upload?source=WEBSITE", {
+            let url = "/api/files/upload?source=WEBSITE";
+            if (kioskId) url += "&kiosk=" + encodeURIComponent(kioskId);
+            const res = await fetch(url, {
                 method: "POST",
                 body: form
             });
@@ -349,20 +397,18 @@
                 const data = await res.json();   // { pin, expiresAt, ttlSeconds }
                 showSuccess(data);
             } else {
-                // Показываем реальную причину: HTTP-статус + тело ответа сервера.
                 let bodyText = "";
                 try { bodyText = await res.text(); } catch (_) {}
-                let code = "UNKNOWN";
-                try { code = JSON.parse(bodyText).code || "UNKNOWN"; } catch (_) {}
-                showError(code);
-                // Диагностическая строка под кнопкой (временно).
-                const dbg = el("debugLine");
-                if (dbg) dbg.textContent = "HTTP " + res.status + " · " + bodyText.slice(0, 200);
+                let code = null;
+                try { code = JSON.parse(bodyText).code || null; } catch (_) {}
+                // Отказ может прийти не от приложения, а от Nginx/Cloudflare:
+                // тогда тела в формате ErrorResponse нет, судим по статусу.
+                showError(code || codeByStatus(res.status));
+                console.warn("Upload failed", res.status, bodyText.slice(0, 300));
             }
         } catch (err) {
             showError("NETWORK");
-            const dbg = el("debugLine");
-            if (dbg) dbg.textContent = "Сеть: " + (err && err.message ? err.message : err);
+            console.warn("Upload network error", err);
         } finally {
             submitBtn.innerHTML = t.submit;
             submitBtn.disabled = false;
@@ -378,7 +424,7 @@
         el("resIcon").textContent  = "✅";
         el("resTitle").textContent = t.okTitle;
         el("resTitle").className   = "ok";
-        el("resDesc").textContent  = t.okDesc;
+        el("resDesc").textContent  = terminal ? t.okDescAt(terminal.name) : t.okDesc;
 
         el("pinBlock").classList.remove("hidden");
         el("pinValue").textContent = data.pin;
@@ -404,7 +450,38 @@
         el("pinBlock").classList.add("hidden");
     }
 
-    // «Загрузить ещё» — просто перезагружаем страницу с тем же языком.
+    function codeByStatus(status) {
+        if (status === 413) return "FILE_TOO_LARGE";
+        if (status === 429) return "TOO_MANY";
+        if (status === 502 || status === 503 || status === 504) return "UNAVAILABLE";
+        return "UNKNOWN";
+    }
+
+    // ── Терминал из ссылки ─────────────────────────────────────────
+    function renderTerminal() {
+        const box = el("terminalBox");
+        if (!terminal) { box.classList.add("hidden"); return; }
+        el("terminalLabel").textContent = I18N[lang].terminal;
+        el("terminalName").textContent  = terminal.location
+            ? `${terminal.name} · ${terminal.location}`
+            : terminal.name;
+        box.classList.remove("hidden");
+    }
+
+    async function loadTerminal() {
+        if (!kioskId) return;
+        try {
+            const res = await fetch("/api/files/upload/terminal?k=" + encodeURIComponent(kioskId));
+            if (!res.ok) return;          // неизвестный терминал — просто без плашки
+            const data = await res.json();
+            if (data && data.name) {
+                terminal = { name: data.name, location: data.location || "" };
+                renderTerminal();
+            }
+        } catch (_) { /* плашка необязательна, загрузка работает и без неё */ }
+    }
+
+    // «Загрузить ещё» — перезагружаем страницу с тем же языком и терминалом.
     el("againBtn").addEventListener("click", e => {
         e.preventDefault();
         const u = new URL(location);
@@ -413,6 +490,7 @@
     });
 
     applyLang();
+    loadTerminal();
 </script>
 </body>
 </html>

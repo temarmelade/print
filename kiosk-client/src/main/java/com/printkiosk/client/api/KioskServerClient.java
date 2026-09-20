@@ -241,6 +241,18 @@ public class KioskServerClient {
                 .body(byte[].class));
     }
 
+    /**
+     * Ссылка на веб-страницу загрузки для QR-кода. Адрес знает только
+     * сервер (PUBLIC_BASE_URL), поэтому киоск берёт его отсюда, а не из
+     * своего конфига. Требует X-Kiosk-Key.
+     */
+    public UploadLinkResponse uploadLink() {
+        return execute(() -> http.get()
+                .uri("/api/kiosk/upload-link")
+                .retrieve()
+                .body(UploadLinkResponse.class));
+    }
+
     // ════════════════════════════════════════════════════════════════
     //  Upload (скан/ксерокопия → серверный файл + PIN)
     // ════════════════════════════════════════════════════════════════

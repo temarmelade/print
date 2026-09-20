@@ -10,6 +10,7 @@ import com.printkiosk.client.service.AdMediaCache;
 import com.printkiosk.client.service.AdPlaylistService;
 import com.printkiosk.client.service.HelpVideoLocator;
 import com.printkiosk.client.service.KioskActivityState;
+import com.printkiosk.client.service.UploadLinkService;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -496,6 +497,7 @@ public class MainController {
     private final KioskActivityState activityState;
     private final HelpVideoLocator helpVideoLocator;
     private final AdMediaCache adMediaCache;
+    private final UploadLinkService uploadLinks;
 
     /**
      * Показывать готовый QR от банка вместо собственного.
@@ -565,7 +567,8 @@ public class MainController {
                           ServerProperties serverProperties, ScanFlow scanFlow,
                           KioskServerClient serverClient, LocalizationService loc,
                           ScanDeliveryFlow scanDeliveryFlow, KioskActivityState activityState,
-                          HelpVideoLocator helpVideoLocator, AdMediaCache adMediaCache) {
+                          HelpVideoLocator helpVideoLocator, AdMediaCache adMediaCache,
+                          UploadLinkService uploadLinks) {
         this.pinEntryFlow = pinEntryFlow;
         this.clientProperties = clientProperties;
         this.adPlaylistService = adPlaylistService;
@@ -583,6 +586,7 @@ public class MainController {
         this.activityState = activityState;
         this.helpVideoLocator = helpVideoLocator;
         this.adMediaCache = adMediaCache;
+        this.uploadLinks = uploadLinks;
     }
 
 
@@ -594,6 +598,9 @@ public class MainController {
     public void initialize() {
         log.info("MainController initialized");
         initLocalization();
+        // Сервер прислал (или сменил) ссылку на страницу загрузки — перерисовать
+        // веб-QR. Слушатель зовётся из фонового потока, отсюда runLater.
+        uploadLinks.setListener(() -> Platform.runLater(this::refreshUploadQrCodes));
         loadHomeLogo();
         pinEntryFlow.setListener(buildPinEntryListener());
         previewFlow.setListener(buildPreviewListener());
@@ -1717,9 +1724,12 @@ public class MainController {
         return base + "?start=lang_" + langCode(lang);
     }
 
-    /** URL сайта с query-параметром локали: ...?lang=ru */
+    /**
+     * Ссылка на страницу загрузки этого терминала + язык: ...?k=<kioskId>&lang=ru.
+     * Адрес выдаёт сервер (см. {@link UploadLinkService}), а не конфиг киоска.
+     */
     private String buildWebUrl(Language lang) {
-        String base = clientProperties.getUpload().getWebUrl();
+        String base = uploadLinks.currentLink();
         String sep = base.contains("?") ? "&" : "?";
         return base + sep + "lang=" + langCode(lang);
     }

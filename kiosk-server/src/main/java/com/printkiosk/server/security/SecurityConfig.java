@@ -31,6 +31,7 @@ import java.util.List;
  *   ОТКРЫТО (телефон/браузер посетителя):
  *     /api/admin/auth/login       вход в админку
  *     /api/files/upload           веб-портал загрузки
+ *     /api/files/upload/terminal  название терминала для страницы загрузки
  *     /api/files/d/**             скачивание по одноразовому токену
  *     /api/payments/webhook/**    колбэк платёжного провайдера
  *
@@ -73,6 +74,9 @@ public class SecurityConfig {
                         // Веб-портал загрузки: открывает посетитель с телефона,
                         // ключа киоска у него нет и быть не может.
                         .requestMatchers(HttpMethod.POST, "/api/files/upload").permitAll()
+                        // Страница загрузки показывает, для какого терминала её
+                        // открыли. Отдаёт только название и место установки.
+                        .requestMatchers(HttpMethod.GET, "/api/files/upload/terminal").permitAll()
                         // Скачивание по одноразовому токену (32 байта в ссылке).
                         .requestMatchers(HttpMethod.GET, "/api/files/d/**").permitAll()
                         // Колбэк платёжного провайдера: приходит извне,

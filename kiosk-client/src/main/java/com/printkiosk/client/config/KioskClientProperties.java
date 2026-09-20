@@ -50,7 +50,12 @@ public class KioskClientProperties {
         /** Базовый deep-link Telegram-бота, напр. https://t.me/PrintKioskBot */
         private String telegramBotUrl = "https://t.me/AlaTooPrintKioskBot";
 
-        /** Базовый URL веб-портала загрузки, напр. https://kioskprint.kg/upload */
-        private String webUrl = "http://192.168.1.120/upload";
+        /**
+         * Ручная ссылка на страницу загрузки. Обычно НЕ задаётся: ссылку для
+         * QR выдаёт сервер (GET /api/kiosk/upload-link). Используется только
+         * как запасная, пока сервер не ответил. Пусто — запасная строится из
+         * kiosk.server.public-base-url.
+         */
+        private String webUrl = "";
     }
 }

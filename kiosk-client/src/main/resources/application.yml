@@ -5,10 +5,10 @@ spring:
 kiosk:
   server:
     base-url: ${KIOSK_SERVER_URL:http://localhost:8080}
-    # Адрес сервера, каким его видит ТЕЛЕФОН пользователя (для ссылок в QR-кодах:
-    # скачивание сканов, страница загрузки). Это НЕ localhost — телефон должен
-    # достучаться по сети. Меняй на реальный IP/домен сервера.
-    public-base-url: ${KIOSK_PUBLIC_URL:http://192.168.1.120:8080}
+    # Ссылку для QR загрузки киоск получает с сервера (GET /api/kiosk/upload-link),
+    # а сервер строит её из своего PUBLIC_BASE_URL. Здесь — только запасной
+    # адрес на время, пока сервер не ответил. По умолчанию совпадает с base-url.
+    public-base-url: ${KIOSK_PUBLIC_URL:${kiosk.server.base-url}}
     kiosk-id: ${KIOSK_ID:vostok-5}
     # Ключ выдаётся при регистрации киоска в админке и задаётся ТОЛЬКО
     # в application-local.yml или через KIOSK_API_KEY. Значения по

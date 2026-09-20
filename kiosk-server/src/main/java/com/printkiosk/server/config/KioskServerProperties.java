@@ -71,9 +71,14 @@ public class KioskServerProperties {
         @NotBlank
         private String path = "/var/kiosk/uploads";
 
-        /** Публичный base URL, через который Nginx отдаёт файлы. */
+        /**
+         * Публичный base URL сервера: через него Nginx отдаёт файлы, и из
+         * него же строятся ссылки в QR-кодах для телефона. localhost здесь
+         * допустим только локально — тогда ссылки для телефона строятся по
+         * IP машины в сети (см. {@link PublicUrlResolver}).
+         */
         @NotBlank
-        private String publicBaseUrl = "http://192.168.1.120:8080";
+        private String publicBaseUrl = "http://localhost:8080";
 
         /** Как часто запускается очистка просроченных файлов. */
         @NotNull

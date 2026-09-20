@@ -18,9 +18,9 @@ public class ServerProperties {
     private String baseUrl = "http://localhost:8080";
 
     /**
-     * Публичный адрес сервера для ссылок в QR-кодах (скачивание сканов,
-     * страница загрузки) — то, что открывает ТЕЛЕФОН пользователя. Отличается
-     * от baseUrl: клиент ходит на сервер по localhost, а телефон — по сети.
+     * Адрес сервера, каким его видит ТЕЛЕФОН. Только запасной вариант для
+     * QR загрузки на случай, если сервер ещё не выдал ссылку: основную
+     * ссылку строит сервер из своего PUBLIC_BASE_URL (см. UploadLinkService).
      */
     @NotBlank
     private String publicBaseUrl = "http://localhost:8080";
