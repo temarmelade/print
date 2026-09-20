@@ -32,6 +32,28 @@ public interface FileRepository extends JpaRepository<FileEntity, UUID> {
     Optional<FileEntity> findActiveByCode(@Param("code") String code,
                                           @Param("now")  Instant now);
 
+    /**
+     * Продлевает жизнь файла, чья цифровая доставка оплачена. Только
+     * продлевает (не укорачивает) и только живой, не израсходованный файл.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+           UPDATE FileEntity f
+              SET f.expiresAt = :until
+            WHERE f.code = :pin
+              AND f.expiresAt > :now
+              AND f.expiresAt < :until
+              AND f.consumedAt IS NULL
+              AND EXISTS (SELECT 1 FROM PrintJobEntity j
+                           WHERE j.file = f
+                             AND j.paymentStatus = 'PAID'
+                             AND j.operationType IN :deliveryTypes)
+           """)
+    int extendPaidDelivery(@Param("pin")           String pin,
+                           @Param("now")           Instant now,
+                           @Param("until")         Instant until,
+                           @Param("deliveryTypes") java.util.Collection<com.printkiosk.shared.api.OperationType> deliveryTypes);
+
     /** Снимок просроченных записей для cleanup-джоба. */
     @Query("SELECT f FROM FileEntity f WHERE f.expiresAt < :threshold")
     List<FileEntity> findExpiredBefore(@Param("threshold") Instant threshold);

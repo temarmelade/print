@@ -55,6 +55,11 @@ public class ScanDeliveryFlow {
      * секрет ссылки сводился к четырём цифрам.
      */
     private String  downloadUrl;
+    /**
+     * Ссылка на бота (t.me/…?start=get_<токен>) — тоже от сервера. Раньше
+     * киоск подставлял в неё PIN, а сервер такую команду даже не разбирал.
+     */
+    private String  telegramUrl;
     private String  paymentUrl;
     private int     priceSom;
     private boolean paid;
@@ -73,6 +78,9 @@ public class ScanDeliveryFlow {
 
     /** Ссылка для QR-кода получения. null, если скан ещё не загружен. */
     public String downloadUrl() { return downloadUrl; }
+
+    /** Ссылка на получение в Telegram. null — скан не загружен или бот выключен. */
+    public String telegramUrl() { return telegramUrl; }
 
     // ════════════════════════════════════════════════════════════════
     //  Public
@@ -96,6 +104,12 @@ public class ScanDeliveryFlow {
             return;
         }
         if (paymentUrl != null) {           // QR уже готов — просто перерисовать
+            if ("TELEGRAM".equals(channel) && telegramUrl == null) {
+                // Бот на сервере выключен: не даём заплатить за канал,
+                // по которому документ не придёт.
+                notifyError("scanupload.delivery.failed");
+                return;
+            }
             notifyPaymentReady(paymentUrl, priceSom);
             return;
         }
@@ -117,6 +131,12 @@ public class ScanDeliveryFlow {
                 UploadResponse uploaded = server.uploadFile(pdf, UploadSource.SCAN);
                 pin = uploaded.pin();
                 downloadUrl = uploaded.downloadUrl();
+                telegramUrl = uploaded.telegramUrl();
+                if ("TELEGRAM".equals(channel) && telegramUrl == null) {
+                    // Проверяем ДО создания оплаты: брать деньги за доставку,
+                    // которая не придёт, нельзя.
+                    throw new IllegalStateException("Telegram-бот на сервере выключен");
+                }
                 return server.createScanDeliveryPayment(pin, channel);
             }
         };
@@ -238,8 +258,10 @@ public class ScanDeliveryFlow {
     private void resetState() {
         closeSse();
         stopTimeout();
-        pin        = null;
-        paymentUrl = null;
+        pin         = null;
+        downloadUrl = null;
+        telegramUrl = null;
+        paymentUrl  = null;
         priceSom   = 0;
         paid       = false;
         preparing  = false;

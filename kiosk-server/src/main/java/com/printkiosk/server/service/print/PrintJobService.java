@@ -40,6 +40,7 @@ public class PrintJobService {
     private final FileRepository     files;
     private final PricingService     pricing;
     private final JobMapper          jobMapper;
+    private final com.printkiosk.server.config.KioskServerProperties properties;
     // ════════════════════════════════════════════════════════════════
     //  CREATE
     // ════════════════════════════════════════════════════════════════
@@ -322,13 +323,30 @@ public class PrintJobService {
     /** Помечает активный (PAYMENT_PENDING) job для данного PIN как PAID. Идемпотентно. */
     @Transactional
     public boolean applyPaidByPin(String pin) {
-        int updated = jobs.markPaidByPin(pin, Instant.now());
+        Instant now = Instant.now();
+        int updated = jobs.markPaidByPin(pin, now);
         if (updated > 0) {
             log.info("Payment confirmed via webhook: pin={}", maskPin(pin));
+            extendPaidScanDelivery(pin, now);
             return true;
         }
         log.info("Webhook for pin={} ignored (no active PAYMENT_PENDING job)", maskPin(pin));
         return false;
+    }
+
+    /**
+     * Если оплачена цифровая доставка скана — продлеваем файлу жизнь.
+     * Срок файла (10 мин) считается от загрузки, а до оплаты проходит до
+     * 5 минут: без продления ссылка/бот переставали отдавать скан почти
+     * сразу после того, как человек заплатил. Для печатных заданий запрос
+     * ничего не меняет (в нём условие на тип операции доставки).
+     */
+    private void extendPaidScanDelivery(String pin, Instant now) {
+        Instant until = now.plus(properties.getScanDelivery().getDownloadTtl());
+        int extended = files.extendPaidDelivery(pin, now, until, PrintJobRepository.SCAN_DELIVERY_TYPES);
+        if (extended > 0) {
+            log.info("Scan delivery paid: pin={} available until {}", maskPin(pin), until);
+        }
     }
 
     /** Помечает активный (PAYMENT_PENDING) job для PIN как FAILED. */

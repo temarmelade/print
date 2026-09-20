@@ -12,7 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import com.printkiosk.server.domain.FileEntity;
+import com.printkiosk.server.exception.PinNotFoundException;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.*;
 
@@ -33,6 +36,10 @@ public class TelegramPrintBot extends TelegramLongPollingBot {
     private final IncidentSubscriptionService subscriptions;
     private final IncidentMessageFormatter incidentMessages;
     private final IncidentService incidents;
+
+    /** Токен скана в ссылке get_<токен> — тот же формат, что у веб-ссылки. */
+    private static final java.util.regex.Pattern SCAN_TOKEN =
+            java.util.regex.Pattern.compile("[A-Za-z0-9_-]{20,64}");
 
     /** Хранилище выбранного языка пользователя в памяти (per-instance). */
     private final Map<Long, String> userLangs = new ConcurrentHashMap<>();
@@ -97,12 +104,85 @@ public class TelegramPrintBot extends TelegramLongPollingBot {
             return;
         }
 
-        if (lower.equals("/start")) {
-            sendText(chatId, messages.welcome());
+        // Deep-link из QR киоска приходит как «/start <параметр>». Раньше
+        // здесь было equals("/start"), и «/start get_…» уходил в «как
+        // пользоваться» — оплаченный скан бот не отправлял никогда.
+        if (lower.equals("/start") || lower.startsWith("/start ")) {
+            handleStart(chatId, text.substring("/start".length()).trim());
             return;
         }
 
         sendText(chatId, messages.howToUse(lang(chatId)));
+    }
+
+    /**
+     * {@code /start} с параметром из QR-кода киоска:
+     * <ul>
+     *   <li>{@code get_<токен>} — получение оплаченного скана;</li>
+     *   <li>{@code lang_ru|ky|en} — QR загрузки файла, выставляем язык.</li>
+     * </ul>
+     * Параметр берётся из исходного текста: токен регистрозависимый.
+     */
+    private void handleStart(Long chatId, String payload) {
+        if (payload.startsWith("get_")) {
+            deliverScan(chatId, payload.substring("get_".length()));
+            return;
+        }
+        if (payload.startsWith("lang_")) {
+            String lang = normalizeLang(payload.substring("lang_".length()));
+            if (lang != null) userLangs.put(chatId, lang);
+        }
+        sendText(chatId, messages.welcome());
+    }
+
+    /**
+     * Отправляет оплаченный скан документом. Ссылку можно открыть повторно
+     * (например, с другого телефона) — пока скан не истёк, бот пришлёт его
+     * снова: доставка оплачена, а токен знает только тот, кто видел QR.
+     */
+    private void deliverScan(Long chatId, String token) {
+        String lang = lang(chatId);
+        if (!SCAN_TOKEN.matcher(token).matches()) {
+            sendText(chatId, messages.scanUnavailable(lang));
+            return;
+        }
+
+        FileEntity file;
+        try {
+            file = fileService.getPaidScanForDelivery(token);
+        } catch (PinNotFoundException e) {
+            sendText(chatId, messages.scanUnavailable(lang));
+            return;
+        }
+
+        java.io.File onDisk = fileService.storedPath(file).toFile();
+        if (!onDisk.isFile()) {
+            log.warn("Scan delivery: file id={} missing on disk", file.getId());
+            sendText(chatId, messages.scanUnavailable(lang));
+            return;
+        }
+
+        SendDocument doc = new SendDocument();
+        doc.setChatId(chatId.toString());
+        doc.setDocument(new InputFile(onDisk, file.getOriginalFilename()));
+        doc.setCaption(messages.scanDelivered(lang));
+        try {
+            execute(doc);
+            log.info("Scan delivered via Telegram: file id={} chat={}", file.getId(), chatId);
+        } catch (Exception e) {
+            log.error("Scan delivery via Telegram failed: file id={}", file.getId(), e);
+            sendText(chatId, messages.genericError(lang));
+        }
+    }
+
+    /** Код языка из QR киоска → код бота. Киоск шлёт «ky», бот хранит «kg». */
+    private static String normalizeLang(String code) {
+        return switch (code.toLowerCase()) {
+            case "ru"       -> "ru";
+            case "ky", "kg" -> "kg";
+            case "en"       -> "en";
+            default         -> null;
+        };
     }
 
     // ════════════════════════════════════════════════════════════════

@@ -57,6 +57,22 @@ public class BotMessages {
         };
     }
 
+    public String scanDelivered(String lang) {
+        return switch (lang) {
+            case "kg" -> "📄 Сканерленген документиңиз";
+            case "en" -> "📄 Your scanned document";
+            default   -> "📄 Ваш отсканированный документ";
+        };
+    }
+
+    public String scanUnavailable(String lang) {
+        return switch (lang) {
+            case "kg" -> "⏳ Шилтеменин мөөнөтү бүттү же ал жараксыз. Документти терминалда кайра сканерлеңиз.";
+            case "en" -> "⏳ This link has expired or is invalid. Please scan the document at the kiosk again.";
+            default   -> "⏳ Ссылка больше не действует. Отсканируйте документ на терминале ещё раз.";
+        };
+    }
+
     public String howToUse(String lang) { return unsupportedContent(lang); }
     public String genericError(String lang) { return uploadFailed(lang); }
 }

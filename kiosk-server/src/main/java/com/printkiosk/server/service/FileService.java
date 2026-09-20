@@ -59,6 +59,8 @@ public class FileService {
     private final PageCountService  pageCountService;
     private final DocumentConversionService converter;
     private final PublicUrlResolver         publicUrls;
+    private final com.printkiosk.server.config.TelegramBotProperties botProperties;
+    private final com.printkiosk.server.domain.PrintJobRepository    jobs;
     // ════════════════════════════════════════════════════════════════
     //  UPLOAD
     // ════════════════════════════════════════════════════════════════
@@ -238,7 +240,8 @@ public class FileService {
                 id, pin, source, size);
 
         return new UploadResponse(pin, entity.getExpiresAt(), ttl.getSeconds(),
-                buildDownloadUrl(downloadToken));
+                buildDownloadUrl(downloadToken),
+                buildTelegramUrl(downloadToken));
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -254,6 +257,38 @@ public class FileService {
     public FileEntity getForDownload(String pin) {
         return repository.findActiveByCode(pin, Instant.now())
                 .orElseThrow(PinNotFoundException::new);
+    }
+
+    /**
+     * Скан для получения на телефон (сайт или Telegram) по токену из QR.
+     *
+     * <p>Отдаём только если цифровая доставка этого файла ОПЛАЧЕНА. Раньше
+     * сервер отдавал любой живой файл по токену, а «оплату» обеспечивало
+     * лишь то, что киоск не показывает ссылку до оплаты.
+     *
+     * <p>Причину отказа не раскрываем (истёк / не оплачен / не существует —
+     * одно и то же исключение), но пишем в лог для разбора.
+     */
+    @Transactional(readOnly = true)
+    public FileEntity getPaidScanForDelivery(String token) {
+        FileEntity file = repository.findActiveByDownloadToken(token, Instant.now())
+                .orElseThrow(() -> {
+                    log.info("Scan delivery: token not found or expired");
+                    return new PinNotFoundException();
+                });
+        boolean paid = jobs.existsByFile_IdAndPaymentStatusAndOperationTypeIn(
+                file.getId(), "PAID",
+                com.printkiosk.server.domain.PrintJobRepository.SCAN_DELIVERY_TYPES);
+        if (!paid) {
+            log.warn("Scan delivery refused: file id={} is not paid for delivery", file.getId());
+            throw new PinNotFoundException();
+        }
+        return file;
+    }
+
+    /** Путь к файлу на диске — для отправки скана ботом. */
+    public java.nio.file.Path storedPath(FileEntity file) {
+        return storage.resolve(file.getStoredFilename());
     }
 
     /** Файл по одноразовому токену из QR-ссылки — путь скачивания с телефона. */
@@ -355,6 +390,22 @@ public class FileService {
         // Ссылку открывает телефон, поэтому адрес — «телефонный»: при
         // локальном запуске это IP машины в сети, а не localhost.
         return publicUrls.phoneBaseUrl() + "/api/files/d/" + token;
+    }
+
+    /**
+     * Ссылка на получение скана в Telegram: бот получит {@code /start get_<токен>}.
+     * Раньше киоск подставлял сюда PIN — те же четыре цифры, что перебирались
+     * в веб-ссылке. Параметр start у Telegram — до 64 символов [A-Za-z0-9_-];
+     * «get_» + 43 символа токена укладываются.
+     *
+     * @return null, если бот выключен или не задано его имя
+     */
+    private String buildTelegramUrl(String token) {
+        String username = botProperties.getUsername();
+        if (!botProperties.isEnabled() || username == null || username.isBlank()) {
+            return null;
+        }
+        return "https://t.me/" + username.trim().replaceFirst("^@", "") + "?start=get_" + token;
     }
 
     private String buildPublicUrl(String storedFilename) {

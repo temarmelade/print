@@ -1,5 +1,6 @@
 package com.printkiosk.server.domain;
 
+import com.printkiosk.shared.api.OperationType;
 import com.printkiosk.shared.api.PrintJobStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,6 +56,18 @@ public interface PrintJobRepository
            """)
     List<PrintJobEntity> findActiveByPin(@Param("pin") String pin,
                                          @Param("now") Instant now);
+
+    /** Типы операций цифровой доставки скана (сайт и Telegram). */
+    java.util.Set<OperationType> SCAN_DELIVERY_TYPES = java.util.Set.of(
+            OperationType.SCAN_DOWNLOAD_WEB, OperationType.SCAN_SEND_TELEGRAM);
+
+    /**
+     * Оплачена ли цифровая доставка этого файла. Смотрим на факт оплаты
+     * (paymentStatus), а не на статус задания: у доставки PAID — конечное
+     * состояние, печатать её никто не будет.
+     */
+    boolean existsByFile_IdAndPaymentStatusAndOperationTypeIn(
+            UUID fileId, String paymentStatus, Collection<OperationType> operationTypes);
 
     default Optional<PrintJobEntity> findLatestActiveByPin(String pin, Instant now) {
         return findActiveByPin(pin, now).stream().findFirst();

@@ -99,5 +99,14 @@ public class KioskServerProperties {
          */
         @PositiveOrZero
         private int pricePerPageSom = 10;
+
+        /**
+         * Сколько скан доступен для получения ПОСЛЕ оплаты доставки. Обычный
+         * срок жизни файла (kiosk.pin.ttl, 10 мин) отсчитывается от загрузки,
+         * а оплата сама занимает до 5 минут — на скачивание оставались
+         * считаные минуты. После оплаты срок продлевается до этого значения.
+         */
+        @NotNull
+        private java.time.Duration downloadTtl = java.time.Duration.ofMinutes(30);
     }
 }

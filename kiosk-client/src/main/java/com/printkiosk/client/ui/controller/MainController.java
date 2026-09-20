@@ -2400,8 +2400,9 @@ public class MainController {
 
     @FXML public void onScanDeliveryTelegramClicked() {
         // Телеграм-доставка платная: та же оплата, после неё QR ведёт в бота.
-        pendingDeliveryLink = pin ->
-                clientProperties.getUpload().getTelegramBotUrl() + "?start=get_" + pin;
+        // Ссылку с токеном выдаёт сервер: раньше киоск склеивал её из PIN,
+        // а бот команду get_<PIN> не обрабатывал — документ не приходил.
+        pendingDeliveryLink = pin -> scanDeliveryFlow.telegramUrl();
         scanDeliveryFlow.preparePayment("TELEGRAM");
     }
 
