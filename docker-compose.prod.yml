@@ -28,7 +28,7 @@ services:
 
   server:
     build:
-      context: ../../AppData/Local/Temp
+      context: .
       dockerfile: kiosk-server/Dockerfile
     container_name: kiosk-server
     restart: unless-stopped
