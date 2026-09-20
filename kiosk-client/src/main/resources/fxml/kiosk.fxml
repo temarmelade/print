@@ -1745,15 +1745,19 @@
                        visible="false"
                        managed="false">
 
-                <VBox alignment="CENTER" spacing="18" maxWidth="820" maxHeight="900">
+                <!-- Колонка по размеру содержимого (-Infinity = USE_PREF_SIZE):
+                     раньше maxHeight="900" обрезал её, и рамка под вертикальное
+                     видео в неё не помещалась. -->
+                <VBox alignment="CENTER" spacing="18" maxWidth="-Infinity" maxHeight="-Infinity">
 
                     <Label fx:id="helpVideoTitleLabel"
                            text="Видеоинструкция"
                            styleClass="help-video-title"/>
 
+                    <!-- Рамка 9:16 под вертикальные ролики. Размер считает
+                         контроллер (setupHelpVideoFrame) от размера экрана. -->
                     <StackPane fx:id="helpVideoBox"
-                               styleClass="help-video-box"
-                               minHeight="460"/>
+                               styleClass="help-video-box"/>
 
                     <Button fx:id="helpVideoCloseBtn"
                             text="Закрыть"

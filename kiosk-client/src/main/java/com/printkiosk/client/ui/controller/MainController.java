@@ -625,7 +625,55 @@ public class MainController {
                         String.valueOf(sel), String.valueOf(total)),
                 n -> loc.get("pages.page.n", String.valueOf(n)));
         setupPreviewFit();
+        setupHelpVideoFrame();
         startHomeClock();
+    }
+
+    /** Пропорции видеоинструкций: все ролики сняты вертикально, 9:16. */
+    private static final double HELP_VIDEO_ASPECT = 9.0 / 16.0;
+    /**
+     * Сколько по высоте занимают заголовок (~45), кнопка «Закрыть» (88) и
+     * два отступа колонки (2×18), с запасом — остальное отдаём видео.
+     */
+    private static final double HELP_VIDEO_CHROME = 190;
+
+    /**
+     * Рамка плеера строго 9:16 и максимального размера, какой позволяет
+     * экран. Раньше рамка была горизонтальной (мин. ширина 760, высота 460),
+     * и вертикальный ролик занимал в ней узкую полоску посередине.
+     *
+     * <p>Считаем от rootStack: он всегда размечен, а оверлей до первого
+     * показа имеет нулевой размер. min = pref = max, чтобы родитель не
+     * растянул рамку и не сломал пропорции. Скруглённый клип — чтобы кадр
+     * не вылезал углами за скруглённый фон рамки.
+     */
+    private void setupHelpVideoFrame() {
+        Runnable fit = () -> {
+            javafx.geometry.Insets pad = helpVideoOverlay.getInsets();
+            double availW = rootStack.getWidth()  - pad.getLeft() - pad.getRight();
+            double availH = rootStack.getHeight() - pad.getTop()  - pad.getBottom()
+                    - HELP_VIDEO_CHROME;
+            if (availW <= 0 || availH <= 0) return;
+
+            double h = Math.min(availH, availW / HELP_VIDEO_ASPECT);
+            double w = Math.floor(h * HELP_VIDEO_ASPECT);
+            h = Math.floor(w / HELP_VIDEO_ASPECT);
+
+            helpVideoBox.setMinSize(w, h);
+            helpVideoBox.setPrefSize(w, h);
+            helpVideoBox.setMaxSize(w, h);
+        };
+        rootStack.widthProperty() .addListener((o, a, b) -> fit.run());
+        rootStack.heightProperty().addListener((o, a, b) -> fit.run());
+        helpVideoOverlay.insetsProperty().addListener((o, a, b) -> fit.run());
+        fit.run();
+
+        javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle();
+        clip.setArcWidth(36);    // = 2 × -fx-background-radius рамки
+        clip.setArcHeight(36);
+        clip.widthProperty() .bind(helpVideoBox.widthProperty());
+        clip.heightProperty().bind(helpVideoBox.heightProperty());
+        helpVideoBox.setClip(clip);
     }
 
     /**
