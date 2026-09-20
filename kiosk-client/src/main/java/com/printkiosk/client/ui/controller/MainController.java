@@ -1877,6 +1877,14 @@ public class MainController {
             log.warn("Cannot proceed to payment: missing state");
             return;
         }
+        // Без файла печать после оплаты гарантированно упадёт — а деньги уже
+        // списаны. Лучше остановиться здесь, до QR оплаты.
+        if (currentFile == null) {
+            log.error("Cannot proceed to payment: no file for pin={}", currentPin);
+            showConfirmOverlay(loc.get("scanupload.print.failed"), loc.get("error.unknown"),
+                    loc.get("dialog.ok"), loc.get("dialog.close"), () -> {});
+            return;
+        }
 
         // Подстраховка: принтер мог сломаться, пока человек настраивал
         // печать. Показываем ПРИЧИНУ, а не глухой экран «не работает»:
@@ -2288,6 +2296,9 @@ public class MainController {
         uploadScansAndOpenPrintSettings(SettingsOrigin.SCAN, scanDeliveryPrintBtn);
     }
 
+    /** Результат заливки сканов: PIN и файл в том виде, в каком его ждёт печать. */
+    private record ScanUpload(String pin, VerifyResponse file) {}
+
     /**
      * Общий тракт «сканы → печать» для обычного сканирования («Распечатать»
      * на экране действий) и ксерокопии («Завершить» в превью): собирает PDF,
@@ -2306,16 +2317,23 @@ public class MainController {
                 (origin == SettingsOrigin.COPY) ? UploadSource.COPY : UploadSource.SCAN;
         if (triggerBtn != null) triggerBtn.setDisable(true);
 
-        Task<UploadResponse> task = new Task<>() {
-            @Override protected UploadResponse call() throws Exception {
+        Task<ScanUpload> task = new Task<>() {
+            @Override protected ScanUpload call() throws Exception {
                 java.io.File pdf = scanFlow.buildPdf();
-                return serverClient.uploadFile(pdf, uploadSource);
+                UploadResponse uploaded = serverClient.uploadFile(pdf, uploadSource);
+                // Печать берёт файл из currentFile (ссылка на скачивание + id
+                // для consume). При ручном вводе PIN его даёт verify — делаем
+                // то же самое, иначе после оплаты PrintFlow получит null.
+                // verify заодно закрепляет PIN за этим киоском, как обычно.
+                VerifyResponse file = serverClient.verify(uploaded.pin());
+                return new ScanUpload(uploaded.pin(), file);
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             if (triggerBtn != null) triggerBtn.setDisable(false);
-            UploadResponse resp = task.getValue();
-            currentPin = resp.pin();                 // теперь сканы = обычный файл печати
+            ScanUpload upload = task.getValue();
+            currentPin  = upload.pin();              // теперь сканы = обычный файл печати
+            currentFile = upload.file();
             jobPages = null;                         // скан печатаем целиком
             settingsFlow.start(currentPin);          // запускаем стандартные настройки
             changeStep(KioskStep.SETTINGS);

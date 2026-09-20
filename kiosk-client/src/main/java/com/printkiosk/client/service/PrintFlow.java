@@ -54,6 +54,13 @@ public class PrintFlow {
             log.warn("Print already in progress");
             return;
         }
+        if (file == null) {
+            // Раньше это превращалось в NPE внутри конвейера и сырой текст
+            // исключения на экране клиента.
+            log.error("Print requested without a file, job={}", jobId);
+            finalizeFailure(jobId, "Файл для печати не подготовлен");
+            return;
+        }
         inProgress = true;
         notifyStarted();
 
