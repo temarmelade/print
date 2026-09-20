@@ -34,9 +34,23 @@ WORKDIR /app
 # падала бы, оставляя контейнер навсегда в статусе unhealthy.
 # ffmpeg перегоняет загруженные GIF в H.264: GIF почти не сжат, а его
 # декодер в JavaFX работает на потоке отрисовки и даёт рывки на киоске.
+#
+# LibreOffice конвертирует присланные DOC/DOCX в PDF. Без него загрузка
+# любого Word-файла падала. Ставим только Writer и без графической части
+# (-nogui): X11, GTK и Java для конвертации не нужны.
+# Шрифты — метрически совместимые замены офисных: без них LibreOffice
+# подставляет что попало, документ перевёрстывается, и число страниц
+# (а с ним и цена) расходится с тем, что человек видел в Word:
+#   fonts-liberation2       — Times New Roman, Arial, Courier New
+#   fonts-crosextra-carlito — Calibri (шрифт Word по умолчанию)
+#   fonts-crosextra-caladea — Cambria
+#   fonts-dejavu-core       — запасной, с полной кириллицей (ң, ө, ү)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ffmpeg \
+        libreoffice-writer-nogui \
+        fonts-liberation2 fonts-crosextra-carlito fonts-crosextra-caladea fonts-dejavu-core \
  && rm -rf /var/lib/apt/lists/* \
+ && soffice --headless --version \
  && groupadd -r kiosk && useradd -r -g kiosk kiosk \
  && mkdir -p /var/lib/kiosk/uploads /var/log/kiosk \
  && chown -R kiosk:kiosk /var/lib/kiosk /var/log/kiosk

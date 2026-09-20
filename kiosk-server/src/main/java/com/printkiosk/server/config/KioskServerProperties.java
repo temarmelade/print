@@ -1,5 +1,6 @@
 package com.printkiosk.server.config;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -33,6 +34,9 @@ public class KioskServerProperties {
 
     /** Тарификация цифровой доставки отсканированных документов. */
     private ScanDelivery scanDelivery = new ScanDelivery();
+
+    @Valid
+    private Conversion conversion = new Conversion();
 
     @Getter
     @Setter
@@ -87,6 +91,33 @@ public class KioskServerProperties {
         /** Grace-период перед физическим удалением истёкшего файла. */
         @NotNull
         private Duration cleanupGrace = Duration.ofSeconds(30);
+    }
+
+    /** Конвертация DOC/DOCX → PDF через LibreOffice. */
+    @Getter
+    @Setter
+    public static class Conversion {
+        /**
+         * Путь к soffice. Пусто — ищем сами: стандартные пути Linux/Windows/
+         * macOS, затем PATH. В Docker-образе LibreOffice ставится в
+         * /usr/bin/soffice и находится без настройки.
+         */
+        private String sofficePath = "";
+
+        /** Предел на одну конвертацию; зависший процесс убивается. */
+        @NotNull
+        private java.time.Duration timeout = java.time.Duration.ofSeconds(90);
+
+        /**
+         * Сколько конвертаций идёт одновременно. Каждая — отдельный процесс
+         * LibreOffice (150–300 МБ) со своим профилем: с общим профилем
+         * параллельные запуски молча теряют результат.
+         */
+        @Positive
+        private int maxParallel = 2;
+
+        /** Папка профилей LibreOffice. Пусто — {java.io.tmpdir}/kiosk-lo. */
+        private String workDir = "";
     }
 
     @Getter

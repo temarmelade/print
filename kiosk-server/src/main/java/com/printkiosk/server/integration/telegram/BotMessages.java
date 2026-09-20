@@ -73,6 +73,14 @@ public class BotMessages {
         };
     }
 
+    public String wordConversionFailed(String lang) {
+        return switch (lang) {
+            case "kg" -> "❌ Word документин иштетүү мүмкүн болгон жок. Аны PDF катары сактап, кайра жөнөтүңүз.";
+            case "en" -> "❌ Could not process the Word document. Save it as PDF and send it again.";
+            default   -> "❌ Не удалось обработать документ Word. Сохраните его как PDF и отправьте снова.";
+        };
+    }
+
     public String howToUse(String lang) { return unsupportedContent(lang); }
     public String genericError(String lang) { return uploadFailed(lang); }
 }

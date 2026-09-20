@@ -1,5 +1,6 @@
 package com.printkiosk.server.web;
 
+import com.printkiosk.server.exception.DocumentConversionException;
 import com.printkiosk.server.exception.FileValidationException;
 import com.printkiosk.server.exception.JobNotFoundException;
 import com.printkiosk.server.exception.PaymentGatewayException;
@@ -71,6 +72,18 @@ public class ApiExceptionHandler {
      * неподдерживаемый формат). Касается и веб-загрузки, и бота — отдаём
      * 400, чтобы клиент отличал «плохой файл» от сбоя сервера.
      */
+    /**
+     * Word-документ не сконвертировался. 422: сам запрос корректен, но
+     * документ обработать не вышло. Посетителю — совет сохранить как PDF;
+     * причина (нет LibreOffice, таймаут, битый файл) — в логе сервера.
+     */
+    @ExceptionHandler(DocumentConversionException.class)
+    public ResponseEntity<ErrorResponse> conversionFailed(DocumentConversionException e) {
+        return ResponseEntity.unprocessableEntity()
+                .body(new ErrorResponse("CONVERSION_FAILED",
+                        "Не удалось обработать документ Word"));
+    }
+
     @ExceptionHandler(FileValidationException.class)
     public ResponseEntity<ErrorResponse> fileInvalid(FileValidationException e) {
         return ResponseEntity.badRequest()

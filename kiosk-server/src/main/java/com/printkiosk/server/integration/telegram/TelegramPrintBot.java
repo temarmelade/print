@@ -264,6 +264,9 @@ public class TelegramPrintBot extends TelegramLongPollingBot {
                     chatId
             );
             sendText(chatId, messages.uploadSuccess(lang(chatId), response.pin()), true);
+        } catch (com.printkiosk.server.exception.DocumentConversionException e) {
+            log.warn("Word conversion failed for chat {}: {}", chatId, e.getMessage());
+            sendText(chatId, messages.wordConversionFailed(lang(chatId)));
         } catch (Exception e) {
             log.warn("Document upload failed for chat {}: {}", chatId, e.getMessage());
             sendText(chatId, messages.uploadFailed(lang(chatId)));

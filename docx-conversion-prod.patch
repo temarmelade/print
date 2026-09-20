@@ -1,0 +1,608 @@
+diff --git a/kiosk-server/Dockerfile b/kiosk-server/Dockerfile
+index c2370df..25b73fc 100644
+--- a/kiosk-server/Dockerfile
++++ b/kiosk-server/Dockerfile
+@@ -34,9 +34,23 @@ WORKDIR /app
+ # падала бы, оставляя контейнер навсегда в статусе unhealthy.
+ # ffmpeg перегоняет загруженные GIF в H.264: GIF почти не сжат, а его
+ # декодер в JavaFX работает на потоке отрисовки и даёт рывки на киоске.
++#
++# LibreOffice конвертирует присланные DOC/DOCX в PDF. Без него загрузка
++# любого Word-файла падала. Ставим только Writer и без графической части
++# (-nogui): X11, GTK и Java для конвертации не нужны.
++# Шрифты — метрически совместимые замены офисных: без них LibreOffice
++# подставляет что попало, документ перевёрстывается, и число страниц
++# (а с ним и цена) расходится с тем, что человек видел в Word:
++#   fonts-liberation2       — Times New Roman, Arial, Courier New
++#   fonts-crosextra-carlito — Calibri (шрифт Word по умолчанию)
++#   fonts-crosextra-caladea — Cambria
++#   fonts-dejavu-core       — запасной, с полной кириллицей (ң, ө, ү)
+ RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl ffmpeg \
++        libreoffice-writer-nogui \
++        fonts-liberation2 fonts-crosextra-carlito fonts-crosextra-caladea fonts-dejavu-core \
+  && rm -rf /var/lib/apt/lists/* \
++ && soffice --headless --version \
+  && groupadd -r kiosk && useradd -r -g kiosk kiosk \
+  && mkdir -p /var/lib/kiosk/uploads /var/log/kiosk \
+  && chown -R kiosk:kiosk /var/lib/kiosk /var/log/kiosk
+diff --git a/kiosk-server/src/main/java/com/printkiosk/server/config/KioskServerProperties.java b/kiosk-server/src/main/java/com/printkiosk/server/config/KioskServerProperties.java
+index fe6fcfd..834563f 100644
+--- a/kiosk-server/src/main/java/com/printkiosk/server/config/KioskServerProperties.java
++++ b/kiosk-server/src/main/java/com/printkiosk/server/config/KioskServerProperties.java
+@@ -1,5 +1,6 @@
+ package com.printkiosk.server.config;
+ 
++import jakarta.validation.Valid;
+ import jakarta.validation.constraints.NotBlank;
+ import jakarta.validation.constraints.NotNull;
+ import jakarta.validation.constraints.Positive;
+@@ -34,6 +35,9 @@ public class KioskServerProperties {
+     /** Тарификация цифровой доставки отсканированных документов. */
+     private ScanDelivery scanDelivery = new ScanDelivery();
+ 
++    @Valid
++    private Conversion conversion = new Conversion();
++
+     @Getter
+     @Setter
+     public static class Pin {
+@@ -89,6 +93,33 @@ public class KioskServerProperties {
+         private Duration cleanupGrace = Duration.ofSeconds(30);
+     }
+ 
++    /** Конвертация DOC/DOCX → PDF через LibreOffice. */
++    @Getter
++    @Setter
++    public static class Conversion {
++        /**
++         * Путь к soffice. Пусто — ищем сами: стандартные пути Linux/Windows/
++         * macOS, затем PATH. В Docker-образе LibreOffice ставится в
++         * /usr/bin/soffice и находится без настройки.
++         */
++        private String sofficePath = "";
++
++        /** Предел на одну конвертацию; зависший процесс убивается. */
++        @NotNull
++        private java.time.Duration timeout = java.time.Duration.ofSeconds(90);
++
++        /**
++         * Сколько конвертаций идёт одновременно. Каждая — отдельный процесс
++         * LibreOffice (150–300 МБ) со своим профилем: с общим профилем
++         * параллельные запуски молча теряют результат.
++         */
++        @Positive
++        private int maxParallel = 2;
++
++        /** Папка профилей LibreOffice. Пусто — {java.io.tmpdir}/kiosk-lo. */
++        private String workDir = "";
++    }
++
+     @Getter
+     @Setter
+     public static class ScanDelivery {
+diff --git a/kiosk-server/src/main/java/com/printkiosk/server/exception/DocumentConversionException.java b/kiosk-server/src/main/java/com/printkiosk/server/exception/DocumentConversionException.java
+new file mode 100644
+index 0000000..31c3451
+--- /dev/null
++++ b/kiosk-server/src/main/java/com/printkiosk/server/exception/DocumentConversionException.java
+@@ -0,0 +1,18 @@
++package com.printkiosk.server.exception;
++
++/**
++ * Документ Word не удалось превратить в PDF: LibreOffice не установлен,
++ * не уложился в таймаут или не смог открыть файл.
++ *
++ * <p>Отдельно от {@link FileValidationException}: файл при этом может быть
++ * совершенно нормальным, и сообщать посетителю «файл повреждён» — неправда.
++ */
++public class DocumentConversionException extends RuntimeException {
++    public DocumentConversionException(String message) {
++        super(message);
++    }
++
++    public DocumentConversionException(String message, Throwable cause) {
++        super(message, cause);
++    }
++}
+diff --git a/kiosk-server/src/main/java/com/printkiosk/server/integration/telegram/BotMessages.java b/kiosk-server/src/main/java/com/printkiosk/server/integration/telegram/BotMessages.java
+index 1b699b9..fcbd011 100644
+--- a/kiosk-server/src/main/java/com/printkiosk/server/integration/telegram/BotMessages.java
++++ b/kiosk-server/src/main/java/com/printkiosk/server/integration/telegram/BotMessages.java
+@@ -73,6 +73,14 @@ public class BotMessages {
+         };
+     }
+ 
++    public String wordConversionFailed(String lang) {
++        return switch (lang) {
++            case "kg" -> "❌ Word документин иштетүү мүмкүн болгон жок. Аны PDF катары сактап, кайра жөнөтүңүз.";
++            case "en" -> "❌ Could not process the Word document. Save it as PDF and send it again.";
++            default   -> "❌ Не удалось обработать документ Word. Сохраните его как PDF и отправьте снова.";
++        };
++    }
++
+     public String howToUse(String lang) { return unsupportedContent(lang); }
+     public String genericError(String lang) { return uploadFailed(lang); }
+ }
+\ No newline at end of file
+diff --git a/kiosk-server/src/main/java/com/printkiosk/server/integration/telegram/TelegramPrintBot.java b/kiosk-server/src/main/java/com/printkiosk/server/integration/telegram/TelegramPrintBot.java
+index 0239e0d..50edad2 100644
+--- a/kiosk-server/src/main/java/com/printkiosk/server/integration/telegram/TelegramPrintBot.java
++++ b/kiosk-server/src/main/java/com/printkiosk/server/integration/telegram/TelegramPrintBot.java
+@@ -264,6 +264,9 @@ public class TelegramPrintBot extends TelegramLongPollingBot {
+                     chatId
+             );
+             sendText(chatId, messages.uploadSuccess(lang(chatId), response.pin()), true);
++        } catch (com.printkiosk.server.exception.DocumentConversionException e) {
++            log.warn("Word conversion failed for chat {}: {}", chatId, e.getMessage());
++            sendText(chatId, messages.wordConversionFailed(lang(chatId)));
+         } catch (Exception e) {
+             log.warn("Document upload failed for chat {}: {}", chatId, e.getMessage());
+             sendText(chatId, messages.uploadFailed(lang(chatId)));
+diff --git a/kiosk-server/src/main/java/com/printkiosk/server/service/DocumentConversionService.java b/kiosk-server/src/main/java/com/printkiosk/server/service/DocumentConversionService.java
+index f8be5d7..22a8f37 100644
+--- a/kiosk-server/src/main/java/com/printkiosk/server/service/DocumentConversionService.java
++++ b/kiosk-server/src/main/java/com/printkiosk/server/service/DocumentConversionService.java
+@@ -1,12 +1,46 @@
+ package com.printkiosk.server.service;
+ 
++import com.printkiosk.server.config.KioskServerProperties;
++import com.printkiosk.server.exception.DocumentConversionException;
+ import lombok.extern.slf4j.Slf4j;
++import org.springframework.boot.context.event.ApplicationReadyEvent;
++import org.springframework.context.event.EventListener;
+ import org.springframework.stereotype.Service;
+ 
++import java.io.File;
++import java.io.IOException;
++import java.io.InputStream;
++import java.nio.charset.StandardCharsets;
+ import java.nio.file.Files;
+ import java.nio.file.Path;
++import java.time.Duration;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.ArrayBlockingQueue;
++import java.util.concurrent.BlockingQueue;
+ import java.util.concurrent.TimeUnit;
+ 
++/**
++ * Конвертация DOC/DOCX → PDF через LibreOffice в headless-режиме.
++ *
++ * <p><b>Профили.</b> LibreOffice при запуске создаёт профиль пользователя
++ * (по умолчанию в ~/.config). В контейнере приложение работает от
++ * системного пользователя без домашней папки, и soffice падает с
++ * «User installation could not be completed» (код 77). Поэтому профиль
++ * задаём явно ключом {@code -env:UserInstallation}.
++ *
++ * <p><b>Параллельность.</b> С общим профилем одновременные запуски теряют
++ * результат: второй soffice передаёт работу первому и выходит с кодом 0,
++ * а PDF не появляется (проверено: 4 одновременных запуска → 2 PDF).
++ * Поэтому держим пул «слотов», у каждого свой профиль; одновременно
++ * работает не больше {@code kiosk.conversion.max-parallel} процессов,
++ * остальные ждут своей очереди в пределах таймаута. Профили живут между
++ * конвертациями — повторный запуск не тратит время на их создание.
++ *
++ * <p><b>Таймаут.</b> /usr/bin/soffice — скрипт, который запускает
++ * soffice.bin дочерним процессом. Убить только родителя мало: soffice.bin
++ * останется висеть и держать профиль. Убиваем всё дерево процессов.
++ */
+ @Slf4j
+ @Service
+ public class DocumentConversionService {
+@@ -14,83 +48,221 @@ public class DocumentConversionService {
+     private static final String DOCX_MIME =
+             "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+ 
+-    public boolean isConvertibleToPdf(String mimeType) {
+-        return DOCX_MIME.equalsIgnoreCase(mimeType);
+-    }
++    /** Где искать soffice, если путь не задан в настройках. */
++    private static final List<String> KNOWN_PATHS = List.of(
++            "/usr/bin/soffice",
++            "/usr/lib/libreoffice/program/soffice",
++            "/opt/libreoffice/program/soffice",
++            "C:\\Program Files\\LibreOffice\\program\\soffice.exe",
++            "C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",
++            "/Applications/LibreOffice.app/Contents/MacOS/soffice");
+ 
+-    public ConvertedDocument convertToPdf(String inputFilePath) throws Exception {
+-        Path inputPath = Path.of(inputFilePath);
++    /** Сколько символов вывода soffice класть в лог при ошибке. */
++    private static final int MAX_LOG_CHARS = 2_000;
+ 
+-        if (!Files.exists(inputPath)) {
+-            throw new IllegalArgumentException("Файл для конвертации не найден: " + inputFilePath);
+-        }
++    private final KioskServerProperties.Conversion config;
++    private final Path workRoot;
++    private final BlockingQueue<Integer> freeSlots;
++    private final int slotCount;
+ 
+-        Path outputDir = inputPath.getParent();
+-        String sofficePath = findLibreOfficePath();
++    public DocumentConversionService(KioskServerProperties properties) {
++        this.config = properties.getConversion();
++        String dir = config.getWorkDir();
++        this.workRoot = (dir == null || dir.isBlank())
++                ? Path.of(System.getProperty("java.io.tmpdir"), "kiosk-lo")
++                : Path.of(dir);
+ 
+-        ProcessBuilder processBuilder = new ProcessBuilder(
+-                sofficePath,
+-                "--headless",
+-                "--convert-to",
+-                "pdf",
+-                "--outdir",
+-                outputDir.toAbsolutePath().toString(),
+-                inputPath.toAbsolutePath().toString()
+-        );
++        this.slotCount = Math.max(1, config.getMaxParallel());
++        this.freeSlots = new ArrayBlockingQueue<>(slotCount);
++        for (int i = 0; i < slotCount; i++) freeSlots.add(i);
++    }
+ 
+-        processBuilder.redirectErrorStream(true);
++    /** Сразу после старта говорим в лог, будет ли работать приём Word-файлов. */
++    @EventListener(ApplicationReadyEvent.class)
++    public void logAvailability() {
++        String soffice = findSoffice();
++        if (soffice != null) {
++            log.info("Конвертация DOC/DOCX → PDF: LibreOffice {}, профили в {}, параллельно до {}",
++                    soffice, workRoot, slotCount);
++        } else {
++            log.warn("Конвертация DOC/DOCX → PDF НЕДОСТУПНА: LibreOffice (soffice) не найден. "
++                    + "Word-файлы будут отклоняться. Установите LibreOffice или задайте "
++                    + "kiosk.conversion.soffice-path.");
++        }
++    }
+ 
+-        Process process = processBuilder.start();
++    public boolean isConvertibleToPdf(String mimeType) {
++        return DOCX_MIME.equalsIgnoreCase(mimeType);
++    }
+ 
+-        boolean finished = process.waitFor(60, TimeUnit.SECONDS);
++    /**
++     * Конвертирует файл в PDF. PDF появляется рядом с исходником под тем же
++     * именем с расширением .pdf — удалять его должен вызывающий.
++     *
++     * @throws DocumentConversionException LibreOffice не найден, не уложился
++     *         в таймаут или не смог открыть документ
++     */
++    public ConvertedDocument convertToPdf(String inputFilePath) {
++        Path input = Path.of(inputFilePath).toAbsolutePath();
++        if (!Files.isRegularFile(input)) {
++            throw new IllegalArgumentException("Файл для конвертации не найден: " + input);
++        }
+ 
+-        if (!finished) {
+-            process.destroyForcibly();
+-            throw new RuntimeException("LibreOffice не успел конвертировать файл за 60 секунд");
++        String soffice = findSoffice();
++        if (soffice == null) {
++            throw new DocumentConversionException(
++                    "LibreOffice (soffice) не найден — конвертация DOC/DOCX недоступна");
+         }
+ 
+-        if (process.exitValue() != 0) {
+-            String output = new String(process.getInputStream().readAllBytes());
+-            throw new RuntimeException("Ошибка LibreOffice при конвертации DOCX в PDF: " + output);
++        Duration timeout = config.getTimeout();
++        Integer slot = takeSlot(timeout);
++        long started = System.nanoTime();
++        try {
++            Path pdf = runSoffice(soffice, slot, input, timeout);
++            long size = Files.size(pdf);
++            log.info("Word → PDF за {} мс: {} ({} Б)",
++                    (System.nanoTime() - started) / 1_000_000, pdf.getFileName(), size);
++            return new ConvertedDocument(pdf.toString(), "application/pdf", size);
++        } catch (IOException e) {
++            throw new DocumentConversionException("Ошибка ввода-вывода при конвертации: " + e.getMessage(), e);
++        } finally {
++            freeSlots.add(slot);
+         }
++    }
+ 
+-        String originalName = inputPath.getFileName().toString();
+-        String pdfName = originalName.replaceAll("\\.[^.]+$", ".pdf");
+-        Path pdfPath = outputDir.resolve(pdfName);
++    // ════════════════════════════════════════════════════════════════
++    //  Внутреннее
++    // ════════════════════════════════════════════════════════════════
+ 
+-        if (!Files.exists(pdfPath)) {
+-            throw new RuntimeException("PDF после конвертации не найден: " + pdfPath);
++    private Integer takeSlot(Duration timeout) {
++        try {
++            Integer slot = freeSlots.poll(timeout.toMillis(), TimeUnit.MILLISECONDS);
++            if (slot == null) {
++                throw new DocumentConversionException(
++                        "Конвертер занят: все слоты (" + slotCount + ") заняты дольше "
++                                + timeout.toSeconds() + " с");
++            }
++            return slot;
++        } catch (InterruptedException e) {
++            Thread.currentThread().interrupt();
++            throw new DocumentConversionException("Ожидание конвертера прервано", e);
+         }
++    }
+ 
+-        log.info("DOCX converted to PDF: {}", pdfPath);
++    private Path runSoffice(String soffice, int slot, Path input, Duration timeout) throws IOException {
++        Files.createDirectories(workRoot);
++        Path profile = workRoot.resolve("profile-" + slot);
++        Path outDir  = input.getParent();
++        Path logFile = Files.createTempFile(workRoot, "soffice-", ".log");
+ 
+-        return new ConvertedDocument(
+-                pdfPath.toAbsolutePath().toString(),
+-                "application/pdf",
+-                Files.size(pdfPath)
+-        );
+-    }
++        List<String> cmd = new ArrayList<>(List.of(
++                soffice,
++                "--headless",
++                "--norestore",
++                "--nologo",
++                "--nodefault",
++                "--nolockcheck",
++                "-env:UserInstallation=" + profile.toUri(),
++                "--convert-to", "pdf",
++                "--outdir", outDir.toString(),
++                input.toString()));
++
++        ProcessBuilder pb = new ProcessBuilder(cmd)
++                .redirectErrorStream(true)
++                // В файл, а не в pipe: непрочитанный pipe переполняется, и
++                // soffice встаёт на записи в stdout до самого таймаута.
++                .redirectOutput(logFile.toFile());
++        // Некоторые части LibreOffice всё же заглядывают в HOME — пусть там
++        // будет существующая папка, доступная на запись.
++        pb.environment().put("HOME", workRoot.toString());
+ 
+-    private String findLibreOfficePath() {
+-        String windowsPath = "C:\\Program Files\\LibreOffice\\program\\soffice.exe";
++        try {
++            Process process = pb.start();
++            boolean finished;
++            try {
++                finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
++            } catch (InterruptedException e) {
++                killTree(process);
++                Thread.currentThread().interrupt();
++                throw new DocumentConversionException("Конвертация прервана", e);
++            }
+ 
+-        if (Files.exists(Path.of(windowsPath))) {
+-            return windowsPath;
++            if (!finished) {
++                killTree(process);
++                // Убитый soffice оставляет файл блокировки профиля — снимаем,
++                // чтобы следующий запуск в этом слоте не споткнулся о него.
++                Files.deleteIfExists(profile.resolve(".lock"));
++                throw new DocumentConversionException(
++                        "LibreOffice не уложился в " + timeout.toMillis() + " мс");
++            }
++
++            Path pdf = outDir.resolve(baseName(input) + ".pdf");
++            if (process.exitValue() != 0 || !isPdf(pdf)) {
++                String output = readLog(logFile);
++                Files.deleteIfExists(pdf);
++                throw new DocumentConversionException(
++                        "LibreOffice не создал PDF (код " + process.exitValue() + "): " + output);
++            }
++            return pdf;
++        } finally {
++            Files.deleteIfExists(logFile);
+         }
++    }
+ 
+-        String windowsPathX86 = "C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe";
++    /** Родитель (скрипт soffice) и все потомки (oosplash, soffice.bin). */
++    private static void killTree(Process process) {
++        process.descendants().forEach(ProcessHandle::destroyForcibly);
++        process.destroyForcibly();
++    }
+ 
+-        if (Files.exists(Path.of(windowsPathX86))) {
+-            return windowsPathX86;
++    private static boolean isPdf(Path file) throws IOException {
++        if (!Files.isRegularFile(file) || Files.size(file) < 5) return false;
++        try (InputStream in = Files.newInputStream(file)) {
++            byte[] head = in.readNBytes(5);
++            return new String(head, StandardCharsets.US_ASCII).equals("%PDF-");
+         }
++    }
+ 
+-        String macPath = "/Applications/LibreOffice.app/Contents/MacOS/soffice";
++    private static String baseName(Path file) {
++        String name = file.getFileName().toString();
++        int dot = name.lastIndexOf('.');
++        return dot > 0 ? name.substring(0, dot) : name;
++    }
+ 
+-        if (Files.exists(Path.of(macPath))) {
+-            return macPath;
++    private static String readLog(Path logFile) {
++        try {
++            String text = Files.readString(logFile, StandardCharsets.UTF_8).trim();
++            return text.length() > MAX_LOG_CHARS ? text.substring(0, MAX_LOG_CHARS) + "…" : text;
++        } catch (IOException e) {
++            return "(вывод soffice недоступен: " + e.getMessage() + ")";
+         }
++    }
+ 
+-        return "soffice";
++    /** Настроенный путь, затем стандартные места, затем PATH. null — не найден. */
++    private String findSoffice() {
++        String configured = config.getSofficePath();
++        if (configured != null && !configured.isBlank()) {
++            Path p = Path.of(configured.trim());
++            if (Files.isExecutable(p)) return p.toString();
++            log.warn("kiosk.conversion.soffice-path={} не найден или не исполняемый", configured);
++        }
++        for (String candidate : KNOWN_PATHS) {
++            if (Files.isExecutable(Path.of(candidate))) return candidate;
++        }
++        String path = System.getenv("PATH");
++        if (path != null) {
++            for (String dir : path.split(File.pathSeparator)) {
++                for (String exe : List.of("soffice", "soffice.exe", "libreoffice")) {
++                    try {
++                        Path p = Path.of(dir, exe);
++                        if (Files.isExecutable(p)) return p.toString();
++                    } catch (RuntimeException ignored) {
++                        // кривая запись в PATH (кавычки и т.п.) — пропускаем
++                    }
++                }
++            }
++        }
++        return null;
+     }
+ 
+     public record ConvertedDocument(
+@@ -99,4 +271,4 @@ public class DocumentConversionService {
+             long fileSizeBytes
+     ) {
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/kiosk-server/src/main/java/com/printkiosk/server/service/FileService.java b/kiosk-server/src/main/java/com/printkiosk/server/service/FileService.java
+index e18a1a3..f40badb 100644
+--- a/kiosk-server/src/main/java/com/printkiosk/server/service/FileService.java
++++ b/kiosk-server/src/main/java/com/printkiosk/server/service/FileService.java
+@@ -5,6 +5,7 @@ import com.printkiosk.server.config.KioskServerProperties;
+ import com.printkiosk.server.config.PublicUrlResolver;
+ import com.printkiosk.server.domain.FileEntity;
+ import com.printkiosk.server.domain.FileRepository;
++import com.printkiosk.server.exception.DocumentConversionException;
+ import com.printkiosk.server.exception.FileValidationException;
+ import com.printkiosk.server.exception.PinCollisionException;
+ import com.printkiosk.server.exception.PinLockedByOtherKioskException;
+@@ -79,14 +80,11 @@ public class FileService {
+             throw new FileValidationException(validation.reason());
+         }
+         String trueMime = validation.detectedMime();
+-        log.info("DEBUG upload: detectedMime='{}', isDocx={}",
+-                trueMime,
+-                FileValidationService.MIME_DOCX.equals(trueMime));
+         // ── 1.5. Если Word (DOCX или старый DOC) — конвертируем в PDF ──
+         // LibreOffice одинаково конвертирует оба формата.
+         if (FileValidationService.MIME_DOCX.equals(trueMime)
+                 || FileValidationService.MIME_DOC.equals(trueMime)) {
+-            MultipartFile converted = convertDocxToPdf(file);
++            MultipartFile converted = convertDocxToPdf(file, trueMime);
+             // Дальше работаем с конвертированным PDF —
+             // PIN и pageCount будут считаться по нему.
+             return uploadPdf(converted, source, telegramUserId);
+@@ -124,21 +122,25 @@ public class FileService {
+         return upload(pdfFile, source, telegramUserId);
+     }
+ 
+-    private MultipartFile convertDocxToPdf(MultipartFile docx) throws IOException {
+-        // 1. Временный файл для входного DOCX
+-        Path tempDocx = Files.createTempFile("kiosk-docx-", ".docx");
++    private MultipartFile convertDocxToPdf(MultipartFile docx, String mime) throws IOException {
++        // 1. Временный файл для входного документа. Расширение — по
++        //    настоящему типу: DOC раньше тоже сохранялся как .docx.
++        String ext = FileValidationService.MIME_DOC.equals(mime) ? ".doc" : ".docx";
++        Path tempDocx = Files.createTempFile("kiosk-word-", ext);
+         Path tempPdf  = null;
+         try {
+             Files.copy(docx.getInputStream(), tempDocx, StandardCopyOption.REPLACE_EXISTING);
+ 
+-            // 2. Конвертация через LibreOffice
++            // 2. Конвертация через LibreOffice. Ошибку НЕ выдаём за «файл
++            //    повреждён»: чаще всего виноват сервер (нет LibreOffice,
++            //    таймаут), и посетитель должен услышать совет сохранить
++            //    документ в PDF, а не упрёк в битом файле.
+             DocumentConversionService.ConvertedDocument result;
+             try {
+                 result = converter.convertToPdf(tempDocx.toString());
+-            } catch (Exception e) {
+-                log.error("DOCX → PDF conversion failed", e);
+-                throw new FileValidationException(
+-                        FileValidationService.Reason.UNSUPPORTED_TYPE);
++            } catch (DocumentConversionException e) {
++                log.error("Word → PDF не удался ({}): {}", docx.getOriginalFilename(), e.getMessage());
++                throw e;
+             }
+             tempPdf = Path.of(result.filePath());
+ 
+diff --git a/kiosk-server/src/main/java/com/printkiosk/server/web/ApiExceptionHandler.java b/kiosk-server/src/main/java/com/printkiosk/server/web/ApiExceptionHandler.java
+index 76dd5af..444412c 100644
+--- a/kiosk-server/src/main/java/com/printkiosk/server/web/ApiExceptionHandler.java
++++ b/kiosk-server/src/main/java/com/printkiosk/server/web/ApiExceptionHandler.java
+@@ -1,5 +1,6 @@
+ package com.printkiosk.server.web;
+ 
++import com.printkiosk.server.exception.DocumentConversionException;
+ import com.printkiosk.server.exception.FileValidationException;
+ import com.printkiosk.server.exception.JobNotFoundException;
+ import com.printkiosk.server.exception.PaymentGatewayException;
+@@ -71,6 +72,18 @@ public class ApiExceptionHandler {
+      * неподдерживаемый формат). Касается и веб-загрузки, и бота — отдаём
+      * 400, чтобы клиент отличал «плохой файл» от сбоя сервера.
+      */
++    /**
++     * Word-документ не сконвертировался. 422: сам запрос корректен, но
++     * документ обработать не вышло. Посетителю — совет сохранить как PDF;
++     * причина (нет LibreOffice, таймаут, битый файл) — в логе сервера.
++     */
++    @ExceptionHandler(DocumentConversionException.class)
++    public ResponseEntity<ErrorResponse> conversionFailed(DocumentConversionException e) {
++        return ResponseEntity.unprocessableEntity()
++                .body(new ErrorResponse("CONVERSION_FAILED",
++                        "Не удалось обработать документ Word"));
++    }
++
+     @ExceptionHandler(FileValidationException.class)
+     public ResponseEntity<ErrorResponse> fileInvalid(FileValidationException e) {
+         return ResponseEntity.badRequest()
+diff --git a/kiosk-server/src/main/resources/application.yml b/kiosk-server/src/main/resources/application.yml
+index e5aabd0..06b2266 100644
+--- a/kiosk-server/src/main/resources/application.yml
++++ b/kiosk-server/src/main/resources/application.yml
+@@ -78,6 +78,11 @@ kiosk:
+     price-per-page-som: ${KIOSK_SCAN_DELIVERY_PRICE_PER_PAGE_SOM:10}
+     # Сколько оплаченный скан доступен по ссылке/в боте, считая от оплаты.
+     download-ttl: ${KIOSK_SCAN_DELIVERY_DOWNLOAD_TTL:PT30M}
++  # Конвертация DOC/DOCX → PDF через LibreOffice.
++  conversion:
++    soffice-path: ${KIOSK_SOFFICE_PATH:}                   # пусто — найти самому
++    timeout: ${KIOSK_CONVERSION_TIMEOUT:PT90S}
++    max-parallel: ${KIOSK_CONVERSION_MAX_PARALLEL:2}      # каждый процесс — до ~300 МБ
+   printer:
+     name: "Canon LBP6030/6040/6018L"      # переопредели в application-local.yml на свой
+     snmp-host: ""                          # пусто = USB-принтер, SNMP пропускается
+diff --git a/kiosk-server/src/main/resources/static/upload/index.html b/kiosk-server/src/main/resources/static/upload/index.html
+index 690d269..1c5de9c 100644
+--- a/kiosk-server/src/main/resources/static/upload/index.html
++++ b/kiosk-server/src/main/resources/static/upload/index.html
+@@ -243,6 +243,7 @@
+             errTitle:  "Не удалось загрузить",
+             errors: {
+                 FILE_INVALID:   "Файл пуст, повреждён или в неподдерживаемом формате.",
++                CONVERSION_FAILED: "Не удалось обработать документ Word. Сохраните его как PDF и загрузите снова.",
+                 FILE_TOO_LARGE: "Файл слишком большой. Максимум — 20 МБ.",
+                 PIN_SPACE_BUSY: "Сейчас слишком много активных кодов. Попробуйте через минуту.",
+                 NETWORK:        "Нет связи с сервером. Проверьте интернет и повторите.",
+@@ -268,6 +269,7 @@
+             errTitle:  "Жүктөө мүмкүн болбоду",
+             errors: {
+                 FILE_INVALID:   "Файл бош, бузулган же колдоого алынбаган форматта.",
++                CONVERSION_FAILED: "Word документин иштетүү мүмкүн болгон жок. Аны PDF катары сактап, кайра жүктөңүз.",
+                 FILE_TOO_LARGE: "Файл өтө чоң. Максимум — 20 МБ.",
+                 PIN_SPACE_BUSY: "Учурда активдүү коддор өтө көп. Бир мүнөттөн кийин аракет кылыңыз.",
+                 NETWORK:        "Сервер менен байланыш жок. Интернетти текшерип, кайталаңыз.",
+@@ -293,6 +295,7 @@
+             errTitle:  "Upload failed",
+             errors: {
+                 FILE_INVALID:   "The file is empty, damaged or in an unsupported format.",
++                CONVERSION_FAILED: "Could not process the Word document. Save it as PDF and upload again.",
+                 FILE_TOO_LARGE: "The file is too large. Maximum is 20 MB.",
+                 PIN_SPACE_BUSY: "Too many active codes right now. Try again in a minute.",
+                 NETWORK:        "No connection to the server. Check your internet and retry.",

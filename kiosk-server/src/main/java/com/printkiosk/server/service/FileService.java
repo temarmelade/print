@@ -5,6 +5,7 @@ import com.printkiosk.server.config.KioskServerProperties;
 import com.printkiosk.server.config.PublicUrlResolver;
 import com.printkiosk.server.domain.FileEntity;
 import com.printkiosk.server.domain.FileRepository;
+import com.printkiosk.server.exception.DocumentConversionException;
 import com.printkiosk.server.exception.FileValidationException;
 import com.printkiosk.server.exception.PinCollisionException;
 import com.printkiosk.server.exception.PinLockedByOtherKioskException;
@@ -79,14 +80,11 @@ public class FileService {
             throw new FileValidationException(validation.reason());
         }
         String trueMime = validation.detectedMime();
-        log.info("DEBUG upload: detectedMime='{}', isDocx={}",
-                trueMime,
-                FileValidationService.MIME_DOCX.equals(trueMime));
         // ── 1.5. Если Word (DOCX или старый DOC) — конвертируем в PDF ──
         // LibreOffice одинаково конвертирует оба формата.
         if (FileValidationService.MIME_DOCX.equals(trueMime)
                 || FileValidationService.MIME_DOC.equals(trueMime)) {
-            MultipartFile converted = convertDocxToPdf(file);
+            MultipartFile converted = convertDocxToPdf(file, trueMime);
             // Дальше работаем с конвертированным PDF —
             // PIN и pageCount будут считаться по нему.
             return uploadPdf(converted, source, telegramUserId);
@@ -124,21 +122,25 @@ public class FileService {
         return upload(pdfFile, source, telegramUserId);
     }
 
-    private MultipartFile convertDocxToPdf(MultipartFile docx) throws IOException {
-        // 1. Временный файл для входного DOCX
-        Path tempDocx = Files.createTempFile("kiosk-docx-", ".docx");
+    private MultipartFile convertDocxToPdf(MultipartFile docx, String mime) throws IOException {
+        // 1. Временный файл для входного документа. Расширение — по
+        //    настоящему типу: DOC раньше тоже сохранялся как .docx.
+        String ext = FileValidationService.MIME_DOC.equals(mime) ? ".doc" : ".docx";
+        Path tempDocx = Files.createTempFile("kiosk-word-", ext);
         Path tempPdf  = null;
         try {
             Files.copy(docx.getInputStream(), tempDocx, StandardCopyOption.REPLACE_EXISTING);
 
-            // 2. Конвертация через LibreOffice
+            // 2. Конвертация через LibreOffice. Ошибку НЕ выдаём за «файл
+            //    повреждён»: чаще всего виноват сервер (нет LibreOffice,
+            //    таймаут), и посетитель должен услышать совет сохранить
+            //    документ в PDF, а не упрёк в битом файле.
             DocumentConversionService.ConvertedDocument result;
             try {
                 result = converter.convertToPdf(tempDocx.toString());
-            } catch (Exception e) {
-                log.error("DOCX → PDF conversion failed", e);
-                throw new FileValidationException(
-                        FileValidationService.Reason.UNSUPPORTED_TYPE);
+            } catch (DocumentConversionException e) {
+                log.error("Word → PDF не удался ({}): {}", docx.getOriginalFilename(), e.getMessage());
+                throw e;
             }
             tempPdf = Path.of(result.filePath());
 
