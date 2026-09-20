@@ -624,7 +624,39 @@ public class MainController {
                 (sel, total) -> loc.get("pages.selected.count",
                         String.valueOf(sel), String.valueOf(total)),
                 n -> loc.get("pages.page.n", String.valueOf(n)));
+        setupPreviewFit();
         startHomeClock();
+    }
+
+    /**
+     * Превью страницы вписывается в рамку previewContainer, а не рамка — в
+     * картинку. Размер рамки задан в FXML явно; здесь картинку подгоняем под
+     * её фактический размер за вычетом отступов.
+     *
+     * <p>Раньше у ImageView были жёсткие fitWidth=680/fitHeight=500, и ширина
+     * карточки зависела от ориентации страницы: альбомная (или фото, скан)
+     * раздвигала раскладку шире портретной канвы, панель страниц уезжала за
+     * край, а при листании страниц разной ориентации всё перестраивалось.
+     *
+     * <p>Клип — вторая страховка: даже если картинка на кадр окажется больше
+     * рамки (до первого прохода раскладки), она не перекроет соседние кнопки.
+     */
+    private void setupPreviewFit() {
+        Runnable fit = () -> {
+            javafx.geometry.Insets in = previewContainer.getInsets();
+            double w = previewContainer.getWidth()  - in.getLeft() - in.getRight();
+            double h = previewContainer.getHeight() - in.getTop()  - in.getBottom();
+            if (w > 1) previewImageView.setFitWidth(Math.floor(w));
+            if (h > 1) previewImageView.setFitHeight(Math.floor(h));
+        };
+        previewContainer.widthProperty() .addListener((o, a, b) -> fit.run());
+        previewContainer.heightProperty().addListener((o, a, b) -> fit.run());
+        previewContainer.insetsProperty().addListener((o, a, b) -> fit.run());
+
+        javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle();
+        clip.widthProperty() .bind(previewContainer.widthProperty());
+        clip.heightProperty().bind(previewContainer.heightProperty());
+        previewContainer.setClip(clip);
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -2089,6 +2121,7 @@ public class MainController {
         pendingDeliveryLink = null;
         settingsFlow.stop();
         previewFlow.close();
+        previewImageView.setImage(null);   // не держим страницу прошлого клиента
         pageSelection.clear();
         pinEntryFlow.reset();
         scanFlow.clear();                              // чистим временные файлы сканов
@@ -2638,6 +2671,9 @@ public class MainController {
             public void onLoading() {
                 // Текст previewLoadingLabel забинден на ключ preview.loading —
                 // setText здесь больше не нужен (и запрещён для bound-свойства).
+                // Картинка прошлого документа не должна ни мелькнуть, ни
+                // участвовать в раскладке, пока грузится новая.
+                previewImageView.setImage(null);
                 showPreviewLoading();
                 pageSelection.clear();
             }
