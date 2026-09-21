@@ -50,8 +50,8 @@ public class PrintManager {
                                                        java.util.List<Integer> pages) {
         PrintService printer = resolvePrinter();
         if (printer == null) {
-            return CompletableFuture.completedFuture(
-                    PrinterResult.failed("Принтер не найден в системе"));
+            return CompletableFuture.completedFuture(PrinterResult.failed(
+                    "Принтер «" + properties.getPrinter().getName() + "» не найден в Windows"));
         }
 
         byte[] bytes;
@@ -178,24 +178,21 @@ public class PrintManager {
 
     // ── Printer resolution ─────────────────────────────────────────
 
+    /**
+     * Только принтер из kiosk.printer.name. Раньше при ненайденном имени
+     * задание уходило в принтер по умолчанию — «Microsoft Print to PDF» —
+     * и вместо печати открывалось окно сохранения PDF. См. PrinterLocator.
+     */
     private PrintService resolvePrinter() {
         String configuredName = properties.getPrinter().getName();
-        PrintService[] all = PrintServiceLookup.lookupPrintServices(null, null);
-
-        if (configuredName != null && !configuredName.isBlank()) {
-            for (PrintService svc : all) {
-                if (svc.getName().equalsIgnoreCase(configuredName)) return svc;
-                log.info("Printer '{}' capabilities: PDF={}, JPEG={}, PNG={}",
-                        svc.getName(),
-                        svc.isDocFlavorSupported(DocFlavor.BYTE_ARRAY.PDF),
-                        svc.isDocFlavorSupported(DocFlavor.BYTE_ARRAY.JPEG),
-                        svc.isDocFlavorSupported(DocFlavor.BYTE_ARRAY.PNG));
-            }
-            log.warn("Configured printer '{}' not found", configuredName);
+        PrintService printer = PrinterLocator.find(configuredName);
+        if (printer == null) {
+            log.error("Принтер «{}» не найден в Windows — печать отменена. Доступны: {}",
+                    configuredName, PrinterLocator.availableNames());
+        } else if (PrinterLocator.isVirtual(printer)) {
+            log.warn("Печать идёт на виртуальный принтер «{}» — так задано в kiosk.printer.name",
+                    printer.getName());
         }
-
-        PrintService def = PrintServiceLookup.lookupDefaultPrintService();
-        if (def != null) return def;
-        return all.length > 0 ? all[0] : null;
+        return printer;
     }
 }

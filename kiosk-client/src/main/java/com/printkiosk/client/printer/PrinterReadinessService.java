@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import javax.print.PrintServiceLookup;
 
 /**
  * Готов ли принтер принять задание.
@@ -24,6 +23,7 @@ public class PrinterReadinessService {
     private static final int CRITICAL_PCT = 3;
 
     private final PrinterProbe probe;
+    private final com.printkiosk.client.config.KioskClientProperties properties;
 
     /**
      * Блокировать ли печать при неготовом принтере.
@@ -123,9 +123,12 @@ public class PrinterReadinessService {
     }
 
     private Status evaluate() {
-        if (PrintServiceLookup.lookupDefaultPrintService() == null
-                && PrintServiceLookup.lookupPrintServices(null, null).length == 0) {
-            log.warn("Готовность: в системе нет принтеров");
+        // Раньше хватало любого принтера — а «Microsoft Print to PDF» есть
+        // всегда. Киоск брал оплату, хотя печатать было некуда.
+        String configured = properties.getPrinter().getName();
+        if (PrinterLocator.find(configured) == null) {
+            log.warn("Готовность: принтер «{}» не найден в Windows. Доступны: {}",
+                    configured, PrinterLocator.availableNames());
             return Status.NOT_CONNECTED;
         }
 

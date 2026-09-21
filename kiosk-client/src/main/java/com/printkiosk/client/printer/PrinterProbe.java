@@ -14,7 +14,6 @@ import org.snmp4j.transport.DefaultUdpTransportMapping;
 import org.springframework.stereotype.Component;
 
 import javax.print.PrintService;
-import javax.print.PrintServiceLookup;
 import javax.print.attribute.standard.PrinterStateReason;
 import javax.print.attribute.standard.PrinterStateReasons;
 import java.util.ArrayList;
@@ -128,13 +127,9 @@ public class PrinterProbe {
     }
 
     private PrintService resolvePrinter() {
-        String name = properties.getPrinter().getName();
-        if (name != null && !name.isBlank()) {
-            for (PrintService s : PrintServiceLookup.lookupPrintServices(null, null)) {
-                if (s.getName().equalsIgnoreCase(name)) return s;
-            }
-        }
-        return PrintServiceLookup.lookupDefaultPrintService();
+        // Тот же строгий поиск, что и при печати: состояние «чужого»
+        // (например, виртуального PDF-) принтера нам ни о чём не говорит.
+        return PrinterLocator.find(properties.getPrinter().getName());
     }
 
     // ════════════════════════════════════════════════════════════════
