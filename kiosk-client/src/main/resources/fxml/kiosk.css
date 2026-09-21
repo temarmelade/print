@@ -1111,16 +1111,16 @@
     -fx-wrap-text: false;
 }
 
+/* «Удалить», «Пересканировать», «Добавить страницу» на превью скана.
+   Киоск сенсорный, наведения нет — поэтому вид, который раньше был только
+   на :hover (голубой фон, синяя рамка), теперь основной и постоянный.
+   Отдельного :hover нет намеренно: на сенсорном Windows он «залипает»
+   на кнопке после касания. */
 .scan-action-secondary {
-    -fx-background-color: #f8fafc;
-    -fx-border-color: #dbe7f5;
-    -fx-border-width: 1.5px;
-    -fx-text-fill: #081a3a;
-}
-
-.scan-action-secondary:hover {
     -fx-background-color: #eef6ff;
     -fx-border-color: #1478ff;
+    -fx-border-width: 1.5px;
+    -fx-text-fill: #081a3a;
 }
 
 .scan-action-primary {
