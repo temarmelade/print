@@ -75,7 +75,6 @@ kiosk:
     cleanup-interval: PT1M
     cleanup-grace: PT30S
   scan-delivery:
-    price-per-page-som: ${KIOSK_SCAN_DELIVERY_PRICE_PER_PAGE_SOM:10}
     # Сколько оплаченный скан доступен по ссылке/в боте, считая от оплаты.
     download-ttl: ${KIOSK_SCAN_DELIVERY_DOWNLOAD_TTL:PT30M}
   # Конвертация DOC/DOCX → PDF через LibreOffice.

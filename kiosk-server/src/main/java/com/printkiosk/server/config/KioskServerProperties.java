@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -123,13 +122,8 @@ public class KioskServerProperties {
     @Getter
     @Setter
     public static class ScanDelivery {
-        /**
-         * Плата за одну страницу за цифровую доставку отсканированного
-         * документа (получение через сайт или Telegram). Печать сканов от
-         * этой платы не зависит и идёт обычным трактом печати.
-         */
-        @PositiveOrZero
-        private int pricePerPageSom = 10;
+        // Цена доставки скана теперь в тарифах (tariffs.scan_price_som),
+        // её меняют в админке: «Цены». Настройки price-per-page-som нет.
 
         /**
          * Сколько скан доступен для получения ПОСЛЕ оплаты доставки. Обычный

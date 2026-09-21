@@ -1,6 +1,6 @@
 package com.printkiosk.server.web;
 
-import com.printkiosk.server.config.KioskServerProperties;
+import com.printkiosk.server.service.TariffService;
 import com.printkiosk.server.service.payment.PaymentService;
 import com.printkiosk.server.service.print.PrintJobService;
 import com.printkiosk.shared.api.OperationType;
@@ -32,14 +32,16 @@ public class ScanDeliveryController {
 
     private final PrintJobService       jobService;
     private final PaymentService        paymentService;
-    private final KioskServerProperties properties;
+    private final TariffService         tariffs;
 
     @PostMapping
     public ResponseEntity<PaymentSessionDto> create(
             @Valid @RequestBody CreateScanDeliveryRequest request,
             @RequestHeader(value = "X-Kiosk-Id", required = false) String kioskId) {
 
-        int perPageSom = properties.getScanDelivery().getPricePerPageSom();
+        // Цена — из действующего тарифа киоска (своего или базового), её
+        // меняют в админке без перезапуска. Раньше — из конфигурации сервера.
+        int perPageSom = tariffs.getCurrentFor(kioskId).getScanPriceSom();
         OperationType operationType = request.channel().toOperationType();
 
         JobResponse job = jobService.createScanDeliveryJob(

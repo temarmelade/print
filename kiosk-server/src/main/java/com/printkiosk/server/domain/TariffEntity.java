@@ -29,6 +29,10 @@ public class TariffEntity {
     @Column(name = "color_price_som", nullable = false)
     private int colorPriceSom;
 
+    /** Получение скана на телефон или в Telegram, сом за страницу. */
+    @Column(name = "scan_price_som", nullable = false)
+    private int scanPriceSom;
+
     @Column(name = "effective_from", nullable = false)
     private Instant effectiveFrom;
 

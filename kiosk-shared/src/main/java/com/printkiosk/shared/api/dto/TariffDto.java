@@ -17,6 +17,8 @@ public record TariffDto(
         String kioskName,
         int bwPriceSom,
         int colorPriceSom,
+        /** Получение скана на телефон или в Telegram, сом за страницу. */
+        int scanPriceSom,
         Instant effectiveFrom,
         Instant effectiveTo
 ) {}

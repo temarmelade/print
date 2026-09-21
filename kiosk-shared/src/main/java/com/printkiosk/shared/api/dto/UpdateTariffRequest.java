@@ -9,5 +9,10 @@ import jakarta.validation.constraints.Min;
  */
 public record UpdateTariffRequest(
         @Min(0) @Max(100_000) int bwPriceSom,
-        @Min(0) @Max(100_000) int colorPriceSom
+        @Min(0) @Max(100_000) int colorPriceSom,
+        /**
+         * Цена получения скана за страницу. null — оставить как есть: так
+         * старая версия админки, не знающая об этом поле, не сбросит цену.
+         */
+        @Min(0) @Max(100_000) Integer scanPriceSom
 ) {}

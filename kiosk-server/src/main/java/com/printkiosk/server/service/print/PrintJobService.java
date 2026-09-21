@@ -51,11 +51,21 @@ public class PrintJobService {
      * напечатать за 0 сом.
      */
     @Transactional
+    /**
+     * Двусторонней печати на киоске нет. Флаг из запроса игнорируем: иначе
+     * клиент старой версии (или подделанный запрос) получил бы цену «за
+     * листы» — почти вдвое ниже, — а печатается всё равно односторонне.
+     */
+    private static PrintSettings singleSided(PrintSettings s) {
+        if (s == null || !s.doubleSided()) return s;
+        return new PrintSettings(s.copies(), s.colorMode(), false, s.orientation(), s.paperSize());
+    }
+
     public JobResponse createJob(CreateJobRequest req, String kioskId) {
         FileEntity file = files.findActiveByCode(req.pin(), Instant.now())
                 .orElseThrow(PinNotFoundException::new);
 
-        PrintSettings settings = req.settings();
+        PrintSettings settings = singleSided(req.settings());
         int chargedPages = effectivePageCount(req.pages(), file.getPageCount());
         int priceSom = pricing.calculateTotal(chargedPages, settings, kioskId);   // ← с kioskId
 
@@ -308,7 +318,7 @@ public class PrintJobService {
 
         PriceBreakdown breakdown = pricing.calculate(
                 effectivePageCount(req.pages(), file.getPageCount()),
-                req.settings(), kioskId);
+                singleSided(req.settings()), kioskId);
 
         log.info("Job preview: fileId={} priceSom={} colorMode={} copies={}",
                 file.getId(), breakdown.totalSom(),

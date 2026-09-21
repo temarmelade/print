@@ -81,12 +81,15 @@ public class TariffService {
     /**
      * Ставит новую цену. {@code kioskId == null} меняет глобальный дефолт,
      * иначе создаёт/обновляет переопределение конкретного киоска.
+     *
+     * @param scanPriceSom цена получения скана за страницу; null — не менять
+     *                     (взять действующую для этого киоска)
      */
     @Transactional
-    public TariffDto setPrice(String kioskId, int bwPriceSom, int colorPriceSom) {
+    public TariffDto setPrice(String kioskId, int bwPriceSom, int colorPriceSom, Integer scanPriceSom) {
         String key = normalize(kioskId);
 
-        if (bwPriceSom < 0 || colorPriceSom < 0) {
+        if (bwPriceSom < 0 || colorPriceSom < 0 || (scanPriceSom != null && scanPriceSom < 0)) {
             throw new AdminRuleViolationException("Цена не может быть отрицательной");
         }
         if (key != null && !kioskRepository.existsById(key)) {
@@ -98,10 +101,18 @@ public class TariffService {
                 ? repository.findByKioskIdIsNullAndEffectiveToIsNull()
                 : repository.findByKioskIdAndEffectiveToIsNull(key);
 
+        // Цену скана не прислали — оставляем ту, что действует сейчас: свою
+        // у киоска или базовую, если своей строки ещё нет.
+        int scan = (scanPriceSom != null)
+                ? scanPriceSom
+                : current.map(TariffEntity::getScanPriceSom)
+                         .orElseGet(() -> getCurrentFor(key).getScanPriceSom());
+
         if (current.isPresent()) {
             TariffEntity active = current.get();
             if (active.getBwPriceSom() == bwPriceSom
-                    && active.getColorPriceSom() == colorPriceSom) {
+                    && active.getColorPriceSom() == colorPriceSom
+                    && active.getScanPriceSom() == scan) {
                 // Цена не изменилась — не плодим строку в истории.
                 return toDto(active, kioskNames());
             }
@@ -118,14 +129,15 @@ public class TariffService {
                 .kioskId(key)
                 .bwPriceSom(bwPriceSom)
                 .colorPriceSom(colorPriceSom)
+                .scanPriceSom(scan)
                 .effectiveFrom(now)
                 .effectiveTo(null)
                 .createdAt(now)
                 .build();
         repository.save(fresh);
 
-        log.info("Tariff updated: kiosk={} bw={} color={}",
-                key != null ? key : "<default>", bwPriceSom, colorPriceSom);
+        log.info("Tariff updated: kiosk={} bw={} color={} scan={}",
+                key != null ? key : "<default>", bwPriceSom, colorPriceSom, scan);
         return toDto(fresh, kioskNames());
     }
 
@@ -164,6 +176,7 @@ public class TariffService {
                 e.getKioskId() != null ? names.get(e.getKioskId()) : null,
                 e.getBwPriceSom(),
                 e.getColorPriceSom(),
+                e.getScanPriceSom(),
                 e.getEffectiveFrom(),
                 e.getEffectiveTo()
         );

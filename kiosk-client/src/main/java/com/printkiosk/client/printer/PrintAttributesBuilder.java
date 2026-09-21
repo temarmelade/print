@@ -32,8 +32,10 @@ public class PrintAttributesBuilder {
                         ? OrientationRequested.LANDSCAPE
                         : OrientationRequested.PORTRAIT);
 
-        addIfSupported(printer, attrs,
-                settings.doubleSided() ? Sides.DUPLEX : Sides.ONE_SIDED);
+        // Двусторонней печати на киоске нет. ONE_SIDED передаём явно, а не
+        // просто не передаём ничего: иначе принтер возьмёт значение по
+        // умолчанию из своего драйвера, а у Canon это бывает «двусторонняя».
+        addIfSupported(printer, attrs, Sides.ONE_SIDED);
 
         addIfSupported(printer, attrs,
                 "COLOR".equalsIgnoreCase(settings.colorMode())

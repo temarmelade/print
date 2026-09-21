@@ -41,7 +41,6 @@ public class PrintSettingsFlow {
     // ── Текущее состояние ───────────────────────────────────────
     private int     copies      = 1;
     private String  colorMode   = COLOR_BW;
-    private boolean doubleSided = false;
     private String  orientation = ORIENTATION_PORTRAIT;
     private String  paperSize   = PAPER_A4;
 
@@ -65,7 +64,6 @@ public class PrintSettingsFlow {
         this.pages = pages;
         this.copies = 1;
         this.colorMode = COLOR_BW;
-        this.doubleSided = false;
         this.orientation = ORIENTATION_PORTRAIT;
         this.paperSize = PAPER_A4;
         notifyStateChanged();
@@ -96,9 +94,6 @@ public class PrintSettingsFlow {
             this.colorMode = mode; afterChange();
         }
     }
-    public void setDoubleSided(boolean value) {
-        this.doubleSided = value; afterChange();
-    }
     public void setOrientation(String value) {
         if (ORIENTATION_PORTRAIT.equals(value) || ORIENTATION_LANDSCAPE.equals(value)) {
             this.orientation = value; afterChange();
@@ -115,11 +110,11 @@ public class PrintSettingsFlow {
     // ════════════════════════════════════════════════════════════════
 
     public PrintSettings currentSettings() {
-        return new PrintSettings(copies, colorMode, doubleSided, orientation, paperSize);
+        // Двусторонней печати на киоске нет: всегда false.
+        return new PrintSettings(copies, colorMode, false, orientation, paperSize);
     }
     public int     copies()       { return copies; }
     public String  colorMode()    { return colorMode; }
-    public boolean doubleSided()  { return doubleSided; }
     public String  orientation()  { return orientation; }
     public String  paperSize()    { return paperSize; }
 

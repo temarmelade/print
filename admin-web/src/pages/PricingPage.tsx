@@ -15,6 +15,8 @@ interface Row {
   location: string | null;
   bw: number;
   color: number;
+  /** Получение скана на телефон или в Telegram, за страницу. */
+  scan: number;
   /** true — у киоска своя цена, false — работает по глобальной. */
   own: boolean;
 }
@@ -33,7 +35,8 @@ export function PricingPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<string | null>(null);   // kioskId | "__default__"
-  const [draft, setDraft] = useState<{ bw: string; color: string }>({ bw: "", color: "" });
+  const [draft, setDraft] = useState<{ bw: string; color: string; scan: string }>(
+    { bw: "", color: "", scan: "" });
   const [saving, setSaving] = useState(false);
 
   const [historyFor, setHistoryFor] = useState<Row | null>(null);
@@ -77,29 +80,34 @@ export function PricingPage() {
         location: k.location,
         bw: own ? own.bwPriceSom : defaultTariff?.bwPriceSom ?? 0,
         color: own ? own.colorPriceSom : defaultTariff?.colorPriceSom ?? 0,
+        scan: own ? own.scanPriceSom : defaultTariff?.scanPriceSom ?? 0,
         own: !!own,
       };
     });
   }, [kiosks, tariffs, defaultTariff]);
 
-  function startEdit(key: string, bw: number, color: number) {
+  function startEdit(key: string, bw: number, color: number, scan: number) {
     setEditing(key);
-    setDraft({ bw: String(bw), color: String(color) });
+    setDraft({ bw: String(bw), color: String(color), scan: String(scan) });
     setError(null);
   }
 
   async function save(kioskId: string | null) {
     const bw = Number(draft.bw);
     const color = Number(draft.color);
-    if (!Number.isInteger(bw) || !Number.isInteger(color) || bw < 0 || color < 0) {
+    const scan = Number(draft.scan);
+    // Пустое поле Number() превращает в 0 — такую «цену» не принимаем.
+    const valid = (raw: string, v: number) => raw.trim() !== "" && Number.isInteger(v) && v >= 0;
+    if (!valid(draft.bw, bw) || !valid(draft.color, color) || !valid(draft.scan, scan)) {
       setError("Цена должна быть целым неотрицательным числом");
       return;
     }
     setSaving(true);
     setError(null);
     try {
-      if (kioskId === null) await setDefaultTariff({ bwPriceSom: bw, colorPriceSom: color });
-      else await setKioskTariff(kioskId, { bwPriceSom: bw, colorPriceSom: color });
+      const price = { bwPriceSom: bw, colorPriceSom: color, scanPriceSom: scan };
+      if (kioskId === null) await setDefaultTariff(price);
+      else await setKioskTariff(kioskId, price);
       setEditing(null);
       await load();
     } catch (e) {
@@ -139,6 +147,12 @@ export function PricingPage() {
           Базовая цена действует на все киоски. Персональная цена киоска
           перекрывает её — например, если точка стоит в аренде подороже.
         </p>
+        <p className="muted">
+          «Скан» — цена за страницу, когда отсканированный документ получают
+          на телефон через сайт или в Telegram. Печать скана и ксерокопия
+          считаются по цене ч/б печати. Новая цена действует сразу, без
+          перезапуска.
+        </p>
       </div>
 
       {error && <div className="alert-error">{error}</div>}
@@ -175,6 +189,13 @@ export function PricingPage() {
                     onChange={(e) => setDraft({ ...draft, color: e.target.value })}
                   />
                 </label>
+                <label>
+                  Скан
+                  <input
+                    type="number" min={0} value={draft.scan}
+                    onChange={(e) => setDraft({ ...draft, scan: e.target.value })}
+                  />
+                </label>
                 <button className="btn-icon ok" disabled={saving} onClick={() => save(null)}>
                   <Check size={16} />
                 </button>
@@ -186,10 +207,12 @@ export function PricingPage() {
               <div className="pricing-values">
                 <span className="price"><b>{defaultTariff?.bwPriceSom ?? "—"}</b> сом / ч-б</span>
                 <span className="price"><b>{defaultTariff?.colorPriceSom ?? "—"}</b> сом / цвет</span>
+                <span className="price"><b>{defaultTariff?.scanPriceSom ?? "—"}</b> сом / скан</span>
                 <button
                   className="btn-sm"
                   onClick={() => startEdit("__default__",
-                    defaultTariff?.bwPriceSom ?? 0, defaultTariff?.colorPriceSom ?? 0)}
+                    defaultTariff?.bwPriceSom ?? 0, defaultTariff?.colorPriceSom ?? 0,
+                    defaultTariff?.scanPriceSom ?? 0)}
                 >
                   Изменить
                 </button>
@@ -198,7 +221,8 @@ export function PricingPage() {
                   onClick={() => openHistory({
                     kioskId: null, name: "Базовая цена", location: null,
                     bw: defaultTariff?.bwPriceSom ?? 0,
-                    color: defaultTariff?.colorPriceSom ?? 0, own: true,
+                    color: defaultTariff?.colorPriceSom ?? 0,
+                    scan: defaultTariff?.scanPriceSom ?? 0, own: true,
                   })}
                 >
                   <History size={14} /> История
@@ -223,6 +247,7 @@ export function PricingPage() {
                   <th>Адрес</th>
                   <th>Ч/б</th>
                   <th>Цвет</th>
+                  <th>Скан</th>
                   <th>Источник</th>
                   <th />
                 </tr>
@@ -249,6 +274,12 @@ export function PricingPage() {
                               onChange={(e) => setDraft({ ...draft, color: e.target.value })}
                             />
                           </td>
+                          <td>
+                            <input
+                              type="number" min={0} value={draft.scan}
+                              onChange={(e) => setDraft({ ...draft, scan: e.target.value })}
+                            />
+                          </td>
                           <td colSpan={2} className="row-actions">
                             <button
                               className="btn-icon ok" disabled={saving}
@@ -265,6 +296,7 @@ export function PricingPage() {
                         <>
                           <td>{r.bw} сом</td>
                           <td>{r.color} сом</td>
+                          <td>{r.scan} сом</td>
                           <td>
                             {r.own
                               ? <span className="tag own">Своя цена</span>
@@ -273,7 +305,7 @@ export function PricingPage() {
                           <td className="row-actions">
                             <button
                               className="btn-sm"
-                              onClick={() => startEdit(r.kioskId as string, r.bw, r.color)}
+                              onClick={() => startEdit(r.kioskId as string, r.bw, r.color, r.scan)}
                             >
                               Изменить
                             </button>
@@ -299,7 +331,7 @@ export function PricingPage() {
                   );
                 })}
                 {rows.length === 0 && (
-                  <tr><td colSpan={6} className="muted">Киоски ещё не заведены</td></tr>
+                  <tr><td colSpan={7} className="muted">Киоски ещё не заведены</td></tr>
                 )}
               </tbody>
             </table>
@@ -319,19 +351,20 @@ export function PricingPage() {
             </header>
             <table>
               <thead>
-                <tr><th>Ч/б</th><th>Цвет</th><th>Действовала с</th><th>по</th></tr>
+                <tr><th>Ч/б</th><th>Цвет</th><th>Скан</th><th>Действовала с</th><th>по</th></tr>
               </thead>
               <tbody>
                 {historyRows.map((h) => (
                   <tr key={h.id}>
                     <td>{h.bwPriceSom} сом</td>
                     <td>{h.colorPriceSom} сом</td>
+                    <td>{h.scanPriceSom} сом</td>
                     <td>{formatDate(h.effectiveFrom)}</td>
                     <td>{h.effectiveTo ? formatDate(h.effectiveTo) : <b>сейчас</b>}</td>
                   </tr>
                 ))}
                 {historyRows.length === 0 && (
-                  <tr><td colSpan={4} className="muted">Записей нет</td></tr>
+                  <tr><td colSpan={5} className="muted">Записей нет</td></tr>
                 )}
               </tbody>
             </table>

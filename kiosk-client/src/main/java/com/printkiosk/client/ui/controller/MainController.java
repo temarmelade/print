@@ -207,9 +207,6 @@ public class MainController {
     @FXML private Label colorTitleLabel;
     @FXML private Button bwBtn;
     @FXML private Button colorBtn;
-    @FXML private Label sidesTitleLabel;
-    @FXML private Button singleSideBtn;
-    @FXML private Button doubleSideBtn;
     @FXML private Label orientationTitleLabel;
     @FXML private Button portraitBtn;
     @FXML private Button landscapeBtn;
@@ -225,7 +222,6 @@ public class MainController {
     @FXML private Label summaryPagesKeyLabel;
     @FXML private Label summaryCopiesKeyLabel;
     @FXML private Label summaryColorKeyLabel;
-    @FXML private Label summarySidesKeyLabel;
     @FXML private Label summaryOrientationKeyLabel;
     @FXML private Label summaryPaperKeyLabel;
     /** Подпись «Стоимость». Требует fx:id в FXML (см. чеклист). */
@@ -233,7 +229,6 @@ public class MainController {
     @FXML private Label summaryPagesLabel;
     @FXML private Label summaryCopiesLabel;
     @FXML private Label summaryColorLabel;
-    @FXML private Label summarySidesLabel;
     @FXML private Label summaryOrientationLabel;
     @FXML private Label summaryPaperLabel;
     @FXML private Label summaryPriceLabel;
@@ -825,9 +820,6 @@ public class MainController {
         bindText(colorTitleLabel, "settings.color.title");
         bindText(bwBtn, "settings.color.bw");
         bindText(colorBtn, "settings.color.color");
-        bindText(sidesTitleLabel, "settings.sides.title");
-        bindText(singleSideBtn, "settings.sides.single");
-        bindText(doubleSideBtn, "settings.sides.double");
         bindText(orientationTitleLabel, "settings.orientation.title");
         bindText(portraitBtn, "settings.orientation.portrait");
         bindText(landscapeBtn, "settings.orientation.landscape");
@@ -839,7 +831,6 @@ public class MainController {
         bindText(summaryTitleLabel, "summary.title");
         bindText(summaryCopiesKeyLabel, "summary.copies");
         bindText(summaryColorKeyLabel, "summary.color");
-        bindText(summarySidesKeyLabel, "summary.sides");
         bindText(summaryOrientationKeyLabel, "summary.orientation");
         bindText(summaryPaperKeyLabel, "summary.paper");
         bindText(summaryPagesKeyLabel, "summary.pages");
@@ -1909,8 +1900,6 @@ public class MainController {
     @FXML public void onBlackWhiteSelected()  { settingsFlow.setColorMode(PrintSettingsFlow.COLOR_BW); }
     @FXML public void onColorSelected()       { settingsFlow.setColorMode(PrintSettingsFlow.COLOR_COLOR); }
 
-    @FXML public void onSingleSideSelected()  { settingsFlow.setDoubleSided(false); }
-    @FXML public void onDoubleSideSelected()  { settingsFlow.setDoubleSided(true); }
 
     @FXML public void onPortraitSelected()    { settingsFlow.setOrientation(PrintSettingsFlow.ORIENTATION_PORTRAIT); }
     @FXML public void onLandscapeSelected()   { settingsFlow.setOrientation(PrintSettingsFlow.ORIENTATION_LANDSCAPE); }
@@ -1939,8 +1928,6 @@ public class MainController {
         summaryCopiesLabel     .setText(String.valueOf(price.copies()));
         summaryColorLabel      .setText(loc.get("COLOR".equals(price.colorMode())
                 ? "settings.color.color" : "settings.color.bw"));
-        summarySidesLabel      .setText(loc.get(price.doubleSided()
-                ? "settings.sides.double" : "settings.sides.single"));
         summaryOrientationLabel.setText(loc.get(
                 "PORTRAIT".equals(settingsFlow.orientation())
                         ? "settings.orientation.portrait" : "settings.orientation.landscape"));
@@ -2813,8 +2800,6 @@ public class MainController {
                 // Подсветка активных кнопок
                 setActive(bwBtn,           PrintSettingsFlow.COLOR_BW.equals(settings.colorMode()));
                 setActive(colorBtn,        PrintSettingsFlow.COLOR_COLOR.equals(settings.colorMode()));
-                setActive(singleSideBtn,   !settings.doubleSided());
-                setActive(doubleSideBtn,    settings.doubleSided());
                 setActive(portraitBtn,     PrintSettingsFlow.ORIENTATION_PORTRAIT.equals(settings.orientation()));
                 setActive(landscapeBtn,    PrintSettingsFlow.ORIENTATION_LANDSCAPE.equals(settings.orientation()));
                 setActive(a4Btn,           PrintSettingsFlow.PAPER_A4.equals(settings.paperSize()));
@@ -2831,7 +2816,6 @@ public class MainController {
             public void onPriceReady(JobPreviewResponse response) {
                 currentPreview = response;
                 settingsNextBtn.setDisable(false);
-                applyDuplexAvailability(response.price().pageCount());
             }
 
             @Override
@@ -2843,26 +2827,6 @@ public class MainController {
                 // На SUMMARY мы покажем то же сообщение явно (см. ниже).
             }
         };
-    }
-
-    /**
-     * Двусторонняя печать недоступна для одностраничного документа.
-     * При pageCount == 1 кнопку «Двусторонняя» гасим (disabled + серый стиль)
-     * и принудительно переключаем настройку на одностороннюю, чтобы не уйти
-     * на оплату с бессмысленным duplex. При большем числе страниц — включаем.
-     */
-    private void applyDuplexAvailability(int pageCount) {
-        boolean duplexAllowed = pageCount > 1;
-        if (doubleSideBtn != null) {
-            doubleSideBtn.setDisable(!duplexAllowed);
-        }
-        if (!duplexAllowed && settingsFlow.doubleSided()) {
-            // Сбрасываем на одностороннюю, только если двусторонняя реально была
-            // выбрана. Проверка значения обязательна: setDoubleSided всегда
-            // триггерит пересчёт цены → onPriceReady → сюда же, и без этого
-            // guard'а на одностраничном файле получился бы бесконечный цикл.
-            settingsFlow.setDoubleSided(false);
-        }
     }
 
     private static void setActive(Node node, boolean active) {

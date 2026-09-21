@@ -39,14 +39,14 @@ public class AdminTariffController {
     /** Смена глобальной цены — действует на все киоски без своей. */
     @PutMapping("/default")
     public TariffDto updateDefault(@Valid @RequestBody UpdateTariffRequest req) {
-        return tariffs.setPrice(null, req.bwPriceSom(), req.colorPriceSom());
+        return tariffs.setPrice(null, req.bwPriceSom(), req.colorPriceSom(), req.scanPriceSom());
     }
 
     /** Персональная цена киоска (например, в аренде дороже). */
     @PutMapping("/{kioskId}")
     public TariffDto updateForKiosk(@PathVariable String kioskId,
                                     @Valid @RequestBody UpdateTariffRequest req) {
-        return tariffs.setPrice(kioskId, req.bwPriceSom(), req.colorPriceSom());
+        return tariffs.setPrice(kioskId, req.bwPriceSom(), req.colorPriceSom(), req.scanPriceSom());
     }
 
     /** Снять персональную цену — киоск вернётся на глобальный дефолт. */

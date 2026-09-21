@@ -7,6 +7,8 @@ export interface Tariff {
   kioskName: string | null;
   bwPriceSom: number;
   colorPriceSom: number;
+  /** Получение скана на телефон или в Telegram, сом за страницу. */
+  scanPriceSom: number;
   effectiveFrom: string;
   /** null у действующей цены, дата — у архивной. */
   effectiveTo: string | null;
@@ -26,6 +28,7 @@ export function tariffHistory(kioskId?: string): Promise<Tariff[]> {
 export interface PriceInput {
   bwPriceSom: number;
   colorPriceSom: number;
+  scanPriceSom: number;
 }
 
 export function setDefaultTariff(p: PriceInput): Promise<Tariff> {

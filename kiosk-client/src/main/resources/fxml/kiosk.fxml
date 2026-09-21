@@ -1350,21 +1350,6 @@
                             </HBox>
                         </VBox>
 
-                        <!-- Sides -->
-                        <VBox spacing="12">
-                            <Label fx:id="sidesTitleLabel" text="Стороны" styleClass="h3-text"/>
-                            <HBox spacing="16">
-                                <Button fx:id="singleSideBtn" text="Односторонняя" onAction="#onSingleSideSelected"
-                                        styleClass="option-card-active" contentDisplay="LEFT" graphicTextGap="12">
-                                    <graphic><FontIcon iconLiteral="far-file" iconSize="28"/></graphic>
-                                </Button>
-                                <Button fx:id="doubleSideBtn" text="Двусторонняя" onAction="#onDoubleSideSelected"
-                                        styleClass="option-card" contentDisplay="LEFT" graphicTextGap="12">
-                                    <graphic><FontIcon iconLiteral="far-copy" iconSize="28"/></graphic>
-                                </Button>
-                            </HBox>
-                        </VBox>
-
                         <!-- Orientation -->
                         <VBox spacing="12">
                             <Label fx:id="orientationTitleLabel" text="Ориентация" styleClass="h3-text"/>
@@ -1430,13 +1415,6 @@
                                 <FontIcon iconLiteral="fas-palette" iconSize="22" styleClass="summary-icon"/>
                                 <Label fx:id="summaryColorKeyLabel" text="Цветность" styleClass="summary-key" HBox.hgrow="ALWAYS"/>
                                 <Label fx:id="summaryColorLabel" text="Чёрно-белая" styleClass="summary-value"/>
-                            </HBox>
-
-                            <!-- Стороны -->
-                            <HBox styleClass="summary-row" alignment="CENTER_LEFT" spacing="18">
-                                <FontIcon iconLiteral="far-copy" iconSize="22" styleClass="summary-icon"/>
-                                <Label fx:id="summarySidesKeyLabel" text="Двусторонняя печать" styleClass="summary-key" HBox.hgrow="ALWAYS"/>
-                                <Label fx:id="summarySidesLabel" text="Односторонняя" styleClass="summary-value"/>
                             </HBox>
 
                             <!-- Ориентация -->
