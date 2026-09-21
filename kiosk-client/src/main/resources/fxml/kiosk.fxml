@@ -979,7 +979,8 @@
                   visible="false"
                   managed="false">
 
-                <!-- Верхняя панель: «Назад» слева в круге, «На главный экран» по центру -->
+                <!-- Верхняя панель: только «Назад» слева. «На главный экран»
+                     перенесена вниз карточки, под QR-код. -->
                 <StackPane styleClass="scan-delivery-top">
                     <HBox alignment="CENTER_LEFT" StackPane.alignment="CENTER_LEFT">
                         <Button fx:id="scanDeliveryBackBtn"
@@ -987,18 +988,6 @@
                                 onAction="#onBackClicked"
                                 styleClass="btn-back"/>
                     </HBox>
-
-                    <Button fx:id="scanDeliveryHomeBtn"
-                            text="На главный экран"
-                            onAction="#onScanDeliveryHomeClicked"
-                            styleClass="home-link"
-                            contentDisplay="LEFT"
-                            graphicTextGap="10"
-                            StackPane.alignment="CENTER">
-                        <graphic>
-                            <FontIcon iconLiteral="fas-home" iconSize="18" styleClass="home-link-icon"/>
-                        </graphic>
-                    </Button>
                 </StackPane>
 
                 <StackPane VBox.vgrow="ALWAYS" alignment="CENTER">
@@ -1114,6 +1103,23 @@
                                wrapText="true"
                                visible="false"
                                managed="false"/>
+
+                        <!-- «На главный экран» — последним элементом, под QR-кодом:
+                             человек сначала сканирует QR, потом уходит. Пока QR
+                             не показан, кнопка стоит под выбором способа. -->
+                        <Button fx:id="scanDeliveryHomeBtn"
+                                text="На главный экран"
+                                onAction="#onScanDeliveryHomeClicked"
+                                styleClass="home-link"
+                                contentDisplay="LEFT"
+                                graphicTextGap="10">
+                            <VBox.margin>
+                                <Insets top="8"/>
+                            </VBox.margin>
+                            <graphic>
+                                <FontIcon iconLiteral="fas-home" iconSize="18" styleClass="home-link-icon"/>
+                            </graphic>
+                        </Button>
                     </VBox>
                 </StackPane>
             </VBox>
