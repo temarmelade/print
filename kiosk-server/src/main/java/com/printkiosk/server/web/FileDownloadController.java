@@ -80,6 +80,7 @@ public class FileDownloadController {
                 <html lang="ru"><head><meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
                 <title>Ссылка недоступна</title>
+                <link rel="icon" href="/upload/favicon.ico" sizes="any">
                 <style>
                   body{font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#F4F7FB;
                        color:#111827;display:flex;align-items:center;justify-content:center;
