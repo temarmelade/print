@@ -259,20 +259,7 @@
     -fx-cursor: hand;
 }
 
-.btn-back {
-    -fx-background-color: transparent;
-    -fx-text-fill: -text-muted;
-    -fx-font-size: 20px;
-    -fx-font-weight: 700;
-    -fx-padding: 12 20;
-    -fx-cursor: hand;
-}
-
-.btn-back:hover {
-    -fx-text-fill: -primary-blue;
-    -fx-background-color: -primary-soft;
-    -fx-background-radius: 14px;
-}
+/* .btn-back — единое описание в конце файла, раздел «Кнопка „Назад“». */
 
 /* PIN */
 
@@ -1052,9 +1039,6 @@
     -fx-background-color: linear-gradient(to bottom, #ffffff, #cce6ff);
 }
 
-.scan-preview-top-bar {
-    -fx-max-width: 1100px;
-}
 
 .scan-preview-card {
     -fx-padding: 28 34 28 34;
@@ -2603,9 +2587,6 @@
 .scan-delivery-screen {
     -fx-padding: 28 48 0 48;
 }
-.scan-delivery-top {
-    -fx-padding: 0 0 8 0;
-}
 
 /* «На главный экран» — кнопка с округлой рамкой */
 .home-link {
@@ -2756,11 +2737,6 @@
 }
 
 /* «Назад» жмут часто и обычно на ходу — 27 мм. */
-.btn-back {
-    -fx-min-height: 72px;
-    -fx-font-size: 23px;
-    -fx-padding: 14 26;
-}
 
 /* Языковые кнопки были 16px/8px padding — на 27" это ~11 мм, мимо. */
 .home-language-btn {
@@ -3098,4 +3074,82 @@
     -fx-min-height: 92px;      /* ~34 мм на 27" */
     -fx-font-size: 24px;
     -fx-padding: 14 18;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ЭКРАН С КНОПКОЙ «НАЗАД» — общий каркас
+   ═══════════════════════════════════════════════════════════════════════
+   Каждый экран с кнопкой «Назад» устроен одинаково:
+
+     VBox.screen-with-back           отступы экрана — одни на всех
+       HBox.screen-top-bar           панель фиксированной высоты, кнопка слева
+       VBox.screen-body (vgrow)      всё содержимое экрана
+
+   Почему кнопка раньше «плавала»: у .screen стоит -fx-alignment: center,
+   и VBox центрировал по вертикали ВСЁ содержимое вместе с кнопкой. Чем
+   меньше контента (скрыт QR, свёрнут блок), тем ниже опускалась кнопка.
+   Теперь экран прижат к верху, а центрирует только тело — внутри себя.
+
+   Почему разные отступы: почти у каждого экрана был свой -fx-padding
+   (сверху 18…32, слева 48…60). Селекторы здесь начинаются с .app-shell,
+   поэтому весят больше одиночных классов экранов и перекрывают их
+   независимо от места в файле.
+
+   Новый экран с кнопкой «Назад» — та же структура и те же три класса;
+   позицию кнопки вручную не задавать.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.app-shell .screen-with-back {
+    -fx-padding: 28 48 0 48;      /* низ — у тела: у части экранов он свой */
+    -fx-spacing: 20;              /* зазор между панелью и телом */
+    -fx-alignment: top-left;
+}
+
+.app-shell .screen-top-bar {
+    -fx-min-height: 72px;
+    -fx-pref-height: 72px;
+    -fx-max-height: 72px;
+    -fx-alignment: center-left;
+    -fx-padding: 0;
+}
+
+.app-shell .screen-body {
+    -fx-alignment: center;
+    -fx-spacing: 28;
+    -fx-padding: 0 0 42 0;
+}
+
+/* Эти экраны задуманы «в край» снизу — сохраняем как было. */
+.app-shell .scan-instruction-screen .screen-body,
+.app-shell .scan-delivery-screen .screen-body {
+    -fx-padding: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Кнопка «Назад»
+   ═══════════════════════════════════════════════════════════════════════
+   Киоск сенсорный: курсора нет, человек сразу нажимает. Поэтому реакция,
+   которая раньше была на :hover (синий текст на мягком голубом фоне),
+   теперь показывается при нажатии — :pressed.
+
+   :hover намеренно не стилизуем: на сенсорном экране Windows после касания
+   «курсор» остаётся там, где был палец, и :hover залипает на кнопке до
+   следующего касания в другом месте — кнопка выглядела бы нажатой. */
+
+.btn-back {
+    -fx-background-color: transparent;
+    -fx-background-radius: 14px;
+    -fx-text-fill: -text-muted;
+    -fx-font-size: 23px;
+    -fx-font-weight: 700;
+    -fx-min-height: 72px;
+    -fx-padding: 14 26;
+    -fx-cursor: hand;
+}
+
+.btn-back:pressed {
+    -fx-text-fill: -primary-blue;
+    -fx-background-color: -primary-soft;
 }
