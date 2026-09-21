@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Print Kiosk — Загрузка файла</title>
+    <title>BASMA PRINT — Загрузка файла</title>
     <!-- Иконка сайта (логотип BASMA PRINT): вкладка браузера и ярлык на телефоне -->
     <link rel="icon" href="/upload/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="192x192" href="/upload/icon-192.png">
@@ -62,13 +62,20 @@
             box-shadow: 0 10px 30px rgba(17,24,39,0.06);
             padding: 28px 24px;
         }
+        /* Логотип BASMA PRINT. Картинка в 3 раза крупнее, чем на экране
+           (360 px в высоту при 120 CSS px) — чёткая на телефонах с
+           плотным экраном. width/height в разметке резервируют место,
+           чтобы страница не прыгала, пока логотип грузится. */
         .logo {
-            font-size: 26px;
-            font-weight: 800;
+            margin: 0 0 10px;
+            line-height: 0;
             text-align: center;
-            margin: 0 0 4px;
         }
-        .logo span { color: var(--blue); }
+        .logo img {
+            display: inline-block;
+            height: 120px;
+            width: auto;
+        }
         .subtitle {
             text-align: center;
             color: var(--muted);
@@ -188,7 +195,7 @@
 
 <!-- ФОРМА ЗАГРУЗКИ -->
 <div class="card" id="formCard">
-    <h1 class="logo">🖨️ Print <span>Kiosk</span></h1>
+    <h1 class="logo"><img src="/upload/logo.png" alt="BASMA PRINT" width="111" height="120"></h1>
     <p class="subtitle" id="subtitle"></p>
 
     <div class="terminal hidden" id="terminalBox">
