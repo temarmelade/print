@@ -253,7 +253,6 @@ public class MainController {
     @FXML private VBox paymentErrorBox;
     @FXML private Label paymentErrorLabel;
     @FXML private Button paymentRetryBtn;
-    @FXML private Button adminBypassPaymentBtn;
     /** Был в FXML, но отсутствовал в контроллере — добавлен для биндинга. */
     @FXML private Button paymentHomeBtn;
 
@@ -853,7 +852,6 @@ public class MainController {
         bindText(paymentRetryBtn, "btn.retry");
         // paymentInstructionLabel НЕ биндим: его перезаписывает countdown.
         // paymentLoadingLabel / paymentErrorLabel / paymentAmountLabel — динамические.
-        // adminBypassPaymentBtn — dev-кнопка, не переводим.
 
         // ---- PRINTING ----
         bindText(printingTitleLabel, "printing.title");
@@ -2022,7 +2020,6 @@ public class MainController {
         }
         paymentFlow.start(currentPin, settingsFlow.currentSettings(), jobPages);
     }
-    @FXML public void onAdminBypassPayment()         {changeStep(KioskStep.PRINTING);}
 
     @FXML
     public void onPaymentHomeClicked() {

@@ -1488,22 +1488,7 @@
 }
 
 /* Bypass button — приглушённый, не отвлекает */
-.btn-bypass {
-    -fx-background-color: transparent;
-    -fx-border-color: #CBD5E1;
-    -fx-border-width: 1.5px;
-    -fx-border-radius: 14px;
-    -fx-background-radius: 14px;
-    -fx-text-fill: #64748B;
-    -fx-font-size: 14px;
-    -fx-padding: 10 20;
-    -fx-cursor: hand;
-}
 
-.btn-bypass:hover {
-    -fx-border-color: #94A3B8;
-    -fx-text-fill: #475569;
-}
 
 /* ===== Payment screen — modern fintech vibe ===== */
 
@@ -1573,22 +1558,7 @@
 }
 
 /* Bypass button — приглушённый, не отвлекает */
-.btn-bypass {
-    -fx-background-color: transparent;
-    -fx-border-color: #CBD5E1;
-    -fx-border-width: 1.5px;
-    -fx-border-radius: 14px;
-    -fx-background-radius: 14px;
-    -fx-text-fill: #64748B;
-    -fx-font-size: 14px;
-    -fx-padding: 10 20;
-    -fx-cursor: hand;
-}
 
-.btn-bypass:hover {
-    -fx-border-color: #94A3B8;
-    -fx-text-fill: #475569;
-}
 
 /* ===== Completed screen ===== */
 
@@ -3141,6 +3111,11 @@
 .btn-back {
     -fx-background-color: transparent;
     -fx-background-radius: 14px;
+    /* Видимая рамка — чтобы «Назад» читалась как кнопка, а не как надпись.
+       Цвет тот же, что у рамки «На главный экран» (.home-link). */
+    -fx-border-color: #C9D8F2;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 14px;
     -fx-text-fill: -text-muted;
     -fx-font-size: 23px;
     -fx-font-weight: 700;
@@ -3152,4 +3127,5 @@
 .btn-back:pressed {
     -fx-text-fill: -primary-blue;
     -fx-background-color: -primary-soft;
+    -fx-border-color: -primary-blue;
 }

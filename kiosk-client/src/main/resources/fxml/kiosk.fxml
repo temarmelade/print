@@ -1549,12 +1549,6 @@
                             <FontIcon iconLiteral="fas-wallet" iconSize="28" styleClass="amount-pill-icon"/>
                             <Label fx:id="paymentAmountLabel" text="0 сом" styleClass="amount-pill-value"/>
                         </HBox>
-
-                        <!-- Test-bypass (на проде убирается) -->
-                        <Button fx:id="adminBypassPaymentBtn"
-                                text="Я оплатил / тестовая печать"
-                                onAction="#onAdminBypassPayment"
-                                styleClass="btn-bypass"/>
                     </VBox>
 
                     <!-- Маскот прижат к левому краю карточки. translateX

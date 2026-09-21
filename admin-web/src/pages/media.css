@@ -118,8 +118,12 @@
   background: var(--surface-3);
   overflow: hidden;
 }
+/* contain, а не cover: превью показывает рекламу в её настоящем формате,
+   как её покажет киоск, — вертикальный ролик остаётся вертикальным, с полями
+   по бокам. cover обрезал всё под горизонтальную рамку 16:10. */
 .ad-preview img, .ad-preview video {
-  width: 100%; height: 100%; object-fit: cover; display: block;
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  background: #000;
 }
 .ad-type {
   position: absolute; top: 8px; left: 8px;

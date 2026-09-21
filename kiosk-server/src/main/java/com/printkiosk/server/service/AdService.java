@@ -33,6 +33,7 @@ public class AdService {
     private final KioskServerProperties properties;
     private final com.printkiosk.server.domain.KioskRepository kioskRepository;
     private final GifToVideoConverter gifConverter;
+    private final AdMediaNormalizer mediaNormalizer;
 
     private static final Map<String, String> ALLOWED_TYPES = Map.of(
             "image/jpeg", "jpg",
@@ -71,6 +72,14 @@ public class AdService {
     }
 
     @Transactional
+    private long sizeOr(String storedName, long fallback) {
+        try {
+            return java.nio.file.Files.size(storage.resolve(storedName));
+        } catch (IOException e) {
+            return fallback;
+        }
+    }
+
     public AdCreativeDto upload(MultipartFile file, String title, AdSlot slot,
                                 Integer durationSec, Integer sortOrder,
                                 List<String> kioskIds) {
@@ -133,6 +142,32 @@ public class AdService {
                     storedSize = java.nio.file.Files.size(converted.get());
                 } catch (IOException ignored) {
                     // размер некритичен, останется исходный
+                }
+            }
+        }
+
+        // Киоск (JavaFX) не выполняет метаданные поворота, которые выполняет
+        // браузер: вертикальное фото/видео с телефона в админке стоит ровно,
+        // а на киоске — боком. Приводим файл к виду, где пиксели уже стоят
+        // правильно, а видео — в формате, который JavaFX проигрывает.
+        if ("image/jpeg".equals(contentType)) {
+            if (mediaNormalizer.normalizeJpeg(storage.resolve(storedName))) {
+                storedSize = sizeOr(storedName, storedSize);
+            }
+        } else if (mediaType == AdMediaType.VIDEO && !"image/gif".equals(file.getContentType())) {
+            var normalized = mediaNormalizer.normalizeVideo(storage.resolve(storedName));
+            if (normalized.isPresent()) {
+                String mp4Name = "ad_" + id + ".mp4";
+                try {
+                    java.nio.file.Files.move(normalized.get(), storage.resolve(mp4Name),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    if (!mp4Name.equals(storedName)) storage.deleteQuietly(storedName);
+                    storedName = mp4Name;
+                    contentType = "video/mp4";
+                    storedSize = sizeOr(storedName, storedSize);
+                } catch (IOException e) {
+                    log.warn("Не удалось заменить видео нормализованным: {}", e.getMessage());
+                    storage.deleteQuietly(normalized.get().getFileName().toString());
                 }
             }
         }
