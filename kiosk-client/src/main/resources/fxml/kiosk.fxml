@@ -280,10 +280,13 @@
                                        text="Контакты поддержки"
                                        styleClass="h3-text"/>
                                 <Label fx:id="helpSupportPhoneLabel"
-                                       text="📞 +996 XXX XXX XXX"
+                                       text="📞 +996 708 060 406"
+                                       styleClass="body-text"/>
+                                <Label fx:id="helpSupportPhone2Label"
+                                       text="📞 +996 700 105 154"
                                        styleClass="body-text"/>
                                 <Label fx:id="helpSupportTelegramLabel"
-                                       text="✈ @printkiosk_support"
+                                       text="✈ @basmaprint_kg"
                                        styleClass="body-text"/>
                             </VBox>
                         </HBox>
@@ -1626,7 +1629,8 @@
                     <!-- Иконка ошибки -->
                     <Label text="⚠️" style="-fx-font-size: 96px;"/>
 
-                    <Label text="Не удалось напечатать"
+                    <Label fx:id="printFailedTitleLabel"
+                           text="Не удалось напечатать"
                            styleClass="h1-text"
                            style="-fx-text-fill: #DC2626;"/>
 
@@ -1643,19 +1647,23 @@
                           alignment="CENTER"
                           style="-fx-background-color: #FEF2F2; -fx-border-color: #FCA5A5;">
 
-                        <Label text="Сохраните этот PIN для обращения к админу:"
+                        <Label fx:id="printFailedHintLabel"
+                               text="Сохраните этот PIN для обращения к админу:"
                                styleClass="body-text-muted"/>
 
                         <Label fx:id="printErrorPinLabel"
                                text="PIN: ----"
                                style="-fx-font-size: 42px; -fx-font-weight: 800; -fx-text-fill: #DC2626;"/>
 
-                        <Label text="Связаться с поддержкой: @asanovte"
+                        <Label fx:id="printFailedSupportLabel"
+                               text="Связаться с поддержкой: @basmaprint_kg · +996 708 060 406"
                                styleClass="body-text"
-                               style="-fx-font-weight: 700;"/>
+                               wrapText="true"
+                               style="-fx-font-weight: 700; -fx-text-alignment: center;"/>
                     </VBox>
 
-                    <Button text="На главный экран"
+                    <Button fx:id="printFailedHomeBtn"
+                            text="На главный экран"
                             onAction="#onPrintFailedHomeClicked"
                             styleClass="btn-primary"/>
                 </VBox>
@@ -1760,25 +1768,33 @@
 
                     <Label text="🛠️" style="-fx-font-size: 120px;"/>
 
-                    <Label text="Аппарат временно недоступен"
+                    <Label fx:id="outOfServiceTitleLabel"
+                           text="Аппарат временно недоступен"
                            styleClass="h1-text"
                            style="-fx-text-fill: #1E3A8A;"/>
 
-                    <Label text="Приносим извинения за неудобства. Наши специалисты уже работают над этим."
+                    <Label fx:id="outOfServiceDescLabel"
+                           text="Приносим извинения за неудобства. Наши специалисты уже работают над этим."
                            styleClass="body-text-muted"
                            wrapText="true"
                            maxWidth="640"
                            style="-fx-text-alignment: center; -fx-font-size: 22px;"/>
 
                     <VBox styleClass="small-card" spacing="10" alignment="CENTER">
-                        <Label text="Связаться с поддержкой:"
+                        <!-- Контакты берутся из переводов: раньше они были
+                             вписаны прямо сюда и не переводились. -->
+                        <Label fx:id="outOfServiceSupportHintLabel"
+                               text="Связаться с поддержкой:"
                                styleClass="body-text-muted"/>
-                        <Label text="asanovte"
+                        <Label fx:id="outOfServiceSupportContactLabel"
+                               text="@basmaprint_kg · +996 708 060 406"
                                styleClass="body-text"
-                               style="-fx-font-size: 28px; -fx-font-weight: 800; -fx-text-fill: -primary-blue;"/>
+                               wrapText="true"
+                               style="-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: -primary-blue; -fx-text-alignment: center;"/>
                     </VBox>
 
-                    <Button text="На главный экран"
+                    <Button fx:id="outOfServiceHomeBtn"
+                            text="На главный экран"
                             onAction="#onOutOfServiceHomeClicked"
                             styleClass="btn-primary"/>
                 </VBox>

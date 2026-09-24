@@ -277,6 +277,7 @@ public class MainController {
     @FXML private Label outOfServiceTitleLabel;
     @FXML private Label outOfServiceDescLabel;
     @FXML private Label outOfServiceSupportHintLabel;
+    @FXML private Label outOfServiceSupportContactLabel;
     @FXML private Button outOfServiceHomeBtn;
 
     // ══════════════════════════════════════════════════════════════════════
@@ -401,6 +402,7 @@ public class MainController {
     @FXML private Label helpFormatsLimitLabel;
     @FXML private Label helpSupportTitleLabel;
     @FXML private Label helpSupportPhoneLabel;
+    @FXML private Label helpSupportPhone2Label;
     @FXML private Label helpSupportTelegramLabel;
     @FXML private Label helpHintLabel;
 
@@ -859,6 +861,7 @@ public class MainController {
         bindText(outOfServiceTitleLabel, "oos.title");
         bindText(outOfServiceDescLabel, "oos.desc");
         bindText(outOfServiceSupportHintLabel, "oos.support");
+        bindText(outOfServiceSupportContactLabel, "oos.support.contact");
         // printErrorMessageLabel / printErrorPinLabel — динамические.
 
         // ---- COMPLETED ----
@@ -915,6 +918,7 @@ public class MainController {
         bindText(helpFormatsLimitLabel, "help.formats.limit");
         bindText(helpSupportTitleLabel, "help.support.title");
         bindText(helpSupportPhoneLabel, "help.support.phone");
+        bindText(helpSupportPhone2Label, "help.support.phone2");
         bindText(helpSupportTelegramLabel, "help.support.telegram");
         bindText(helpHintLabel, "help.hint");
 
