@@ -107,6 +107,20 @@ public class KioskServerClient {
     public void markCompleted(UUID jobId)  { transitionJob(jobId, "completed"); }
     public void markFailed(UUID jobId)     { transitionJob(jobId, "failed");    }
 
+    /**
+     * Ошибка печати с причиной. Сервер пишет её в лог (grep "→ FAILED"):
+     * раньше причина не передавалась, и там было «unspecified».
+     */
+    public void markFailed(UUID jobId, String reason) {
+        String r = reason == null ? "" : (reason.length() > 500 ? reason.substring(0, 500) : reason);
+        execute(() -> http.post()
+                .uri("/api/jobs/{id}/failed", jobId)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(java.util.Map.of("reason", r))
+                .retrieve()
+                .toBodilessEntity());
+    }
+
     private void transitionJob(UUID jobId, String action) {
         execute(() -> http.post()
                 .uri("/api/jobs/{id}/{action}", jobId, action)

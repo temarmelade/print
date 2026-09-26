@@ -257,8 +257,11 @@ public class PrintJobService {
                 || job.getStatus() == PrintJobStatus.FAILED) {
             return false;
         }
+        PrintJobStatus previous = job.getStatus();
         job.setStatus(PrintJobStatus.FAILED);
-        log.warn("Job {} → FAILED, reason: {}", jobId, reason);
+        // Причина приходит от киоска. Искать: docker logs kiosk-server | grep "→ FAILED"
+        log.warn("Job {} ({}, было {}) → FAILED, причина: {}",
+                jobId, job.getOperationType(), previous, reason);
         return true;
     }
 
@@ -299,16 +302,18 @@ public class PrintJobService {
      * надо закрыть, иначе он будет вечно числиться активным.
      */
     @Transactional
-    public int failStaleUnpaidJobs(Instant threshold) {
-        int n = jobs.failStaleUnpaidJobs(threshold);
-        if (n > 0) log.info("Failed {} stale unpaid jobs", n);
-        return n;
+    public int closeStaleUnpaidJobs(Instant threshold) {
+        int expired = jobs.expireAbandonedPayments(threshold);
+        int failed  = jobs.failStaleReadyJobs(threshold);
+        if (expired > 0) log.info("Неоплаченных заданий закрыто как «Истёк»: {}", expired);
+        if (failed  > 0) log.warn("Заданий без платёжной сессии закрыто как ошибка: {}", failed);
+        return expired + failed;
     }
 
     @Scheduled(fixedRate = 300_000)   // каждые 5 минут
     @Transactional
     public void scheduledFailStaleJobs() {
-        failStaleUnpaidJobs(Instant.now().minus(Duration.ofMinutes(30)));
+        closeStaleUnpaidJobs(Instant.now().minus(Duration.ofMinutes(30)));
     }
 
     @Transactional(readOnly = true)
@@ -338,6 +343,7 @@ public class PrintJobService {
         if (updated > 0) {
             log.info("Payment confirmed via webhook: pin={}", maskPin(pin));
             extendPaidScanDelivery(pin, now);
+            extendPaidPrintFile(pin, now);
             return true;
         }
         log.info("Webhook for pin={} ignored (no active PAYMENT_PENDING job)", maskPin(pin));
@@ -351,6 +357,29 @@ public class PrintJobService {
      * сразу после того, как человек заплатил. Для печатных заданий запрос
      * ничего не меняет (в нём условие на тип операции доставки).
      */
+    /** Задания, после оплаты которых киоск скачивает и печатает файл. */
+    private static final java.util.Set<com.printkiosk.shared.api.OperationType> PRINT_TYPES =
+            java.util.EnumSet.of(com.printkiosk.shared.api.OperationType.PRINT,
+                                 com.printkiosk.shared.api.OperationType.COPY,
+                                 com.printkiosk.shared.api.OperationType.SCAN_PRINT);
+    private static final Duration PAID_PRINT_FILE_TTL = Duration.ofMinutes(30);
+
+    /**
+     * После оплаты печати файл должен дожить до печати. Срок файла (10 мин)
+     * считается от загрузки: для скана или копии это момент нажатия
+     * «Распечатать», а дальше ещё настройки и оплата (до 5 минут). Если
+     * время вышло, киоск после оплаты получал 404 при скачивании — деньги
+     * списаны, печати нет. После печати файл всё равно помечается
+     * израсходованным и удаляется, так что лишнего он не живёт.
+     */
+    private void extendPaidPrintFile(String pin, Instant now) {
+        Instant until = now.plus(PAID_PRINT_FILE_TTL);
+        int extended = files.extendPaidDelivery(pin, now, until, PRINT_TYPES);
+        if (extended > 0) {
+            log.info("Print paid: pin={} file kept until {}", maskPin(pin), until);
+        }
+    }
+
     private void extendPaidScanDelivery(String pin, Instant now) {
         Instant until = now.plus(properties.getScanDelivery().getDownloadTtl());
         int extended = files.extendPaidDelivery(pin, now, until, PrintJobRepository.SCAN_DELIVERY_TYPES);

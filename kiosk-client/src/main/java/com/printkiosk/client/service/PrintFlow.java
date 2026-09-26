@@ -116,27 +116,58 @@ public class PrintFlow {
         }
     }
 
+    /**
+     * Лист уже вышел — человеку сразу «Готово». Отчитаться серверу — фоном,
+     * с повторами. Раньше сбой сети в этот момент показывал экран ошибки
+     * («Печать выполнена, но возникла проблема»), хотя документ был напечатан,
+     * а сетевые вызовы шли прямо в потоке интерфейса.
+     */
     private void finalizeSuccess(UUID jobId, UUID fileId) {
-        // Серверные действия — best-effort. Если упадёт, печать всё равно произошла.
-        try {
-            server.markCompleted(jobId);
-            server.consumeFile(fileId);
-            notifyCompleted();
-        } catch (Exception e) {
-            log.error("Print succeeded but server finalization failed", e);
-            notifyFailed("Печать выполнена, но возникла проблема. Уведомите админа.");
-        }
+        notifyCompleted();
+        CompletableFuture.runAsync(() -> {
+            if (!withRetries("markCompleted " + jobId, () -> server.markCompleted(jobId))) {
+                log.error("Печать выполнена, но сервер не отметил задание {} выполненным", jobId);
+            }
+            try {
+                server.consumeFile(fileId);
+            } catch (Exception e) {
+                log.warn("consumeFile {} не прошёл: {} — файл удалится по сроку", fileId, e.getMessage());
+            }
+        }, printExecutor.executor());
     }
 
     private void finalizeFailure(UUID jobId, String message) {
-        try {
-            server.markFailed(jobId);
-            // ВАЖНО: файл НЕ consume'им. paymentStatus остаётся PAID.
-            // Это создаёт запись "PAID-but-FAILED" для админского refund'а.
-        } catch (Exception e) {
-            log.warn("Failed to mark FAILED: {}", e.getMessage());
-        }
+        log.error("Печать задания {} не удалась: {}", jobId, message);
         notifyFailed(message);
+        // ВАЖНО: файл НЕ consume'им. paymentStatus остаётся PAID — это
+        // запись «оплачено, но не напечатано» для возврата денег.
+        // Причину отправляем серверу: по ней потом разбирают такие случаи.
+        CompletableFuture.runAsync(() -> {
+            if (!withRetries("markFailed " + jobId, () -> server.markFailed(jobId, message))) {
+                log.error("Не удалось отметить задание {} ошибочным на сервере", jobId);
+            }
+        }, printExecutor.executor());
+    }
+
+    /** До трёх попыток с паузой 2 и 4 секунды: короткий сбой сети не должен терять статус. */
+    private static boolean withRetries(String what, Runnable call) {
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                call.run();
+                return true;
+            } catch (Exception e) {
+                log.warn("{}: попытка {} не удалась: {}", what, attempt, e.getMessage());
+                if (attempt < 3) {
+                    try {
+                        Thread.sleep(2000L * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private void deleteQuietly(Path file) {

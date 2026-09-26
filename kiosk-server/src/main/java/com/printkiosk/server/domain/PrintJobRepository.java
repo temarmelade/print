@@ -142,21 +142,35 @@ public interface PrintJobRepository
     // ────────────────────────────────────────────────────────────────
 
     /**
-     * Job'ы, которые так и не оплатили в течение TTL файла.
-     * Файл cleanup-джоб удалит сам (CASCADE снесёт строку),
-     * но если файл по какой-то причине ещё жив (например,
-     * пользователь повторно зашёл и подвис) — пометить FAILED.
+     * Брошенная оплата: QR показали, но за 30 минут не оплатили — человек
+     * передумал, вернулся назад поменять настройки (это создаёт новое
+     * задание) или ушёл. Это не ошибка киоска: EXPIRED («Истёк»).
+     *
+     * <p>Раньше такие задания получали FAILED и в админке выглядели как
+     * «Ошибка», хотя денег никто не платил и печатать было нечего.
+     */
+    @Modifying
+    @Query("""
+           UPDATE PrintJobEntity j
+              SET j.status = com.printkiosk.shared.api.PrintJobStatus.EXPIRED
+            WHERE j.status = com.printkiosk.shared.api.PrintJobStatus.PAYMENT_PENDING
+              AND j.createdAt < :threshold
+           """)
+    int expireAbandonedPayments(@Param("threshold") Instant threshold);
+
+    /**
+     * READY без платёжной сессии: задание и оплата создаются одним действием,
+     * так что READY «зависает», только если создать оплату не удалось.
+     * Это настоящая ошибка — FAILED.
      */
     @Modifying
     @Query("""
            UPDATE PrintJobEntity j
               SET j.status = com.printkiosk.shared.api.PrintJobStatus.FAILED
-            WHERE j.status IN (
-                  com.printkiosk.shared.api.PrintJobStatus.READY,
-                  com.printkiosk.shared.api.PrintJobStatus.PAYMENT_PENDING)
+            WHERE j.status = com.printkiosk.shared.api.PrintJobStatus.READY
               AND j.createdAt < :threshold
            """)
-    int failStaleUnpaidJobs(@Param("threshold") Instant threshold);
+    int failStaleReadyJobs(@Param("threshold") Instant threshold);
 
     /**
      * Атомарно помечает PAYMENT_PENDING job (найденный по коду файла) как PAID.
