@@ -9,11 +9,15 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
-import org.apache.pdfbox.printing.PDFPageable;
+import org.apache.pdfbox.printing.PDFPrintable;
+import org.apache.pdfbox.printing.Scaling;
 import org.springframework.stereotype.Service;
 
 import javax.print.PrintService;
 import javax.print.attribute.PrintRequestAttributeSet;
+import java.awt.print.Book;
+import java.awt.print.PageFormat;
+import java.awt.print.Paper;
 import java.awt.print.PrinterAbortException;
 import java.awt.print.PrinterJob;
 import java.util.concurrent.CompletableFuture;
@@ -70,7 +74,7 @@ public class FallbackPdfPrinter {
                 PrinterJob job = PrinterJob.getPrinterJob();
                 job.setPrintService(printer);
                 job.setJobName(JOB_NAME);
-                job.setPageable(new PDFPageable(doc));
+                job.setPageable(a4Pages(doc));
 
                 PrintRequestAttributeSet attrs = attributesBuilder.build(settings, printer);
                 long started = System.nanoTime();
@@ -92,6 +96,67 @@ public class FallbackPdfPrinter {
         });
 
         return result;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  Формат бумаги: всегда A4
+    // ════════════════════════════════════════════════════════════════
+
+    private static final double A4_W = PDRectangle.A4.getWidth();    // 595 pt = 210 мм
+    private static final double A4_H = PDRectangle.A4.getHeight();   // 842 pt = 297 мм
+    /** Насколько размер страницы может отличаться от A4, чтобы считаться A4 (≈1 мм). */
+    private static final double A4_TOLERANCE = 3;
+
+    /**
+     * Каждая страница — на листе A4, в той ориентации, в какой свёрстана.
+     *
+     * <p>Раньше здесь был PDFPageable: он отдаёт драйверу формат каждой
+     * страницы таким, каким он записан в файле. Документ, свёрстанный под
+     * Letter (по умолчанию в Word с американскими настройками, многие PDF из
+     * интернета; LibreOffice при конвертации DOCX формат сохраняет), уходил на
+     * принтер как Letter. Canon с лотком A4 вставал с «Size/Settings Mismatch,
+     * PC Set.: LTR» и ждал, пока кто-нибудь нажмёт кнопку на самом принтере.
+     *
+     * <p>Теперь бумага всегда A4. Страница A4 печатается в натуральную
+     * величину, как и раньше; другой формат вписывается в лист с уменьшением
+     * (SHRINK_TO_FIT) — ничего не обрезается.
+     */
+    static Book a4Pages(PDDocument doc) {
+        PDFPrintable actualSize  = new PDFPrintable(doc, Scaling.ACTUAL_SIZE,   false, 0, true);
+        PDFPrintable shrinkToFit = new PDFPrintable(doc, Scaling.SHRINK_TO_FIT, false, 0, true);
+
+        Paper a4 = new Paper();
+        a4.setSize(A4_W, A4_H);
+        // Вся площадь листа; реальные поля принтера Java подставит сама.
+        a4.setImageableArea(0, 0, A4_W, A4_H);
+
+        Book book = new Book();
+        for (int i = 0; i < doc.getNumberOfPages(); i++) {
+            PDPage page = doc.getPage(i);
+            PageFormat format = new PageFormat();
+            format.setPaper(a4);
+            format.setOrientation(isLandscape(page) ? PageFormat.LANDSCAPE : PageFormat.PORTRAIT);
+            // Book передаёт печатающему объекту свой номер страницы, а он
+            // совпадает с номером страницы в PDF — страницы идут по порядку.
+            book.append(isA4(page) ? actualSize : shrinkToFit, format);
+        }
+        return book;
+    }
+
+    /** Альбомная ли страница на вид — с учётом поворота /Rotate в PDF. */
+    static boolean isLandscape(PDPage page) {
+        PDRectangle box = page.getCropBox();
+        boolean wider   = box.getWidth() > box.getHeight();
+        boolean rotated = (page.getRotation() / 90) % 2 != 0;   // 90 или 270 (в т.ч. -90)
+        return wider != rotated;
+    }
+
+    /** Страница формата A4 — в любой ориентации. */
+    static boolean isA4(PDPage page) {
+        PDRectangle box = page.getCropBox();
+        double w = box.getWidth(), h = box.getHeight();
+        return (Math.abs(w - A4_W) <= A4_TOLERANCE && Math.abs(h - A4_H) <= A4_TOLERANCE)
+            || (Math.abs(w - A4_H) <= A4_TOLERANCE && Math.abs(h - A4_W) <= A4_TOLERANCE);
     }
 
     private PDDocument wrapImageInPdf(byte[] imageBytes, PrintSettings settings) throws Exception {
