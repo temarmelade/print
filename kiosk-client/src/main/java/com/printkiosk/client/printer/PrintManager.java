@@ -48,6 +48,18 @@ public class PrintManager {
                                                        String mimeType,
                                                        PrintSettings settings,
                                                        java.util.List<Integer> pages) {
+        return printAsync(file, mimeType, settings, pages, java.util.Map.of());
+    }
+
+    /**
+     * @param rotations поворот страниц, заданный кнопкой на превью: номер
+     *                  страницы (с 0, в исходном документе) → градусы по часовой
+     */
+    public CompletableFuture<PrinterResult> printAsync(Path file,
+                                                       String mimeType,
+                                                       PrintSettings settings,
+                                                       java.util.List<Integer> pages,
+                                                       java.util.Map<Integer, Integer> rotations) {
         PrintService printer = resolvePrinter();
         if (printer == null) {
             return CompletableFuture.completedFuture(PrinterResult.failed(
@@ -70,10 +82,25 @@ public class PrintManager {
         // Только для PDF имеет смысл выбор страниц; изображения одностраничны.
         if ("application/pdf".equalsIgnoreCase(mimeType)) {
             try {
+                // Сначала поворот, потом отбор: номера в rotations — страницы
+                // исходного документа, как на превью.
+                bytes = rotatePdfPages(bytes, rotations);
                 bytes = filterPdfPages(bytes, pages);
             } catch (IOException e) {
                 return CompletableFuture.completedFuture(
                         PrinterResult.failed("Не удалось подготовить страницы: " + e.getMessage()));
+            }
+        }
+
+        // Фото: поворачиваем сами пиксели и печатаем как PNG.
+        int imageRotation = (rotations == null) ? 0 : Math.floorMod(rotations.getOrDefault(0, 0), 360);
+        if (imageRotation != 0 && mimeType.toLowerCase().startsWith("image/")) {
+            try {
+                bytes = rotateImage(bytes, imageRotation);
+                mimeType = "image/png";
+            } catch (IOException e) {
+                return CompletableFuture.completedFuture(
+                        PrinterResult.failed("Не удалось повернуть изображение: " + e.getMessage()));
             }
         }
 
@@ -120,6 +147,62 @@ public class PrintManager {
      * возрастанию, без дублей). Если выбор пуст/некорректен или охватывает
      * все страницы — возвращает исходные байты без изменений.
      */
+    /**
+     * Поворот страниц PDF через стандартный атрибут /Rotate: к уже записанному
+     * в файле повороту добавляется выбранный на превью. Дальше печать на A4
+     * учитывает /Rotate сама (FallbackPdfPrinter.a4Pages): повёрнутая
+     * страница печатается в своей новой ориентации.
+     */
+    static byte[] rotatePdfPages(byte[] pdfBytes, java.util.Map<Integer, Integer> rotations) throws IOException {
+        if (rotations == null || rotations.values().stream().allMatch(d -> Math.floorMod(d, 360) == 0)) {
+            return pdfBytes;
+        }
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(pdfBytes)) {
+            int total = doc.getNumberOfPages();
+            for (var e : rotations.entrySet()) {
+                int index = e.getKey();
+                int degrees = Math.floorMod(e.getValue(), 360);
+                if (index < 0 || index >= total || degrees == 0) continue;
+                org.apache.pdfbox.pdmodel.PDPage page = doc.getPage(index);
+                // Ставим на саму страницу (а не наследуем): так поворот
+                // переживёт и отбор страниц (importPage в filterPdfPages).
+                page.setRotation(Math.floorMod(page.getRotation() + degrees, 360));
+            }
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            doc.save(out);
+            log.info("Повёрнуты страницы для печати: {}", rotations);
+            return out.toByteArray();
+        }
+    }
+
+    /** Поворот фото по часовой на 90/180/270 — пиксели, на белом фоне (у PNG бывает прозрачность). */
+    static byte[] rotateImage(byte[] imageBytes, int degrees) throws IOException {
+        java.awt.image.BufferedImage src = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(imageBytes));
+        if (src == null) throw new IOException("формат изображения не распознан");
+        int w = src.getWidth(), h = src.getHeight();
+        boolean swap = degrees == 90 || degrees == 270;
+        java.awt.image.BufferedImage dst = new java.awt.image.BufferedImage(
+                swap ? h : w, swap ? w : h, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.geom.AffineTransform at = new java.awt.geom.AffineTransform();
+        switch (degrees) {
+            case 90  -> { at.translate(h, 0); at.rotate(Math.PI / 2); }
+            case 180 -> { at.translate(w, h); at.rotate(Math.PI); }
+            case 270 -> { at.translate(0, w); at.rotate(-Math.PI / 2); }
+            default  -> { return imageBytes; }
+        }
+        java.awt.Graphics2D g = dst.createGraphics();
+        try {
+            g.setColor(java.awt.Color.WHITE);
+            g.fillRect(0, 0, dst.getWidth(), dst.getHeight());
+            g.drawImage(src, at, null);
+        } finally {
+            g.dispose();
+        }
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(dst, "png", out);
+        return out.toByteArray();
+    }
+
     private byte[] filterPdfPages(byte[] pdfBytes, java.util.List<Integer> pages) throws IOException {
         if (pages == null || pages.isEmpty()) return pdfBytes;
 

@@ -1273,6 +1273,21 @@
                                            fitHeight="500"/>
                             </StackPane>
 
+                            <!-- Повернуть текущую страницу на 90° против часовой —
+                                 как в «Фото» на iPhone: только иконка, без подписи.
+                                 Отдельная строка, а не в ряду листания: тот скрыт у
+                                 одностраничных документов, а повернуть нужно и фото. -->
+                            <Button fx:id="rotatePageBtn"
+                                    onAction="#onRotatePageClicked"
+                                    styleClass="rotate-page-btn"
+                                    accessibleText="Повернуть страницу"
+                                    visible="false"
+                                    managed="false">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-undo-alt" iconSize="26" styleClass="rotate-page-icon"/>
+                                </graphic>
+                            </Button>
+
                             <HBox fx:id="previewNavBox"
                                   alignment="CENTER"
                                   spacing="20"

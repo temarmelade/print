@@ -127,6 +127,20 @@ public class PageSelectionPanel {
         }
     }
 
+    /**
+     * Повернуть миниатюру страницы так же, как страница повёрнута в превью
+     * (градусы по часовой, кратно 90). Рамка миниатюры фиксированная 48×62,
+     * поэтому при повороте на 90/270 стороны вписывания меняются местами.
+     */
+    public void setThumbnailRotation(int pageIndex, int degrees) {
+        if (pageIndex < 0 || pageIndex >= thumbViews.size()) return;
+        ImageView iv = thumbViews.get(pageIndex);
+        boolean sideways = Math.floorMod(degrees, 180) == 90;
+        iv.setFitWidth(sideways ? 58 : 44);
+        iv.setFitHeight(sideways ? 44 : 58);
+        iv.setRotate(degrees);
+    }
+
     /** Очистить панель (при выходе с экрана / закрытии превью). */
     public void clear() {
         this.totalPages = 0;

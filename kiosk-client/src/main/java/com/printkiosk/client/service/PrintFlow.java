@@ -50,6 +50,16 @@ public class PrintFlow {
 
     public void start(UUID jobId, VerifyResponse file, PrintSettings settings,
                       java.util.List<Integer> pages) {
+        start(jobId, file, settings, pages, java.util.Map.of());
+    }
+
+    /**
+     * @param rotations поворот страниц с экрана превью: номер страницы (с 0) →
+     *                  градусы по часовой (90/180/270)
+     */
+    public void start(UUID jobId, VerifyResponse file, PrintSettings settings,
+                      java.util.List<Integer> pages,
+                      java.util.Map<Integer, Integer> rotations) {
         if (inProgress) {
             log.warn("Print already in progress");
             return;
@@ -70,7 +80,7 @@ public class PrintFlow {
                 .thenCompose(tempFile -> {
                     server.startPrinting(jobId);
                     fxUpdateStatus("Отправляем на принтер...");
-                    return printManager.printAsync(tempFile, file.contentType(), settings, pages)
+                    return printManager.printAsync(tempFile, file.contentType(), settings, pages, rotations)
                             .whenComplete((r, t) -> deleteQuietly(tempFile));
                 })
                 .whenComplete((result, throwable) -> Platform.runLater(() -> {

@@ -192,6 +192,18 @@ public class MainController {
     @FXML private HBox previewNavBox;
     @FXML private Button printPreviewPrevBtn;
     @FXML private Label previewPageLabel;
+    @FXML private Button rotatePageBtn;
+
+    /**
+     * Повороты страниц, заданные кнопкой на превью: номер страницы (с 0) →
+     * градусы по часовой (90/180/270). Нет записи — страница как есть.
+     * Сбрасывается при загрузке нового документа.
+     */
+    private final java.util.Map<Integer, Integer> pageRotations = new java.util.HashMap<>();
+    /** Какая страница сейчас на превью (с 0). */
+    private int previewPageIndex = 0;
+    /** Вписывает превью в рамку с учётом поворота; задаётся в setupPreviewFit. */
+    private Runnable previewFitter = () -> {};
     @FXML private Button printPreviewNextBtn;
 
     // ══════════════════════════════════════════════════════════════════════
@@ -686,16 +698,22 @@ public class MainController {
      * рамки (до первого прохода раскладки), она не перекроет соседние кнопки.
      */
     private void setupPreviewFit() {
-        Runnable fit = () -> {
+        previewFitter = () -> {
             javafx.geometry.Insets in = previewContainer.getInsets();
             double w = previewContainer.getWidth()  - in.getLeft() - in.getRight();
             double h = previewContainer.getHeight() - in.getTop()  - in.getBottom();
-            if (w > 1) previewImageView.setFitWidth(Math.floor(w));
-            if (h > 1) previewImageView.setFitHeight(Math.floor(h));
+            // Страница, повёрнутая на 90/270, на экране лежит «боком»: вписываем
+            // её в рамку с переставленными сторонами, иначе после поворота она
+            // вылезла бы за превью.
+            boolean sideways = Math.floorMod((int) previewImageView.getRotate(), 180) == 90;
+            double fw = sideways ? h : w;
+            double fh = sideways ? w : h;
+            if (fw > 1) previewImageView.setFitWidth(Math.floor(fw));
+            if (fh > 1) previewImageView.setFitHeight(Math.floor(fh));
         };
-        previewContainer.widthProperty() .addListener((o, a, b) -> fit.run());
-        previewContainer.heightProperty().addListener((o, a, b) -> fit.run());
-        previewContainer.insetsProperty().addListener((o, a, b) -> fit.run());
+        previewContainer.widthProperty() .addListener((o, a, b) -> previewFitter.run());
+        previewContainer.heightProperty().addListener((o, a, b) -> previewFitter.run());
+        previewContainer.insetsProperty().addListener((o, a, b) -> previewFitter.run());
 
         javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle();
         clip.widthProperty() .bind(previewContainer.widthProperty());
@@ -1897,6 +1915,37 @@ public class MainController {
     @FXML public void onPrintPreviewPrevClicked() { previewFlow.prev(); }
     @FXML public void onPrintPreviewNextClicked() { previewFlow.next(); }
 
+    /**
+     * Повернуть текущую страницу на 90° против часовой стрелки — как кнопка
+     * поворота в «Фото» на iPhone. Четыре касания возвращают страницу как была.
+     * Поворот сразу виден в превью и в миниатюре, при печати страница выйдет
+     * повёрнутой (см. PrintManager).
+     */
+    @FXML public void onRotatePageClicked() {
+        int degrees = Math.floorMod(rotationOf(previewPageIndex) - 90, 360);
+        if (degrees == 0) pageRotations.remove(previewPageIndex);
+        else              pageRotations.put(previewPageIndex, degrees);
+        applyPreviewRotation();
+        pageSelection.setThumbnailRotation(previewPageIndex, degrees);
+    }
+
+    private int rotationOf(int pageIndex) {
+        return pageRotations.getOrDefault(pageIndex, 0);
+    }
+
+    private void applyPreviewRotation() {
+        previewImageView.setRotate(rotationOf(previewPageIndex));
+        previewFitter.run();
+    }
+
+    /** Новый документ или конец сессии: повороты прошлого документа не переносим. */
+    private void resetPageRotations() {
+        pageRotations.clear();
+        previewPageIndex = 0;
+        previewImageView.setRotate(0);
+        previewFitter.run();
+    }
+
     // ---- SETTINGS ----
     @FXML public void onCopiesMinusClicked()  { settingsFlow.decrementCopies(); }
     @FXML public void onCopiesPlusClicked()   { settingsFlow.incrementCopies(); }
@@ -2158,6 +2207,7 @@ public class MainController {
         settingsFlow.stop();
         previewFlow.close();
         previewImageView.setImage(null);   // не держим страницу прошлого клиента
+        resetPageRotations();
         pageSelection.clear();
         pinEntryFlow.reset();
         scanFlow.clear();                              // чистим временные файлы сканов
@@ -2403,6 +2453,9 @@ public class MainController {
             ScanUpload upload = task.getValue();
             currentPin  = upload.pin();              // теперь сканы = обычный файл печати
             currentFile = upload.file();
+            // Скан печатается без превью документа: повороты, заданные раньше
+            // для другого документа, на него не переносим.
+            pageRotations.clear();
             jobPages = null;                         // скан печатаем целиком
             settingsFlow.start(currentPin);          // запускаем стандартные настройки
             changeStep(KioskStep.SETTINGS);
@@ -2711,6 +2764,7 @@ public class MainController {
                 // Картинка прошлого документа не должна ни мелькнуть, ни
                 // участвовать в раскладке, пока грузится новая.
                 previewImageView.setImage(null);
+                resetPageRotations();
                 showPreviewLoading();
                 pageSelection.clear();
             }
@@ -2723,6 +2777,8 @@ public class MainController {
 
             @Override
             public void onPageRendered(Image image, int pageIndex, int totalPages) {
+                previewPageIndex = pageIndex;
+                applyPreviewRotation();
                 previewImageView.setImage(image);
                 showPreviewImage();
                 updatePreviewNav(pageIndex, totalPages);
@@ -2756,12 +2812,14 @@ public class MainController {
         previewErrorBox  .setVisible(false);  previewErrorBox  .setManaged(false);
         previewImageView .setVisible(false);
         previewNavBox    .setVisible(false);  previewNavBox    .setManaged(false);
+        rotatePageBtn    .setVisible(false);  rotatePageBtn    .setManaged(false);
     }
 
     private void showPreviewImage() {
         previewLoadingBox.setVisible(false);  previewLoadingBox.setManaged(false);
         previewErrorBox  .setVisible(false);  previewErrorBox  .setManaged(false);
         previewImageView .setVisible(true);
+        rotatePageBtn    .setVisible(true);   rotatePageBtn    .setManaged(true);
     }
 
     private void showPreviewError() {
@@ -2769,6 +2827,7 @@ public class MainController {
         previewErrorBox  .setVisible(true);   previewErrorBox  .setManaged(true);
         previewImageView .setVisible(false);
         previewNavBox    .setVisible(false);  previewNavBox    .setManaged(false);
+        rotatePageBtn    .setVisible(false);  rotatePageBtn    .setManaged(false);
     }
 
     /**
@@ -2903,7 +2962,8 @@ public class MainController {
                 log.info("Payment confirmed for job={}", jobId);
                 currentJobId = jobId;
                 changeStep(KioskStep.PRINTING);
-                printFlow.start(jobId, currentFile, settingsFlow.currentSettings(), jobPages);
+                printFlow.start(jobId, currentFile, settingsFlow.currentSettings(), jobPages,
+                        java.util.Map.copyOf(pageRotations));
             }
 
             @Override

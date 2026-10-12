@@ -3129,3 +3129,30 @@
     -fx-background-color: -primary-soft;
     -fx-border-color: -primary-blue;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Кнопка «повернуть страницу» на превью — только иконка, круглая
+   ═══════════════════════════════════════════════════════════════════════
+   Как в «Фото» на iPhone: подписи нет, кнопка — сама иконка. Размер 64 —
+   удобная цель для пальца. Отдельного :hover нет — экран сенсорный. */
+.rotate-page-btn {
+    -fx-background-color: white;
+    -fx-background-radius: 999;
+    -fx-border-color: #C9D8F2;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 999;
+    -fx-min-width: 64px;  -fx-pref-width: 64px;  -fx-max-width: 64px;
+    -fx-min-height: 64px; -fx-pref-height: 64px; -fx-max-height: 64px;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+
+.rotate-page-btn .rotate-page-icon {
+    -fx-icon-color: -primary-blue;
+}
+
+.rotate-page-btn:pressed {
+    -fx-background-color: -primary-soft;
+    -fx-border-color: -primary-blue;
+}
