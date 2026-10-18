@@ -23,8 +23,12 @@ public class PrintAttributesBuilder {
 
         addIfSupported(printer, attrs, new Copies(Math.max(settings.copies(), 1)));
 
-        if ("A4".equalsIgnoreCase(settings.paperSize())) {
-            addIfSupported(printer, attrs, MediaSizeName.ISO_A4);
+        // Киоск печатает только на A4, что бы ни пришло в settings.paperSize():
+        // null, "ISO_A4" или строка с пробелом раньше молча оставляли формат
+        // на усмотрение драйвера.
+        if (!addIfSupported(printer, attrs, MediaSizeName.ISO_A4)) {
+            log.warn("Принтер '{}' не подтвердил поддержку A4 — формат возьмётся из драйвера",
+                    printer.getName());
         }
 
         addIfSupported(printer, attrs,
@@ -45,17 +49,19 @@ public class PrintAttributesBuilder {
         return attrs;
     }
 
-    private void addIfSupported(PrintService printer,
-                                HashPrintRequestAttributeSet attrs,
-                                Attribute attr) {
+    /** @return true, если атрибут поддержан и добавлен в набор */
+    private boolean addIfSupported(PrintService printer,
+                                   HashPrintRequestAttributeSet attrs,
+                                   Attribute attr) {
         try {
             if (printer.isAttributeValueSupported(attr, null, null)) {
                 attrs.add(attr);
-            } else {
-                log.debug("Printer '{}' does not support: {}", printer.getName(), attr);
+                return true;
             }
+            log.debug("Printer '{}' does not support: {}", printer.getName(), attr);
         } catch (Exception e) {
             log.debug("Could not check attribute: {}", attr, e);
         }
+        return false;
     }
 }

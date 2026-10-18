@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.print.DocFlavor;
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
 import java.io.IOException;
@@ -15,9 +14,9 @@ import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Высокоуровневый API печати: принимает путь к файлу + MIME + настройки,
- * автоматически выбирает быстрый или fallback-путь в зависимости от того,
- * что умеет драйвер.
+ * Высокоуровневый API печати: принимает путь к файлу + MIME + настройки.
+ * PDF и изображения печатаются одним путём — через {@link FallbackPdfPrinter},
+ * где каждая страница кладётся на лист A4 (см. раздел Routing ниже).
  */
 @Slf4j
 @Service
@@ -25,7 +24,6 @@ import java.util.concurrent.CompletableFuture;
 public class PrintManager {
 
     private final KioskClientProperties properties;
-    private final FastPathPrinter     fastPath;
     private final FallbackPdfPrinter  fallback;
     private final PrintCompletionWatcher completionWatcher;
 
@@ -110,9 +108,8 @@ public class PrintManager {
         int expectedPages = expectedPages(bytes, mimeType, settings);
 
         CompletableFuture<PrinterResult> printing = switch (mimeType.toLowerCase()) {
-            case "application/pdf"  -> printPdf(printer, bytes, settings);
-            case "image/jpeg"       -> printImage(printer, bytes, DocFlavor.BYTE_ARRAY.JPEG, settings);
-            case "image/png"        -> printImage(printer, bytes, DocFlavor.BYTE_ARRAY.PNG, settings);
+            case "application/pdf"         -> fallback.printPdf(printer, bytes, settings);
+            case "image/jpeg", "image/png" -> fallback.printImage(printer, bytes, settings);
             default -> CompletableFuture.completedFuture(
                     PrinterResult.failed("Неподдерживаемый тип файла: " + mimeType));
         };
@@ -233,31 +230,14 @@ public class PrintManager {
     }
 
     // ── Routing ────────────────────────────────────────────────────
-
-    private CompletableFuture<PrinterResult> printPdf(PrintService printer,
-                                                      byte[] bytes,
-                                                      PrintSettings settings) {
-        if (printer.isDocFlavorSupported(DocFlavor.BYTE_ARRAY.PDF)) {
-            log.debug("Printer '{}' supports native PDF — using fast path", printer.getName());
-            return fastPath.print(printer, bytes, DocFlavor.BYTE_ARRAY.PDF, settings);
-        }
-        log.info("Printer '{}' does NOT support native PDF — falling back to rasterization",
-                printer.getName());
-        return fallback.printPdf(printer, bytes, settings);
-    }
-
-    private CompletableFuture<PrinterResult> printImage(PrintService printer,
-                                                        byte[] bytes,
-                                                        DocFlavor flavor,
-                                                        PrintSettings settings) {
-        if (printer.isDocFlavorSupported(flavor)) {
-            log.debug("Printer '{}' supports {} — using fast path", printer.getName(), flavor.getMimeType());
-            return fastPath.print(printer, bytes, flavor, settings);
-        }
-        log.info("Printer '{}' does NOT support {} — falling back to PDF wrapping",
-                printer.getName(), flavor.getMimeType());
-        return fallback.printImage(printer, bytes, settings);
-    }
+    //
+    // Всё печатается через FallbackPdfPrinter: только там лист задаётся явно
+    // (a4Pages → A4). Раньше JPEG/PNG уходили быстрым путём (FastPathPrinter):
+    // Java под Windows объявляет поддержку картинок для любого принтера, и
+    // формат брался из умолчаний драйвера. Canon вставал с «Check paper
+    // settings», пока кто-нибудь не нажмёт Resume на самом принтере, а по SNMP
+    // это выглядело как «нет бумаги». На Linux (CUPS) тем же быстрым путём шёл
+    // бы и PDF — тоже мимо A4.
 
     // ── Printer resolution ─────────────────────────────────────────
 
