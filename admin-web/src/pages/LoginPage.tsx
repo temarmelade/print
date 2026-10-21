@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { LogIn } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { landingPathFor } from "../lib/permissions.ts";
+import { BrandLogo, BrandMark } from "../components/Brand.tsx";
 import "./login.css";
 
 export function LoginPage() {
@@ -33,9 +34,16 @@ export function LoginPage() {
     <div className="login">
       {/* Левая панель-подпись: сеть киосков под наблюдением */}
       <aside className="login-brand" aria-hidden>
+        <div className="login-brand-top">
+          <BrandMark variant="white" size={40} />
+          <span className="brand-word">
+            <b>BASMA</b>
+            <em>PRINT</em>
+          </span>
+        </div>
         <NetworkGraphic />
         <div className="login-brand-copy">
-          <div className="eyebrow">PrintKiosk · Control</div>
+          <div className="eyebrow">BasmaPrint · Пульт управления</div>
           <h1>Вся сеть киосков —<br />на одном пульте</h1>
           <p>Статусы, расходники, выручка и инциденты в реальном времени.</p>
         </div>
@@ -44,6 +52,9 @@ export function LoginPage() {
       {/* Форма входа */}
       <main className="login-form-wrap">
         <form className="login-form" onSubmit={onSubmit}>
+          <div className="login-logo">
+            <BrandLogo height={150} />
+          </div>
           <div className="eyebrow">Доступ к панели</div>
           <h2>Вход в пульт управления</h2>
 
@@ -99,7 +110,7 @@ function NetworkGraphic() {
     <svg className="net" viewBox="0 0 400 380" role="img" aria-label="Схема сети киосков">
       {links.map(([a, b], i) => (
         <line key={i} x1={nodes[a].x} y1={nodes[a].y} x2={nodes[b].x} y2={nodes[b].y}
-          stroke="rgba(134,149,174,0.22)" strokeWidth="1.2" />
+          stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" />
       ))}
       {nodes.map((n, i) => (
         <g key={i} style={{ ["--d" as string]: `${i * 0.4}s` }} className="net-node">

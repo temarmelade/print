@@ -50,13 +50,13 @@
 }
 .sev-chip.down {
   color: var(--down);
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--down-ink);
+  border: 1px solid rgba(220, 38, 38, 0.3);
 }
 .sev-chip.warn {
   color: var(--warn);
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: var(--warn-ink);
+  border: 1px solid rgba(217, 119, 6, 0.3);
 }
 
 .incident-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 3px; }
@@ -101,7 +101,7 @@
   color: #fff;
 }
 
-.kpi-alert { border-color: rgba(239, 68, 68, 0.4); }
+.kpi-alert { border-color: rgba(220, 38, 38, 0.4); background: #FEF6F6; }
 
 .empty.all-clear {
   display: flex;
@@ -119,4 +119,13 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 720px) {
+  .incident { flex-wrap: wrap; padding: 14px; gap: 10px 12px; }
+  .incident-body { flex: 1 1 calc(100% - 40px); }
+  .incident-title { flex-wrap: wrap; gap: 6px 10px; }
+  .incident-actions { flex: 1 1 100%; justify-content: stretch; }
+  .incident-actions > .btn { flex: 1; }
+  .type-label { width: 42%; white-space: normal; }
 }

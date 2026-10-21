@@ -1,76 +1,81 @@
 /* ============================================================
-   PrintKiosk · Пульт управления — дизайн-система
-   «Диспетчерская сети киосков».
-   Правило палитры: зелёный/жёлтый/красный ЗАРЕЗЕРВИРОВАНЫ под
-   статус киосков. Системный акцент — синий, чтобы не путаться
-   со «здоровьем» точек.
+   BasmaPrint · Пульт управления — дизайн-система
+   Светлая тема в цветах бренда: тёмно-синий (#101F3C) для шапки,
+   футера и текста, золотой (#EABF45) для главных действий.
+   Зелёный/жёлтый/красный ЗАРЕЗЕРВИРОВАНЫ под статус киосков и
+   операций, чтобы не путаться с брендовыми цветами.
    ============================================================ */
 
 :root {
-  /* Ink / поверхности */
-  --bg:          #0E1421;
-  --surface:     #151D2C;
-  --surface-2:   #1B2536;
-  --surface-3:   #202C41;
-  --border:      #26314A;
-  --border-strong: #34425F;
+  /* Бренд */
+  --navy:        #101F3C;   /* шапка, футер, основной текст */
+  --navy-2:      #1C3160;   /* hover на тёмно-синем */
+  --gold:        #EABF45;   /* основная кнопка */
+  --gold-2:      #DDAE2C;   /* hover основной кнопки */
+
+  /* Поверхности */
+  --bg:          #FFFFFF;   /* фон страницы */
+  --surface:     #F1F5F9;   /* карточки */
+  --surface-2:   #E8EEF5;   /* hover, дорожки прогресс-баров */
+  --surface-3:   #E2E8F0;   /* плашки, подложки */
+  --border:      #E2E8F0;   /* границы и разделители */
+  --border-strong: #CBD5E1; /* рамки полей ввода */
 
   /* Текст */
-  --text:        #E7EDF7;
-  --text-muted:  #8695AE;
-  --text-dim:    #5C6A83;
+  --text:        #101F3C;
+  --text-muted:  #64748B;   /* подсказки и вторичный текст */
+  --text-dim:    #64748B;
 
-  /* Системный акцент (НЕ статус) */
-  --accent:      #4C8DFF;
-  --accent-2:    #6EA2FF;
-  --accent-ink:  #0B2350;
+  /* Акцент интерфейса = тёмно-синий бренда (графики, активные вкладки) */
+  --accent:      #101F3C;
+  --accent-2:    #2A4A85;
+  --accent-ink:  #101F3C;
+  --accent-tint: rgba(16, 31, 60, 0.06);
 
-  /* Сигнальные цвета статуса киосков — только для статуса! */
-  --ok:    #22C55E;
-  --warn:  #F59E0B;
-  --down:  #EF4444;
+  /* Сигнальные цвета статуса — только для статуса! */
+  --ok:    #16A34A;
+  --warn:  #D97706;
+  --down:  #DC2626;
 
-  --ok-ink:   rgba(34, 197, 94, 0.14);
-  --warn-ink: rgba(245, 158, 11, 0.14);
-  --down-ink: rgba(239, 68, 68, 0.14);
+  --ok-ink:   rgba(22, 163, 74, 0.12);
+  --warn-ink: rgba(217, 119, 6, 0.12);
+  --down-ink: rgba(220, 38, 38, 0.10);
 
-  --focus: #7FB0FF;
+  --focus: #EABF45;
 
   --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-brand: "Montserrat", var(--font-sans);
 
   --r:    12px;
   --r-sm: 8px;
   --r-lg: 16px;
 
-  --rail-w: 248px;
-  --topbar-h: 60px;
+  --rail-w: 240px;
+  --topbar-h: 64px;
 
-  --shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --shadow: 0 10px 30px rgba(16, 31, 60, 0.14);
 }
 
 * { box-sizing: border-box; }
 
-html, body, #root { height: 100%; }
+html, body, #root { min-height: 100%; }
+html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
   font-family: var(--font-sans);
   color: var(--text);
   background: var(--bg);
-  /* тонкая «приборная» сетка на фоне */
-  background-image:
-    linear-gradient(rgba(76, 141, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(76, 141, 255, 0.035) 1px, transparent 1px);
-  background-size: 40px 40px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
 }
 
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; }
+img { max-width: 100%; }
 
-/* Видимый фокус — часть quality floor */
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
@@ -78,61 +83,90 @@ button { font-family: inherit; }
 }
 
 .mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1; }
+.muted { color: var(--text-muted); }
+.small { font-size: 12px; }
 
-/* Eyebrow — техническая надпись-метка */
 .eyebrow {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--text-muted);
 }
 
-/* ── Статус-точка (сигнальные цвета) ── */
+/* ── Статус-точка ── */
 .status-dot {
   width: 9px; height: 9px; border-radius: 50%;
   display: inline-block; flex: none;
   position: relative;
+  background: var(--border-strong);
 }
 .status-dot.ok    { background: var(--ok);   box-shadow: 0 0 0 3px var(--ok-ink); }
 .status-dot.warn  { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-ink); }
 .status-dot.down  { background: var(--down); box-shadow: 0 0 0 3px var(--down-ink); }
 
-/* ── Кнопки ── */
+/* ── Кнопки ──
+   Основная — золотая с тёмно-синим текстом.
+   Вторичная (btn-ghost) — белая с тёмно-синей рамкой. */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 44px; padding: 0 18px;
-  border: 1px solid transparent; border-radius: var(--r-sm);
+  border: 1.5px solid transparent; border-radius: var(--r-sm);
   font-size: 15px; font-weight: 600; cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, transform 0.04s ease;
+  white-space: nowrap;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.04s ease;
 }
 .btn:active { transform: translateY(1px); }
-.btn-primary {
-  background: var(--accent); color: #fff;
-}
-.btn-primary:hover { background: var(--accent-2); }
-.btn-primary:disabled { background: var(--surface-3); color: var(--text-dim); cursor: not-allowed; }
-.btn-ghost {
-  background: transparent; color: var(--text-muted);
-  border-color: var(--border-strong);
-}
-.btn-ghost:hover { background: var(--surface-2); color: var(--text); }
+.btn:disabled { cursor: not-allowed; }
 
-/* ── Инпуты ── */
+.btn-primary { background: var(--gold); color: var(--navy); }
+.btn-primary:hover:not(:disabled) { background: var(--gold-2); }
+.btn-primary:disabled { background: var(--surface-3); color: #94A3B8; }
+
+.btn-ghost {
+  background: #fff; color: var(--navy);
+  border-color: var(--navy);
+}
+.btn-ghost:hover:not(:disabled) { background: var(--surface); }
+.btn-ghost:disabled { color: #94A3B8; border-color: var(--border-strong); }
+
+/* Текстовая кнопка без рамки — для «История», «Отмена» и т.п. */
+.btn-text { background: transparent; color: var(--text-muted); border-color: transparent; }
+.btn-text:hover:not(:disabled) { color: var(--navy); background: var(--surface); }
+
+.btn-sm { height: 36px; padding: 0 12px; font-size: 13px; gap: 6px; }
+
+.btn-danger { background: var(--down); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #B91C1C; }
+
+/* ── Иконочные кнопки ── */
+.icon-btn {
+  width: 38px; height: 38px; flex: none;
+  display: grid; place-items: center;
+  background: #fff; border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm); color: var(--text-muted); cursor: pointer;
+  transition: background 0.13s ease, color 0.13s ease, border-color 0.13s ease;
+}
+.icon-btn:hover:not(:disabled) { background: var(--surface); color: var(--navy); border-color: var(--navy); }
+.icon-btn:disabled { opacity: 0.5; cursor: default; }
+.icon-btn.danger:hover:not(:disabled) { color: var(--down); border-color: var(--down); background: var(--down-ink); }
+
+/* ── Поля ввода ── */
 .field { display: flex; flex-direction: column; gap: 7px; }
 .field label {
   font-size: 13px; font-weight: 500; color: var(--text-muted);
 }
 .input {
   height: 46px; padding: 0 14px;
-  background: var(--surface); color: var(--text);
+  background: #fff; color: var(--text);
   border: 1px solid var(--border-strong); border-radius: var(--r-sm);
   font-size: 15px; font-family: var(--font-sans);
-  transition: border-color 0.14s ease, background 0.14s ease;
+  min-width: 0;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
-.input::placeholder { color: var(--text-dim); }
-.input:focus { outline: none; border-color: var(--accent); background: var(--surface-2); }
+.input::placeholder { color: #94A3B8; }
+.input:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(16, 31, 60, 0.1); }
 
 /* ── Карточки ── */
 .card {
@@ -141,6 +175,24 @@ button { font-family: inherit; }
   border-radius: var(--r);
 }
 
+/* Общая ошибка (раньше жила только на экране входа). */
+.login-error, .alert-error {
+  background: var(--down-ink);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: #B91C1C;
+  border-radius: var(--r-sm);
+  padding: 11px 13px; font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+/* На телефоне поля ввода не меньше 16px, иначе iOS зумит страницу при фокусе. */
+@media (max-width: 720px) {
+  .input, select.input, .pricing-table input, .pricing-edit input { font-size: 16px; }
 }

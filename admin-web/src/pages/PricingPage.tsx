@@ -196,10 +196,10 @@ export function PricingPage() {
                     onChange={(e) => setDraft({ ...draft, scan: e.target.value })}
                   />
                 </label>
-                <button className="btn-icon ok" disabled={saving} onClick={() => save(null)}>
+                <button className="icon-btn ok" disabled={saving} onClick={() => save(null)}>
                   <Check size={16} />
                 </button>
-                <button className="btn-icon" onClick={() => setEditing(null)}>
+                <button className="icon-btn" onClick={() => setEditing(null)}>
                   <X size={16} />
                 </button>
               </div>
@@ -209,7 +209,7 @@ export function PricingPage() {
                 <span className="price"><b>{defaultTariff?.colorPriceSom ?? "—"}</b> сом / цвет</span>
                 <span className="price"><b>{defaultTariff?.scanPriceSom ?? "—"}</b> сом / скан</span>
                 <button
-                  className="btn-sm"
+                  className="btn btn-ghost btn-sm"
                   onClick={() => startEdit("__default__",
                     defaultTariff?.bwPriceSom ?? 0, defaultTariff?.colorPriceSom ?? 0,
                     defaultTariff?.scanPriceSom ?? 0)}
@@ -217,7 +217,7 @@ export function PricingPage() {
                   Изменить
                 </button>
                 <button
-                  className="btn-sm ghost"
+                  className="btn btn-text btn-sm"
                   onClick={() => openHistory({
                     kioskId: null, name: "Базовая цена", location: null,
                     bw: defaultTariff?.bwPriceSom ?? 0,
@@ -235,7 +235,7 @@ export function PricingPage() {
           <section className="pricing-table">
             <header>
               <h3>Цены по точкам</h3>
-              <button className="btn-sm ghost" onClick={() => void load()}>
+              <button className="btn btn-text btn-sm" onClick={() => void load()}>
                 <RefreshCw size={14} /> Обновить
               </button>
             </header>
@@ -282,12 +282,12 @@ export function PricingPage() {
                           </td>
                           <td colSpan={2} className="row-actions">
                             <button
-                              className="btn-icon ok" disabled={saving}
+                              className="icon-btn ok" disabled={saving}
                               onClick={() => void save(r.kioskId)}
                             >
                               <Check size={16} />
                             </button>
-                            <button className="btn-icon" onClick={() => setEditing(null)}>
+                            <button className="icon-btn" onClick={() => setEditing(null)}>
                               <X size={16} />
                             </button>
                           </td>
@@ -304,14 +304,14 @@ export function PricingPage() {
                           </td>
                           <td className="row-actions">
                             <button
-                              className="btn-sm"
+                              className="btn btn-ghost btn-sm"
                               onClick={() => startEdit(r.kioskId as string, r.bw, r.color, r.scan)}
                             >
                               Изменить
                             </button>
                             {r.own && (
                               <button
-                                className="btn-icon" title="Вернуть на базовую цену"
+                                className="icon-btn" title="Вернуть на базовую цену"
                                 disabled={saving}
                                 onClick={() => void reset(r.kioskId as string)}
                               >
@@ -319,7 +319,7 @@ export function PricingPage() {
                               </button>
                             )}
                             <button
-                              className="btn-icon" title="История цен"
+                              className="icon-btn" title="История цен"
                               onClick={() => void openHistory(r)}
                             >
                               <History size={15} />
@@ -345,7 +345,7 @@ export function PricingPage() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <header>
               <h3>История цен — {historyFor.name}</h3>
-              <button className="btn-icon" onClick={() => setHistoryFor(null)}>
+              <button className="icon-btn" onClick={() => setHistoryFor(null)}>
                 <X size={16} />
               </button>
             </header>

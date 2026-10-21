@@ -8,10 +8,10 @@ import "./map.css";
 const FALLBACK_CENTER: [number, number] = [42.8746, 74.5698];
 
 const TONE_COLOR: Record<string, string> = {
-  ok: "#22c55e",
-  warn: "#f59e0b",
-  down: "#ef4444",
-  idle: "#6b7280",
+  ok: "#16A34A",
+  warn: "#D97706",
+  down: "#DC2626",
+  idle: "#64748B",
 };
 
 /**
@@ -69,7 +69,7 @@ export function KioskMap({
       const tone = HEALTH_TONE[k.health];
       const marker = L.circleMarker([k.latitude as number, k.longitude as number], {
         radius: 10,
-        color: "#0b0e14",
+        color: "#ffffff",
         weight: 2,
         fillColor: TONE_COLOR[tone] ?? TONE_COLOR.idle,
         fillOpacity: 0.9,

@@ -10,22 +10,12 @@
 }
 .section-head .section-label { margin: 0; }
 
-.period-tabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-}
-
 .kpi-label-row {
   display: flex;
   align-items: center;
   gap: 7px;
 }
-.kpi-label-row svg { color: var(--text-dim); }
+.kpi-label-row svg { color: var(--text-muted); flex: none; }
 
 .kpi-value.tone-down { color: var(--down); }
 
@@ -45,16 +35,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   margin-top: 8px;
   font-size: 11px;
-  color: var(--text-dim);
+  color: var(--text-muted);
   min-height: 18px;
 }
 .chart-tip {
-  color: var(--text);
-  background: var(--surface-3);
-  border: 1px solid var(--border-strong);
+  color: var(--navy);
+  background: var(--surface);
+  border: 1px solid var(--border);
   padding: 2px 9px;
   border-radius: 999px;
   font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .section-head { margin-top: 20px; }
+  .period-tabs { flex: 1 1 100%; }
+  .period-tabs .slot-tab { flex: 1; padding: 8px 10px; }
+  .chart-card { padding: 14px; }
+  .chart svg { height: 150px; }
 }

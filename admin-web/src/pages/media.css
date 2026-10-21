@@ -1,25 +1,4 @@
-/* ── Слоты ── */
-.slot-tabs {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-}
-.slot-tab {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.13s ease, color 0.13s ease;
-}
-.slot-tab:hover { color: var(--text); }
-.slot-tab.active { background: var(--accent-ink); color: #fff; }
+/* Вкладки слотов, заголовок списка, заметка и кнопки — общие (pages.css, index.css). */
 
 .slot-hint {
   color: var(--text-dim);
@@ -31,6 +10,7 @@
 .upload-card { padding: 18px; margin-bottom: 16px; }
 
 .dropzone {
+  background: #fff;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -42,8 +22,8 @@
   transition: border-color 0.14s ease, background 0.14s ease;
 }
 .dropzone:hover, .dropzone.over {
-  border-color: var(--accent);
-  background: rgba(76, 141, 255, 0.06);
+  border-color: var(--navy);
+  background: var(--accent-tint);
   color: var(--text);
 }
 .dropzone.filled { border-style: solid; color: var(--text); }
@@ -71,38 +51,8 @@
 .upload-fields .field.dur { flex: 0 0 120px; min-width: 120px; }
 .upload-actions { display: flex; gap: 8px; }
 
-/* ── Заметка про кэш ── */
-.cache-note {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 13px;
-  margin-bottom: 22px;
-  font-size: 13px;
-  color: var(--text-muted);
-  background: rgba(245, 158, 11, 0.07);
-  border: 1px solid rgba(245, 158, 11, 0.28);
-  border-radius: var(--r-sm);
-}
-.cache-note svg { color: var(--warn); flex: none; }
 
 /* ── Список ── */
-.list-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-.list-head h3 { font-size: 17px; font-weight: 600; margin: 0; }
-
-.btn-sm { height: 34px; padding: 0 12px; font-size: 13px; gap: 6px; }
-.btn-danger { background: var(--down); color: #fff; }
-.btn-danger:hover { background: #dc2626; }
-.icon-btn.danger:hover { color: var(--down); border-color: rgba(239, 68, 68, 0.5); }
-
-.spin { animation: spin 0.9s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
 .ad-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -123,20 +73,20 @@
    по бокам. cover обрезал всё под горизонтальную рамку 16:10. */
 .ad-preview img, .ad-preview video {
   width: 100%; height: 100%; object-fit: contain; display: block;
-  background: #000;
+  background: #0B1427;
 }
 .ad-type {
   position: absolute; top: 8px; left: 8px;
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
   padding: 3px 7px; border-radius: 5px;
-  background: rgba(14, 20, 33, 0.82); color: var(--text);
+  background: rgba(16, 31, 60, 0.85); color: #fff;
 }
 .ad-off-badge {
   position: absolute; top: 8px; right: 8px;
   font-size: 11px; font-weight: 600;
   padding: 3px 8px; border-radius: 999px;
-  background: rgba(14, 20, 33, 0.82); color: var(--text-muted);
+  background: rgba(16, 31, 60, 0.85); color: #fff;
 }
 
 .ad-body { padding: 12px 13px 13px; display: flex; flex-direction: column; gap: 8px; }
@@ -147,7 +97,7 @@
   text-align: left; cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.ad-title:hover { color: var(--accent-2); }
+.ad-title:hover { color: var(--accent-2); text-decoration: underline; }
 .ad-meta { font-size: 11px; color: var(--text-dim); }
 
 .ad-edit { display: flex; flex-direction: column; gap: 7px; }
@@ -170,7 +120,7 @@
     margin-left: auto;
     margin-right: 12px;
     font-size: 13px;
-    color: var(--text-muted, #8a94a6);
+    color: var(--text-muted);
     white-space: nowrap;
 }
 
@@ -193,15 +143,15 @@
 }
 
 /* Кнопка-чип: выбранное состояние заливкой, не только галочкой —
-   на тёмной теме галочка в списке из 20 точек не читается. */
+   галочка в списке из 20 точек читается плохо. */
 .kp-option {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    border: 1px solid var(--border, #2a3550);
+    border: 1px solid var(--border-strong);
     background: transparent;
-    color: var(--text-muted, #8a94a6);
+    color: var(--text-muted);
     border-radius: 999px;
     font-size: 13px;
     font-weight: 500;
@@ -209,23 +159,23 @@
     transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
-.kp-option:hover:not(:disabled) { border-color: #3d80ff; color: #cfe0ff; }
+.kp-option:hover:not(:disabled) { border-color: var(--navy); color: var(--navy); }
 
 .kp-option.on {
-    background: rgba(20, 120, 255, 0.16);
-    border-color: #1478ff;
-    color: #7db4ff;
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
 }
 
 .kp-option.all.on {
-    background: rgba(36, 194, 99, 0.16);
-    border-color: #24c263;
-    color: #63dd97;
+    background: var(--ok-ink);
+    border-color: var(--ok);
+    color: var(--ok);
 }
 
 .kp-option:disabled { opacity: 0.5; cursor: default; }
 
-.kp-empty { font-size: 13px; color: var(--text-muted, #8a94a6); }
+.kp-empty { font-size: 13px; color: var(--text-muted); }
 
 .field.targets { flex: 1 1 100%; }
 
@@ -237,11 +187,11 @@
     width: 100%;
     margin: 8px 0 4px;
     padding: 6px 10px;
-    border: 1px dashed var(--border, #2a3550);
+    border: 1px dashed var(--border-strong);
     background: transparent;
     border-radius: 8px;
     font-size: 12px;
-    color: #7db4ff;
+    color: var(--navy);
     cursor: pointer;
     text-align: left;
 }
@@ -252,13 +202,13 @@
     white-space: nowrap;
 }
 
-.ad-targets:hover { border-color: #1478ff; }
-.ad-targets.all { color: #63dd97; }
+.ad-targets:hover { border-color: var(--navy); background: var(--surface); }
+.ad-targets.all { color: var(--ok); }
 
 .ad-targets-edit {
     margin: 8px 0;
     padding: 10px;
-    border: 1px solid var(--border, #2a3550);
+    border: 1px solid var(--border-strong);
     border-radius: 10px;
 }
 
@@ -273,6 +223,17 @@
     justify-content: center;
     width: 100%;
     height: 100%;
-    color: var(--text-muted, #8a94a6);
+    color: var(--text-muted);
     opacity: 0.4;
+}
+
+@media (max-width: 720px) {
+  .kiosk-filter { flex: 1 1 100%; margin: 0; flex-wrap: wrap; }
+  .kiosk-filter select { flex: 1; min-width: 0; }
+  .list-head > .btn { flex: 1 1 100%; }
+  .dropzone { padding: 18px 14px; }
+  .upload-fields .field, .upload-fields .field.dur { flex: 1 1 100%; min-width: 0; }
+  .upload-actions { flex: 1 1 100%; }
+  .upload-actions > .btn { flex: 1; }
+  .ad-grid { grid-template-columns: 1fr; }
 }

@@ -1,13 +1,5 @@
 .filters { margin-bottom: 18px; }
-.preset-tabs {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  margin-bottom: 12px;
-}
+.filters .preset-tabs { margin-bottom: 12px; }
 
 .filter-row {
   display: flex;
@@ -26,7 +18,7 @@
 .search-box svg {
   position: absolute;
   left: 12px;
-  color: var(--text-dim);
+  color: var(--text-muted);
   pointer-events: none;
 }
 .search-box .input { width: 100%; padding-left: 38px; }
@@ -35,14 +27,14 @@
   min-width: 170px;
   cursor: pointer;
   appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
-                    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
-  background-position: calc(100% - 18px) 21px, calc(100% - 13px) 21px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+                    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
   padding-right: 34px;
 }
-.select option { background: var(--surface-2); color: var(--text); }
+.select option { background: #fff; color: var(--text); }
 
 /* ── Таблица ── */
 .table-wrap { overflow-x: auto; padding: 0; }
@@ -59,7 +51,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--text-muted);
   padding: 13px 14px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
@@ -70,18 +62,18 @@
 .tx-table td {
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
-  color: var(--text-muted);
+  color: var(--text);
 }
 .tx-table tbody tr:last-child td { border-bottom: none; }
-.tx-table tbody tr:hover td { background: var(--surface-2); }
+.tx-table tbody tr:hover td { background: #F8FAFC; }
 
 .tx-table .num { text-align: right; }
 .tx-table .nowrap { white-space: nowrap; }
-.tx-table .strong { color: var(--text); font-weight: 600; }
-.tx-table .dim { color: var(--text-dim); }
+.tx-table .strong { color: var(--navy); font-weight: 600; }
+.tx-table .dim { color: var(--text-muted); }
 .tx-table .pin {
-  color: var(--accent-2);
-  font-weight: 600;
+  color: var(--navy);
+  font-weight: 700;
   letter-spacing: 0.08em;
 }
 .tx-table .file {
@@ -104,11 +96,10 @@
 .tx-status.tone-ok   { color: var(--ok); }
 .tx-status.tone-warn { color: var(--warn); }
 .tx-status.tone-down { color: var(--down); }
-.tx-status.tone-idle { color: var(--text-dim); }
+.tx-status.tone-idle { color: var(--text-muted); }
 
 /* Плашка действия (тип операции). Нейтральная для печати/копии/скан-печати
-   (на выходе бумага), акцент — для платной цифровой доставки скана
-   (веб/Telegram): её раньше не было видно в отчётах. */
+   (на выходе бумага), акцент — для платной цифровой доставки скана. */
 .tx-op {
   display: inline-flex;
   align-items: center;
@@ -118,13 +109,13 @@
   white-space: nowrap;
   border-radius: 999px;
   color: var(--text-muted);
-  background: var(--surface-2);
+  background: var(--surface);
   border: 1px solid var(--border);
 }
 .tx-op.digital {
-  color: var(--accent-2);
-  background: rgba(76, 141, 255, 0.14);
-  border-color: rgba(76, 141, 255, 0.35);
+  color: #7A5B07;
+  background: #FDF3D3;
+  border-color: #F0D78A;
 }
 
 /* ── Пагинация ── */
@@ -136,5 +127,16 @@
   flex-wrap: wrap;
   gap: 10px;
 }
-.pager-info { font-size: 12px; color: var(--text-dim); }
+.pager-info { font-size: 12px; color: var(--text-muted); }
 .pager-btns { display: flex; gap: 8px; }
+
+@media (max-width: 720px) {
+  .search-box { flex: 1 1 100%; min-width: 0; }
+  /* Селекты по два в ряд, кнопка «Обновить» — на всю ширину */
+  .filter-row > .select { flex: 1 1 calc(50% - 5px); min-width: 0; }
+  .filter-row > .btn { flex: 1 1 100%; }
+
+  .pager { flex-direction: column; align-items: stretch; }
+  .pager-info { text-align: center; }
+  .pager-btns > .btn { flex: 1; }
+}

@@ -201,7 +201,7 @@ function IncidentCard({
             Принять
           </button>
         )}
-        <button className="btn btn-sm" onClick={onResolve} disabled={busy}>
+        <button className="btn btn-primary btn-sm" onClick={onResolve} disabled={busy}>
           Устранено
         </button>
       </div>
@@ -232,7 +232,7 @@ function HistoryTable({ rows }: { rows: Incident[] }) {
             <tr key={i.id}>
               <td className="mono dim">{formatDateTime(i.startedAt)}</td>
               <td><b>{i.kioskName}</b></td>
-              <td>
+              <td className="wide">
                 <span className={"sev-chip " + (i.severity === "DOWN" ? "down" : "warn")}>
                   {i.title}
                 </span>

@@ -1,39 +1,48 @@
 .login {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 1.05fr 1fr;
+  background: #fff;
 }
 
-/* ── Левая панель-подпись ── */
+/* ── Левая панель: тёмно-синяя, как шапка пульта ── */
 .login-brand {
   position: relative;
   background:
-    radial-gradient(1000px 500px at 20% 0%, rgba(76, 141, 255, 0.12), transparent 60%),
-    var(--surface);
-  border-right: 1px solid var(--border);
+    radial-gradient(900px 520px at 85% 10%, rgba(42, 74, 133, 0.55), transparent 65%),
+    var(--navy);
+  color: #fff;
   overflow: hidden;
   display: flex;
-  align-items: flex-end;
-  padding: 48px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px 48px 48px;
 }
+.login-brand-top { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
+.login-brand-top .brand-word b { font-size: 20px; }
+.login-brand-top .brand-word em { font-size: 10px; }
+
 .net {
   position: absolute;
-  top: 40px; right: 30px;
+  top: 90px; right: 30px;
   width: min(60%, 400px);
   height: auto;
-  opacity: 0.92;
+  opacity: 0.95;
 }
-.net-node .net-halo { transform-origin: center; animation: haloPulse 3s ease-in-out infinite; animation-delay: var(--d); }
+.net-node .net-halo { transform-origin: center; transform-box: fill-box; animation: haloPulse 3s ease-in-out infinite; animation-delay: var(--d); }
 @keyframes haloPulse {
-  0%, 100% { transform: scale(1); opacity: 0.16; }
-  50%      { transform: scale(1.9); opacity: 0.04; }
+  0%, 100% { transform: scale(1); opacity: 0.2; }
+  50%      { transform: scale(1.9); opacity: 0.05; }
 }
-.login-brand-copy { position: relative; z-index: 1; max-width: 420px; }
+
+.login-brand-copy { position: relative; z-index: 1; max-width: 440px; }
+.login-brand-copy .eyebrow { color: var(--gold); }
 .login-brand-copy h1 {
-  font-size: 38px; line-height: 1.12; letter-spacing: -0.02em;
+  font-size: 40px; line-height: 1.12; letter-spacing: -0.02em;
   margin: 14px 0 12px; font-weight: 700;
 }
-.login-brand-copy p { color: var(--text-muted); font-size: 16px; margin: 0; }
+.login-brand-copy p { color: rgba(255, 255, 255, 0.68); font-size: 16px; margin: 0; }
 
 /* ── Форма ── */
 .login-form-wrap { display: grid; place-items: center; padding: 40px; }
@@ -41,23 +50,23 @@
   width: 100%; max-width: 380px;
   display: flex; flex-direction: column; gap: 16px;
 }
+.login-logo { display: none; justify-content: center; margin-bottom: 4px; }
+.brand-logo { display: block; height: auto; }
 .login-form h2 {
   font-size: 26px; letter-spacing: -0.01em; margin: 6px 0 8px; font-weight: 700;
 }
-.login-form .btn { margin-top: 6px; }
-.login-error {
-  background: var(--down-ink);
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  color: #fca5a5;
-  border-radius: var(--r-sm);
-  padding: 11px 13px; font-size: 14px;
-}
+.login-form .btn { margin-top: 6px; height: 50px; font-size: 16px; }
+.login-form .login-error { margin: 0; }
 .login-hint {
-  font-size: 11px; color: var(--text-dim);
+  font-size: 11px; color: var(--text-muted);
   letter-spacing: 0.02em; line-height: 1.6; margin: 4px 0 0;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 960px) {
   .login { grid-template-columns: 1fr; }
   .login-brand { display: none; }
+  .login-form-wrap { align-items: start; padding: 28px 20px 40px; }
+  .login-logo { display: flex; }
+  .login-form .eyebrow, .login-form h2 { text-align: center; }
+  .login-form h2 { font-size: 22px; }
 }

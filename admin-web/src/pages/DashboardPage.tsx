@@ -222,7 +222,7 @@ function Chart({ points, metric }: { points: DailyPoint[]; metric: "revenue" | "
               key={p.date}
               x={x + 1} y={y} width={Math.max(barW - 2, 1)} height={Math.max(h, v > 0 ? 2 : 0)}
               rx="2"
-              fill={hover === i ? "var(--accent-2)" : "var(--accent)"}
+              fill={hover === i ? "var(--gold)" : "var(--accent)"}
               opacity={v === 0 ? 0.18 : 1}
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover(null)}

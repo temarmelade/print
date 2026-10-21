@@ -7,8 +7,14 @@
   gap: 16px;
   align-items: start;
 }
+/* Карточки внутри разделов начинаются сразу под подписью раздела. */
+.analytics-2col > .card,
+.analytics-2col > div > .card,
+.section-label + .card { margin-top: 0; }
+
 @media (max-width: 900px) {
-  .analytics-2col { grid-template-columns: 1fr; }
+  .analytics-2col { grid-template-columns: 1fr; gap: 16px; }
+  .analytics-2col > div + div > .eyebrow.section-label { margin-top: 12px; }
 }
 
 /* ── Доля услуги в таблице ── */
@@ -34,8 +40,8 @@
 .share-num { font-size: 12px; white-space: nowrap; }
 
 /* ── Часы ── */
-.hour-bar { fill: var(--accent); opacity: 0.85; }
-.hour-bar:hover { opacity: 1; }
+.hour-bar { fill: var(--navy); opacity: 0.85; }
+.hour-bar:hover { fill: var(--gold); opacity: 1; }
 
 .hour-axis {
   display: flex;
@@ -106,7 +112,7 @@
   display: block;
   height: 100%;
   border-radius: var(--r-sm);
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--navy);
 }
 
 .funnel-foot {
@@ -121,3 +127,8 @@
 }
 .funnel-foot span { display: inline-flex; align-items: center; gap: 6px; }
 .funnel-foot b { color: var(--text-muted); }
+
+@media (max-width: 720px) {
+  .funnel-card { padding: 14px; }
+  .funnel-foot { gap: 8px 14px; }
+}
